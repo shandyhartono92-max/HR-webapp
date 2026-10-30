@@ -97,6 +97,15 @@ It runs automatically in the background after each application (`after()` in `ac
 - Without a job, the CV is stored on the candidate. **Masukkan ke lowongan** creates an application with the latest CV and runs AI screening for that job.
 - Retention applies the same way and also removes candidate-level CVs and the consent evidence text.
 
+### Starting the app and testing from a MacBook or phone
+
+1. On this PC, double-click **`Start Portal HR.bat`** (in `D:\Claude HR`). It starts the local database and the app, and prints the address for other devices, e.g. `http://192.168.100.115:3000`. Keep the window open; closing it stops the app.
+2. On the MacBook (same Wi-Fi/office network), open that address in Safari or Chrome.
+
+- `next.config.ts` allows this PC's current network addresses automatically (read at start-up), so a new Wi-Fi address only needs a restart of the .bat.
+- If the MacBook can't connect: check both are on the same network (guest Wi-Fi often blocks devices from seeing each other), and that Windows Firewall allows port 3000 on Private networks.
+- This is plain `http` in development mode: internal testing with sample data only.
+
 ### Local database notes (`prisma dev`)
 
 Start the app from this folder with `npm run dev` (inside `hr-app`). Note: the Claude preview pane's own launcher resolves paths from the session's original folder, so run the dev server directly here.
