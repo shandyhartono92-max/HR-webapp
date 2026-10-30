@@ -16,6 +16,7 @@ const nav: NavItem[] = [
   { href: "/dashboard", label: "Ringkasan", roles: ALL },
   { href: "/dashboard/lowongan", label: "Lowongan", roles: RECRUITERS },
   { href: "/dashboard/kandidat", label: "Kandidat", roles: RECRUITERS },
+  { href: "/dashboard/kandidat/bank", label: "Bank Kandidat", roles: HR_ONLY },
   { href: "/dashboard/karyawan", label: "Karyawan", roles: HR_ONLY },
   { href: "/dashboard/surat", label: "Surat", roles: HR_ONLY },
   { href: "/dashboard/rekening", label: "Rekening Gaji", roles: ALL },

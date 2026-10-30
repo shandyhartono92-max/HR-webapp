@@ -152,6 +152,7 @@ model User {
   bankRequestsReviewed  BankChangeRequest[] @relation("BankRequestReviewer")
   auditLogs             AuditLog[]
   notifications         Notification[]
+  consentsRecorded      Candidate[]         @relation("ConsentRecorder")
   kitsEdited            InterviewKit[]      @relation("KitEditor")
   kitsApproved          InterviewKit[]      @relation("KitApprover")
 }
@@ -209,9 +210,14 @@ model Candidate {
   phone             String
   city              String?
   lastEducation     String?
+  source            String? // how the candidate reached us, see applicationSources / manualSources
   // UU PDP consent
   consentAt         DateTime
   consentVersion    String // version of the privacy notice they accepted
+  consentMethod     ConsentMethod @default(SELF_FORM)
+  consentEvidence   String? // HR_ATTESTED: where/how the candidate agreed, e.g. "email 30 Okt 2026"
+  consentRecordedById String?
+  consentRecordedBy User?     @relation("ConsentRecorder", fields: [consentRecordedById], references: [id])
   talentPoolConsent Boolean   @default(false)
   retainUntil       DateTime // auto-delete date for personal data
   anonymizedAt      DateTime? // set when personal data has been wiped
@@ -219,8 +225,14 @@ model Candidate {
   updatedAt         DateTime  @updatedAt
 
   applications Application[]
+  resumes      Resume[] // CVs added by HR before the candidate is linked to a job
 
   @@index([retainUntil])
+}
+
+enum ConsentMethod {
+  SELF_FORM // candidate ticked the consent box on the careers form
+  HR_ATTESTED // HR added the candidate and recorded the evidence of consent
 }
 
 model Application {
@@ -298,10 +310,14 @@ model InterviewKit {
 // Module 2 — CV screening
 // ─────────────────────────────────────────────
 
+// Belongs to an application, or (bank data, no job yet) directly to a candidate.
+// A CHECK constraint requires one of the two.
 model Resume {
-  id            String      @id @default(cuid())
-  applicationId String
-  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  id            String       @id @default(cuid())
+  applicationId String?
+  application   Application? @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  candidateId   String?
+  candidate     Candidate?   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   fileKey       String // object-storage key
   fileName      String
   mimeType      String

@@ -38,6 +38,10 @@ export function npwpError(npwp: string): string | null {
   return /^\d{15}$|^\d{16}$/.test(npwp) ? null : "NPWP harus 15 atau 16 digit angka.";
 }
 
+// Indonesian mobile number: 08…, 628… or +628…, 10–15 digits; separators allowed when typed
+export const normalizePhone = (v: string) => v.replace(/[\s.()-]/g, "");
+export const isIndonesianMobile = (v: string) => /^(\+62|62|0)8\d{7,12}$/.test(normalizePhone(v));
+
 // BPJS Kesehatan card number: 13 digits
 export function bpjsKesehatanError(no: string): string | null {
   return /^\d{13}$/.test(no) ? null : "Nomor BPJS Kesehatan harus 13 digit angka.";

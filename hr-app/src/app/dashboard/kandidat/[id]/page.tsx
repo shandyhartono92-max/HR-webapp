@@ -4,7 +4,7 @@ import { notFound } from "next/navigation";
 import { db } from "@/lib/db";
 import { canAccessApplication, canManageApplication, requireUser } from "@/lib/dal";
 import {
-  applicationSources,
+  sourceLabel,
   decisionLabel,
   formatDate,
   formatDateTime,
@@ -500,7 +500,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
               <Row label="Gaji diharapkan">{app.expectedSalary !== null ? formatRupiah(app.expectedSalary) : "-"}</Row>
               <Row label="Mulai bekerja">{app.noticePeriodDays !== null ? `${app.noticePeriodDays} hari` : "-"}</Row>
               <Row label="Sumber">
-                {app.source ? (applicationSources[app.source as keyof typeof applicationSources] ?? app.source) : "-"}
+                {sourceLabel(app.source)}
               </Row>
             </dl>
             {resume && (

@@ -54,6 +54,25 @@ export const applicationSources = {
   other: "Lainnya",
 } as const;
 
+// Channels for candidates that HR adds by hand (bank data)
+export const manualSources = {
+  email: "CV via email",
+  whatsapp: "CV via WhatsApp",
+  job_fair: "Job fair / bursa kerja",
+  referral: "Referensi karyawan",
+  campus: "Kampus / magang",
+  linkedin_hr: "LinkedIn (dihubungi HR)", // distinct from the careers form's "linkedin" (candidate applied)
+  walk_in: "Datang langsung",
+  other: "Lainnya",
+} as const;
+
+export const sourceLabel = (source: string | null | undefined) =>
+  !source
+    ? "-"
+    : ((applicationSources as Record<string, string>)[source] ??
+      (manualSources as Record<string, string>)[source] ??
+      (source === "bank_data" ? "Bank data kandidat" : source));
+
 export const pipelineStages: ApplicationStage[] = ["APPLIED", "SCREENING", "INTERVIEW", "OFFER", "HIRED"];
 
 export const decisionLabel: Record<ScreeningDecision, string> = {

@@ -90,7 +90,16 @@ It runs automatically in the background after each application (`after()` in `ac
 - **Hiring**: once a candidate is *Diterima*, Admin/HR create the Employee and first Contract from the candidate page. PKWT requires an end date and starts as *Aktif* (no probation for PKWT); PKWTT starts on *Masa percobaan*. Employees are listed at `/dashboard/karyawan`, with contracts ending within 30 days highlighted there and on the dashboard.
 - **Retention (UU PDP)**: `npm run retention` anonymises candidates past their `retainUntil` date: personal fields wiped, CV files deleted, AI text and interview notes cleared; scores and stages stay for statistics. Candidates in Seleksi CV / Wawancara / Penawaran or hired are skipped. Use `npm run retention -- --dry-run` to preview. **Schedule it daily** (cron on Linux, Task Scheduler on Windows, or your host's scheduler).
 
+### Candidate bank (Bank Kandidat)
+
+- `/dashboard/kandidat/bank` (Admin/HR): every candidate whose data is still kept, searchable by name, email, city, AI-extracted skills and job titles; filters for education and talent pool.
+- **Tambah kandidat**: for CVs received by email, WhatsApp, job fair, referral, etc. HR must tick that the candidate agreed and write the evidence (stored as `consentMethod = HR_ATTESTED` with `consentEvidence` and who recorded it; a database CHECK enforces both). Share `/karir/privasi` with the candidate when asking for consent.
+- Without a job, the CV is stored on the candidate. **Masukkan ke lowongan** creates an application with the latest CV and runs AI screening for that job.
+- Retention applies the same way and also removes candidate-level CVs and the consent evidence text.
+
 ### Local database notes (`prisma dev`)
+
+Start the app from this folder with `npm run dev` (inside `hr-app`). Note: the Claude preview pane's own launcher resolves paths from the session's original folder, so run the dev server directly here.
 
 `prisma dev` is a lightweight local Postgres. It handles one connection at a time, so `.env` sets `DATABASE_POOL_MAX=1`; remove that for a real PostgreSQL server. Avoid running scripts against it while `npm run dev` is running. If the app shows "Connection terminated unexpectedly", stop the app and run:
 

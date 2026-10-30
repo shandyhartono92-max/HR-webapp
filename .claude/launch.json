@@ -4,7 +4,7 @@
     {
       "name": "hr-app",
       "runtimeExecutable": "C:\\Program Files\\nodejs\\npm.cmd",
-      "runtimeArgs": ["--prefix", "hr-app", "run", "dev"],
+      "runtimeArgs": ["--prefix", "D:\\Claude HR\\hr-app", "run", "dev"],
       "port": 3000
     }
   ]

@@ -24,6 +24,7 @@ export async function anonymizeExpiredCandidates({ dryRun = false, now = new Dat
     select: {
       id: true,
       applications: { select: { id: true, resumes: { select: { fileKey: true } } } },
+      resumes: { select: { fileKey: true } }, // CVs added by HR before any job (bank data)
     },
   });
 
@@ -32,7 +33,10 @@ export async function anonymizeExpiredCandidates({ dryRun = false, now = new Dat
 
   for (const candidate of candidates) {
     const applicationIds = candidate.applications.map((a) => a.id);
-    const fileKeys = candidate.applications.flatMap((a) => a.resumes.map((r) => r.fileKey));
+    // Several resume rows can share one stored file (attachToJob reuses it), so de-duplicate
+    const fileKeys = [
+      ...new Set([...candidate.applications.flatMap((a) => a.resumes.map((r) => r.fileKey)), ...candidate.resumes.map((r) => r.fileKey)]),
+    ];
     const inApps = { applicationId: { in: applicationIds } };
 
     await db.$transaction([
@@ -44,10 +48,12 @@ export async function anonymizeExpiredCandidates({ dryRun = false, now = new Dat
           phone: "-",
           city: null,
           lastEducation: null,
+          // The CHECK constraint needs evidence on HR-attested rows; keep the fact, drop the detail
+          consentEvidence: "(dihapus)",
           anonymizedAt: now,
         },
       }),
-      db.resume.deleteMany({ where: inApps }),
+      db.resume.deleteMany({ where: { OR: [inApps, { candidateId: candidate.id }] } }),
       // Keep the score for statistics; drop text that describes the person
       db.screening.updateMany({ where: inApps, data: { summary: "", strengths: [], gaps: [], decisionNote: null } }),
       db.interview.updateMany({ where: inApps, data: { feedback: null } }),
