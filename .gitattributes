@@ -1,0 +1,4 @@
+# Shell scripts run on macOS/Linux and break with Windows (CRLF) line endings
+*.sh text eol=lf
+# Windows batch files need CRLF
+*.bat text eol=crlf
