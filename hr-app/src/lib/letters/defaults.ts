@@ -1,0 +1,108 @@
+// Default letter templates (DRAFT wording: have HR/legal review before use).
+// They are copied into LetterTemplate as version 1 the first time they're needed;
+// after that, HR edits them in the app and each save creates a new version.
+//
+// Body format, understood by the PDF renderer:
+// - blank line = new paragraph
+// - "Label : value" lines are laid out as an aligned table row
+
+import type { LetterType } from "@/generated/prisma/enums";
+
+const identity = `Nama : {{nama}}
+Nomor Induk : {{nomor_induk}}
+Jabatan : {{jabatan}}
+Departemen : {{departemen}}`;
+
+function warning(level: "Pertama" | "Kedua" | "Ketiga", next: string) {
+  return `Yang bertanda tangan di bawah ini, atas nama {{nama_perusahaan}}, dengan ini memberikan Surat Peringatan ${level} kepada:
+
+${identity}
+
+Surat peringatan ini diberikan karena yang bersangkutan:
+
+{{alasan}}
+
+Perbuatan tersebut bertentangan dengan peraturan perusahaan dan/atau perjanjian kerja yang berlaku. Surat peringatan ini berlaku selama 6 (enam) bulan, terhitung sejak {{tanggal_surat}} sampai dengan {{berlaku_hingga}}.
+
+${next}
+
+Demikian surat peringatan ini dibuat untuk diperhatikan dan dipatuhi.`;
+}
+
+export const defaultTemplates: Record<LetterType, { name: string; body: string }> = {
+  SP1: {
+    name: "SURAT PERINGATAN PERTAMA (SP-1)",
+    body: warning(
+      "Pertama",
+      "Apabila dalam masa berlaku surat ini yang bersangkutan kembali melakukan pelanggaran, perusahaan akan memberikan Surat Peringatan Kedua.",
+    ),
+  },
+  SP2: {
+    name: "SURAT PERINGATAN KEDUA (SP-2)",
+    body: warning(
+      "Kedua",
+      "Apabila dalam masa berlaku surat ini yang bersangkutan kembali melakukan pelanggaran, perusahaan akan memberikan Surat Peringatan Ketiga.",
+    ),
+  },
+  SP3: {
+    name: "SURAT PERINGATAN KETIGA (SP-3)",
+    body: warning(
+      "Ketiga",
+      "Surat ini merupakan peringatan terakhir. Apabila dalam masa berlaku surat ini yang bersangkutan kembali melakukan pelanggaran, perusahaan dapat melakukan pemutusan hubungan kerja sesuai dengan ketentuan peraturan perundang-undangan yang berlaku.",
+    ),
+  },
+  SURAT_KETERANGAN_KERJA: {
+    name: "SURAT KETERANGAN KERJA",
+    body: `Yang bertanda tangan di bawah ini, atas nama {{nama_perusahaan}}, menerangkan bahwa:
+
+${identity}
+
+adalah benar karyawan {{nama_perusahaan}} sejak {{tanggal_mulai}} sampai dengan saat ini, dengan status hubungan kerja {{status_kerja}}.
+
+Surat keterangan ini dibuat untuk keperluan {{keperluan}}.
+
+Demikian surat keterangan ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.`,
+  },
+  PAKLARING: {
+    name: "SURAT KETERANGAN PENGALAMAN KERJA",
+    body: `Yang bertanda tangan di bawah ini, atas nama {{nama_perusahaan}}, menerangkan bahwa:
+
+${identity}
+
+adalah benar pernah bekerja di {{nama_perusahaan}} sejak {{tanggal_mulai}} sampai dengan {{tanggal_berakhir}}, dengan jabatan terakhir sebagai {{jabatan}}.
+
+Selama bekerja, yang bersangkutan telah menunjukkan dedikasi dan tanggung jawab terhadap pekerjaannya. Kami mengucapkan terima kasih atas kontribusi yang telah diberikan dan berharap kesuksesan untuk yang bersangkutan di masa mendatang.
+
+Demikian surat keterangan ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.`,
+  },
+  OFFER_LETTER: {
+    name: "SURAT PENAWARAN KERJA",
+    body: `Kepada Yth.
+Sdr/i {{nama}}
+
+Dengan hormat,
+
+Terima kasih atas waktu dan minat Saudara/i untuk bergabung dengan {{nama_perusahaan}}. Berdasarkan proses seleksi yang telah dilalui, dengan senang hati kami menawarkan posisi berikut:
+
+Posisi : {{jabatan}}
+Departemen : {{departemen}}
+Status hubungan kerja : {{status_kerja}}
+Tanggal mulai bekerja : {{tanggal_mulai}}
+Gaji pokok : {{gaji}} per bulan
+Lokasi kerja : {{lokasi}}
+
+Ketentuan lain mengenai hak dan kewajiban akan diatur dalam perjanjian kerja yang ditandatangani pada hari pertama bekerja. Penawaran ini bersifat rahasia.
+
+Mohon konfirmasi penerimaan penawaran ini paling lambat {{batas_konfirmasi}} dengan membalas email ini atau menghubungi tim HR kami.
+
+Kami menantikan kehadiran Saudara/i di {{nama_perusahaan}}.`,
+  },
+  OTHER: {
+    name: "SURAT",
+    body: `Yang bertanda tangan di bawah ini, atas nama {{nama_perusahaan}}, menerangkan bahwa:
+
+${identity}
+
+{{keperluan}}`,
+  },
+};

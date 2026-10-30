@@ -1,0 +1,140 @@
+"use server";
+
+import { refresh } from "next/cache";
+import { db } from "@/lib/db";
+import { canManageApplication, requireRole, requireUser, type CurrentUser } from "@/lib/dal";
+import { writeAudit } from "@/lib/audit";
+import { draftCandidateQuestions, draftJobKit, KIT_PROMPT_VERSION } from "@/lib/interview-kit";
+import { JobKitSave } from "@/lib/interview-kit-schema";
+import type { Prisma } from "@/generated/prisma/client";
+
+export type KitActionResult = { ok?: boolean; error?: string; issues?: string[] };
+
+async function canEditJobKit(user: CurrentUser, jobId: string) {
+  if (user.role === "ADMIN" || user.role === "HR") return true;
+  if (user.role !== "HIRING_MANAGER") return false;
+  const job = await db.job.findFirst({ where: { id: jobId, hiringManagerId: user.id }, select: { id: true } });
+  return Boolean(job);
+}
+
+// One kit per job (applicationId null); any change puts it back to DRAFT until HR approves again
+async function upsertJobKit(jobId: string, userId: string, content: Prisma.InputJsonValue, ai?: { model: string }) {
+  const existing = await db.interviewKit.findFirst({ where: { jobId, applicationId: null }, select: { id: true } });
+  const data = {
+    content,
+    status: "DRAFT" as const,
+    approvedById: null,
+    approvedAt: null,
+    ...(ai ? { aiModel: ai.model, promptVersion: KIT_PROMPT_VERSION } : {}),
+  };
+  return existing
+    ? db.interviewKit.update({ where: { id: existing.id }, data, select: { id: true } })
+    : db.interviewKit.create({ data: { jobId, createdById: userId, ...data }, select: { id: true } });
+}
+
+export async function generateJobKit(jobId: string): Promise<KitActionResult> {
+  const user = await requireUser();
+  if (!(await canEditJobKit(user, jobId))) return { error: "Anda tidak memiliki akses ke lowongan ini." };
+
+  const draft = await draftJobKit(jobId);
+  if (!draft.ok) return { error: draft.error };
+  const kit = await upsertJobKit(jobId, user.id, draft.content, { model: draft.model });
+  await writeAudit({ actorId: user.id, action: "interview_kit.generated", entityType: "InterviewKit", entityId: kit.id, changes: { jobId } });
+  refresh();
+  return { ok: true };
+}
+
+export async function saveJobKit(jobId: string, json: string): Promise<KitActionResult> {
+  const user = await requireUser();
+  if (!(await canEditJobKit(user, jobId))) return { error: "Anda tidak memiliki akses ke lowongan ini." };
+
+  let raw: unknown;
+  try {
+    raw = JSON.parse(json);
+  } catch {
+    return { error: "Data tidak valid." };
+  }
+  const parsed = JobKitSave.safeParse(raw);
+  if (!parsed.success) {
+    const fieldName: Record<string, string> = {
+      competency: "kompetensi",
+      question: "pertanyaan",
+      lookFor: "indikator",
+      kurang: "contoh nilai 1",
+      cukup: "contoh nilai 3",
+      baik: "contoh nilai 5",
+      followUps: "pendalaman",
+    };
+    const issues = parsed.error.issues.slice(0, 6).map((i) => {
+      const [section, index, ...rest] = i.path;
+      if (section === "questions" && typeof index === "number") {
+        // Deepest named field: ["rubric", "kurang"] -> "kurang"
+        const field = rest.filter((p): p is string => typeof p === "string").pop();
+        return `Pertanyaan ${index + 1}${field ? ` (${fieldName[field] ?? field})` : ""}: ${i.message}`;
+      }
+      return i.message;
+    });
+    return { error: "Periksa kembali isian.", issues };
+  }
+
+  const kit = await upsertJobKit(jobId, user.id, parsed.data);
+  await writeAudit({
+    actorId: user.id,
+    action: "interview_kit.saved",
+    entityType: "InterviewKit",
+    entityId: kit.id,
+    changes: { jobId, questions: parsed.data.questions.length },
+  });
+  refresh();
+  return { ok: true };
+}
+
+// HR approves so a hiring manager's draft gets a fairness check before interviewers use it
+export async function approveJobKit(jobId: string): Promise<KitActionResult> {
+  const user = await requireRole("ADMIN", "HR");
+  const kit = await db.interviewKit.findFirst({ where: { jobId, applicationId: null }, select: { id: true, status: true } });
+  if (!kit) return { error: "Belum ada panduan untuk disetujui." };
+  await db.interviewKit.update({
+    where: { id: kit.id },
+    data: { status: "APPROVED", approvedById: user.id, approvedAt: new Date() },
+  });
+  await writeAudit({ actorId: user.id, action: "interview_kit.approved", entityType: "InterviewKit", entityId: kit.id, changes: { jobId } });
+  refresh();
+  return { ok: true };
+}
+
+export async function generateCandidateQuestions(applicationId: string): Promise<KitActionResult> {
+  const user = await requireUser();
+  if (!(await canManageApplication(user, applicationId))) return { error: "Anda tidak memiliki akses ke lamaran ini." };
+
+  const app = await db.application.findUnique({ where: { id: applicationId }, select: { jobId: true } });
+  if (!app) return { error: "Lamaran tidak ditemukan." };
+
+  const draft = await draftCandidateQuestions(applicationId);
+  if (!draft.ok) return { error: draft.error };
+
+  // Generated by someone who manages this application, so it is shown to interviewers right away
+  const data = {
+    content: draft.content,
+    status: "APPROVED" as const,
+    aiModel: draft.model,
+    promptVersion: KIT_PROMPT_VERSION,
+    approvedById: user.id,
+    approvedAt: new Date(),
+  };
+  const kit = await db.interviewKit.upsert({
+    where: { applicationId },
+    update: data,
+    create: { jobId: app.jobId, applicationId, createdById: user.id, ...data },
+    select: { id: true },
+  });
+  await writeAudit({
+    actorId: user.id,
+    action: "candidate_questions.generated",
+    entityType: "InterviewKit",
+    entityId: kit.id,
+    changes: { applicationId },
+  });
+  refresh();
+  return { ok: true };
+}

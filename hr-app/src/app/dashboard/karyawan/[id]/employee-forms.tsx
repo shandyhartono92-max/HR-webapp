@@ -1,0 +1,265 @@
+"use client";
+
+import { useActionState, useEffect, useState, useTransition } from "react";
+import { revealSensitive, updateEmployment, updatePersonal, type RevealField } from "@/app/actions/employee-profile";
+import { issueEmployeeLogin, type LoginResult } from "@/app/actions/accounts";
+import { Field, FormMessage, inputClass } from "@/app/ui/field";
+import { employeeStatusLabel, genderLabel, ptkpLabel } from "@/lib/labels";
+import type { EmployeeStatus, Gender, PtkpStatus } from "@/generated/prisma/enums";
+
+const buttonClass =
+  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+
+type Option = { id: string; name: string };
+
+function Saved({ show }: { show?: boolean }) {
+  return show ? <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Tersimpan.</p> : null;
+}
+
+export function EmploymentForm({
+  employeeId,
+  departments,
+  managers,
+  initial,
+}: {
+  employeeId: string;
+  departments: Option[];
+  managers: Option[];
+  initial: { departmentId: string; position: string; status: EmployeeStatus; managerId: string };
+}) {
+  const [state, action, pending] = useActionState(updateEmployment.bind(null, employeeId), undefined);
+  const e = state?.errors ?? {};
+  const v = (k: keyof typeof initial) => state?.values?.[k] ?? initial[k];
+
+  return (
+    <form key={state?.attempt} action={action} className="space-y-3">
+      <FormMessage message={state?.message} />
+      <Saved show={state?.ok} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Departemen" htmlFor="departmentId" errors={e.departmentId}>
+          <select id="departmentId" name="departmentId" defaultValue={v("departmentId")} className={inputClass}>
+            {departments.map((d) => (
+              <option key={d.id} value={d.id}>
+                {d.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Jabatan" htmlFor="position" errors={e.position}>
+          <input id="position" name="position" required defaultValue={v("position")} className={inputClass} />
+        </Field>
+        <Field label="Status" htmlFor="status" errors={e.status}>
+          <select id="status" name="status" defaultValue={v("status")} className={inputClass}>
+            {Object.entries(employeeStatusLabel).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Atasan langsung" htmlFor="managerId" errors={e.managerId}>
+          <select id="managerId" name="managerId" defaultValue={v("managerId")} className={inputClass}>
+            <option value="">Tidak ada</option>
+            {managers.map((m) => (
+              <option key={m.id} value={m.id}>
+                {m.name}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <button type="submit" disabled={pending} className={buttonClass}>
+        {pending ? "Menyimpan…" : "Simpan data kepegawaian"}
+      </button>
+    </form>
+  );
+}
+
+type SensitiveKey = "nik" | "npwp" | "bpjsKesehatan" | "bpjsKetenagakerjaan";
+
+export function PersonalForm({
+  employeeId,
+  initial,
+  last4,
+}: {
+  employeeId: string;
+  initial: { birthPlace: string; birthDate: string; gender: Gender | ""; address: string; ptkpStatus: PtkpStatus | "" };
+  last4: Record<SensitiveKey, string | null>;
+}) {
+  const [state, action, pending] = useActionState(updatePersonal.bind(null, employeeId), undefined);
+  const e = state?.errors ?? {};
+  const v = (k: keyof typeof initial) => state?.values?.[k] ?? initial[k];
+
+  const sensitive: { key: SensitiveKey; label: string; digits: string }[] = [
+    { key: "nik", label: "NIK (KTP)", digits: "16 digit" },
+    { key: "npwp", label: "NPWP", digits: "15 atau 16 digit" },
+    { key: "bpjsKesehatan", label: "No. BPJS Kesehatan", digits: "13 digit" },
+    { key: "bpjsKetenagakerjaan", label: "No. BPJS Ketenagakerjaan (KPJ)", digits: "11 digit" },
+  ];
+
+  return (
+    <form key={state?.attempt} action={action} className="space-y-4" autoComplete="off">
+      <FormMessage message={state?.message} />
+      <Saved show={state?.ok} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Tempat lahir" htmlFor="birthPlace" errors={e.birthPlace}>
+          <input id="birthPlace" name="birthPlace" defaultValue={v("birthPlace")} className={inputClass} />
+        </Field>
+        <Field label="Tanggal lahir" htmlFor="birthDate" errors={e.birthDate}>
+          <input id="birthDate" name="birthDate" type="date" defaultValue={v("birthDate")} className={inputClass} />
+        </Field>
+        <Field label="Jenis kelamin" htmlFor="gender" hint="Sesuai KTP. Dipakai untuk mengecek NIK dan BPJS." errors={e.gender}>
+          <select id="gender" name="gender" defaultValue={v("gender")} className={inputClass}>
+            <option value="">Pilih…</option>
+            {Object.entries(genderLabel).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Status PTKP (PPh 21)" htmlFor="ptkpStatus" errors={e.ptkpStatus}>
+          <select id="ptkpStatus" name="ptkpStatus" defaultValue={v("ptkpStatus")} className={inputClass}>
+            <option value="">Pilih…</option>
+            {Object.entries(ptkpLabel).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+      </div>
+      <Field label="Alamat (sesuai KTP)" htmlFor="address" errors={e.address}>
+        <textarea id="address" name="address" rows={2} defaultValue={v("address")} className={inputClass} />
+      </Field>
+
+      <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">
+        <p className="text-sm font-medium text-slate-900">Nomor identitas (disimpan terenkripsi)</p>
+        <p className="mt-0.5 text-xs text-slate-500">Kosongkan jika tidak ingin mengubah nomor yang sudah tersimpan.</p>
+        <div className="mt-3 grid gap-3 sm:grid-cols-2">
+          {sensitive.map((s) => (
+            <Field
+              key={s.key}
+              label={s.label}
+              htmlFor={s.key}
+              hint={last4[s.key] ? `Tersimpan: ••••${last4[s.key]}` : `Belum diisi · ${s.digits}`}
+              errors={e[s.key]}
+            >
+              <input
+                id={s.key}
+                name={s.key}
+                inputMode="numeric"
+                autoComplete="off"
+                placeholder={last4[s.key] ? "Ketik untuk mengganti" : s.digits}
+                className={`${inputClass} font-mono`}
+              />
+            </Field>
+          ))}
+        </div>
+      </div>
+
+      <button type="submit" disabled={pending} className={buttonClass}>
+        {pending ? "Menyimpan…" : "Simpan data pribadi"}
+      </button>
+    </form>
+  );
+}
+
+// Creates or resets the employee's login. The temporary password is shown once.
+export function EmployeeLoginPanel({
+  employeeId,
+  login,
+}: {
+  employeeId: string;
+  login: { email: string; mustChangePassword: boolean; lastLoginAt: string | null } | null;
+}) {
+  const [result, setResult] = useState<LoginResult | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  const run = () => {
+    if (login && !confirm("Reset kata sandi? Kata sandi lama tidak bisa dipakai lagi.")) return;
+    startTransition(async () => setResult(await issueEmployeeLogin(employeeId)));
+  };
+
+  return (
+    <div className="space-y-2 text-sm">
+      {login ? (
+        <p className="text-slate-700">
+          Akun login: <span className="font-medium">{login.email}</span>
+          <br />
+          <span className="text-xs text-slate-500">
+            {login.mustChangePassword
+              ? "Belum mengganti kata sandi sementara."
+              : login.lastLoginAt
+                ? `Terakhir masuk ${login.lastLoginAt}.`
+                : "Belum pernah masuk."}
+          </span>
+        </p>
+      ) : (
+        <p className="text-slate-600">Belum punya akun login. Karyawan butuh akun untuk mengajukan perubahan rekening gaji.</p>
+      )}
+      {result?.tempPassword && (
+        <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+          <p className="text-xs text-amber-800">Kata sandi sementara (hanya ditampilkan sekali, serahkan langsung ke karyawan):</p>
+          <p className="mt-1 select-all font-mono text-base font-semibold tracking-wider text-slate-900">{result.tempPassword}</p>
+          <p className="mt-1 text-xs text-amber-800">Login: {result.email}. Karyawan wajib menggantinya saat pertama masuk.</p>
+        </div>
+      )}
+      {result?.error && <p className="text-xs text-red-700">{result.error}</p>}
+      <button
+        type="button"
+        onClick={run}
+        disabled={pending}
+        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+      >
+        {pending ? "Memproses…" : login ? "Reset kata sandi" : "Buat akun login"}
+      </button>
+    </div>
+  );
+}
+
+const HIDE_AFTER_MS = 30_000;
+
+// Shows ••••1234; "Lihat" fetches the full number (audited) and hides it again after 30 seconds
+export function SensitiveValue({ employeeId, field, last4 }: { employeeId: string; field: RevealField; last4: string | null }) {
+  const [value, setValue] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
+  const [pending, startTransition] = useTransition();
+
+  useEffect(() => {
+    if (!value) return;
+    const t = setTimeout(() => setValue(null), HIDE_AFTER_MS);
+    return () => clearTimeout(t);
+  }, [value]);
+
+  if (!last4) return <span className="text-slate-400">Belum diisi</span>;
+
+  return (
+    <span className="inline-flex flex-wrap items-center gap-2">
+      <span className="font-mono">{value ?? `••••${last4}`}</span>
+      {value ? (
+        <button type="button" onClick={() => setValue(null)} className="text-xs text-slate-600 hover:underline">
+          Sembunyikan
+        </button>
+      ) : (
+        <button
+          type="button"
+          disabled={pending}
+          onClick={() =>
+            startTransition(async () => {
+              const r = await revealSensitive(employeeId, field);
+              if ("value" in r) {
+                setError(null);
+                setValue(r.value);
+              } else setError(r.error);
+            })
+          }
+          className="text-xs text-teal-700 hover:underline disabled:opacity-60"
+        >
+          {pending ? "Memuat…" : "Lihat"}
+        </button>
+      )}
+      {error && <span className="text-xs text-red-700">{error}</span>}
+    </span>
+  );
+}

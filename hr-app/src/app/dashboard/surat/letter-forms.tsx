@@ -1,0 +1,301 @@
+"use client";
+
+import Link from "next/link";
+import { startTransition, useActionState, useState, useSyncExternalStore, type FormEvent } from "react";
+import { issueEmployeeLetter, issueOfferLetter, saveTemplate, type IssueState } from "@/app/actions/letters";
+import { Field, FormMessage, inputClass } from "@/app/ui/field";
+import { employmentTypeLabel, letterTypeLabel } from "@/lib/labels";
+import { fillTemplate, missingPlaceholders, placeholderHelp, type LetterVars } from "@/lib/letters/fill";
+import type { EmploymentType, LetterType } from "@/generated/prisma/enums";
+
+const buttonClass =
+  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+
+export type TemplateView = { name: string; body: string };
+
+// These forms are controlled (they drive the live preview). <form action={…}> resets
+// the DOM after submit, which would desync selects from React state, so once the page
+// is interactive onSubmit takes over and skips the reset. Keep action={action} as well:
+// before hydration it makes the browser POST to the server action. Without it the
+// browser falls back to GET and puts the form (salary, SP reasons) in the URL.
+// The no-JS fallback POST also trips a Next.js invariant when re-rendering, so the
+// submit buttons stay disabled until the page is interactive (also blocks Enter).
+const noop = () => () => {};
+function useHydrated() {
+  return useSyncExternalStore(noop, () => true, () => false);
+}
+
+function submitWithoutReset(dispatch: (fd: FormData) => void) {
+  return (e: FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+    const fd = new FormData(e.currentTarget);
+    startTransition(() => dispatch(fd));
+  };
+}
+
+// Approximates the PDF layout so HR can read the letter before issuing it
+export function LetterPreview({ template, vars }: { template: TemplateView; vars: LetterVars }) {
+  const filled = fillTemplate(template.body, { nomor_surat: "(dibuat saat terbit)", ...vars });
+  const missing = missingPlaceholders(template.body, { nomor_surat: "x", ...vars });
+
+  return (
+    <div className="space-y-2">
+      {missing.length > 0 && (
+        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+          Belum terisi: {missing.map((m) => `[${m}]`).join(", ")}
+        </p>
+      )}
+      <div className="max-h-[32rem] overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 font-serif text-[13px] leading-relaxed text-slate-900 shadow-inner">
+        <p className="text-center font-sans text-sm font-bold underline">{template.name}</p>
+        <p className="mb-4 text-center font-sans text-xs text-slate-500">Nomor: (dibuat saat terbit)</p>
+        {filled.split(/\n\s*\n/).map((para, i) => (
+          <div key={i} className="mb-3">
+            {para.split("\n").map((line, j) => {
+              const kv = line.match(/^(.{1,40}?)\s+:\s+(.*)$/);
+              return kv ? (
+                <div key={j} className="grid grid-cols-[10rem_auto_1fr] gap-2 pl-4">
+                  <span>{kv[1]}</span>
+                  <span>:</span>
+                  <span className="whitespace-pre-line">{kv[2]}</span>
+                </div>
+              ) : (
+                <p key={j} className="whitespace-pre-line">
+                  {line}
+                </p>
+              );
+            })}
+          </div>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function IssuedNotice({ state }: { state: IssueState }) {
+  if (!state?.ok || !state.letterId) return null;
+  return (
+    <div className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-900">
+      Surat <strong>{state.letterNumber}</strong> diterbitkan.{" "}
+      <a href={`/dashboard/surat/${state.letterId}/pdf`} className="font-medium underline">
+        Unduh PDF
+      </a>
+    </div>
+  );
+}
+
+const employeeLetterTypes: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING"];
+
+export function EmployeeLetterForm({
+  employeeId,
+  templates,
+  vars,
+  defaultLastDay,
+  activeWarning,
+}: {
+  employeeId: string;
+  templates: Partial<Record<LetterType, TemplateView>>;
+  vars: LetterVars;
+  defaultLastDay: string;
+  activeWarning: { type: LetterType; validUntil: string } | null;
+}) {
+  const [state, action, pending] = useActionState<IssueState, FormData>(issueEmployeeLetter.bind(null, employeeId), undefined);
+  const hydrated = useHydrated();
+  const [type, setType] = useState<LetterType>((state?.values?.type as LetterType) ?? "SURAT_KETERANGAN_KERJA");
+  const [reason, setReason] = useState(state?.values?.reason ?? "");
+  const [purpose, setPurpose] = useState(state?.values?.purpose ?? "");
+  const [lastDay, setLastDay] = useState(state?.values?.lastDay ?? defaultLastDay);
+  const e = state?.errors ?? {};
+  const isSp = type === "SP1" || type === "SP2" || type === "SP3";
+
+  const previewVars: LetterVars = {
+    ...vars,
+    alasan: reason,
+    keperluan: purpose,
+    berlaku_hingga: isSp ? "(6 bulan sejak tanggal surat)" : "",
+    tanggal_berakhir: type === "PAKLARING" && lastDay ? new Date(`${lastDay}T00:00:00Z`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : vars.tanggal_berakhir,
+    tanggal_surat: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }),
+  };
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <form action={action} onSubmit={submitWithoutReset(action)} className="space-y-3">
+        <FormMessage message={state?.message} />
+        <IssuedNotice state={state} />
+        <Field label="Jenis surat" htmlFor="type" errors={e.type}>
+          <select id="type" name="type" value={type} onChange={(ev) => setType(ev.target.value as LetterType)} className={inputClass}>
+            {employeeLetterTypes.map((t) => (
+              <option key={t} value={t}>
+                {letterTypeLabel[t]}
+              </option>
+            ))}
+          </select>
+        </Field>
+
+        {isSp && activeWarning && (
+          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            Masih ada {letterTypeLabel[activeWarning.type]} yang berlaku sampai {activeWarning.validUntil}.
+          </p>
+        )}
+        {isSp && (
+          <Field
+            label="Uraian pelanggaran"
+            htmlFor="reason"
+            hint="Tulis faktanya: apa, kapan, dan pasal peraturan perusahaan yang dilanggar."
+            errors={e.reason}
+          >
+            <textarea id="reason" name="reason" rows={5} value={reason} onChange={(ev) => setReason(ev.target.value)} className={inputClass} />
+          </Field>
+        )}
+        {type === "SURAT_KETERANGAN_KERJA" && (
+          <Field label="Keperluan" htmlFor="purpose" hint="Misal: pengajuan KPR, pembuatan visa." errors={e.purpose}>
+            <input id="purpose" name="purpose" value={purpose} onChange={(ev) => setPurpose(ev.target.value)} className={inputClass} />
+          </Field>
+        )}
+        {type === "PAKLARING" && (
+          <Field label="Tanggal terakhir bekerja" htmlFor="lastDay" errors={e.lastDay}>
+            <input id="lastDay" name="lastDay" type="date" value={lastDay} onChange={(ev) => setLastDay(ev.target.value)} className={inputClass} />
+          </Field>
+        )}
+
+        <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+          {pending ? "Menerbitkan…" : "Terbitkan surat"}
+        </button>
+        <p className="text-xs text-slate-500">Nomor surat dibuat otomatis saat terbit dan tidak bisa diubah.</p>
+      </form>
+      {templates[type] && <LetterPreview template={templates[type]!} vars={previewVars} />}
+    </div>
+  );
+}
+
+export function OfferLetterForm({
+  applicationId,
+  template,
+  vars,
+  defaults,
+}: {
+  applicationId: string;
+  template: TemplateView;
+  vars: LetterVars;
+  defaults: { location: string; employmentType: EmploymentType };
+}) {
+  const [state, action, pending] = useActionState<IssueState, FormData>(issueOfferLetter.bind(null, applicationId), undefined);
+  const hydrated = useHydrated();
+  const [f, setF] = useState({
+    salary: state?.values?.salary ?? "",
+    startDate: state?.values?.startDate ?? "",
+    confirmBy: state?.values?.confirmBy ?? "",
+    location: state?.values?.location ?? defaults.location,
+    employmentType: (state?.values?.employmentType as EmploymentType) ?? defaults.employmentType,
+  });
+  const e = state?.errors ?? {};
+  const set = (k: keyof typeof f) => (ev: { target: { value: string } }) => setF({ ...f, [k]: ev.target.value });
+  const longDate = (v: string) =>
+    v ? new Date(`${v}T00:00:00Z`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "";
+
+  const previewVars: LetterVars = {
+    ...vars,
+    gaji: f.salary ? new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(f.salary)) : "",
+    tanggal_mulai: longDate(f.startDate),
+    batas_konfirmasi: longDate(f.confirmBy),
+    lokasi: f.location,
+    status_kerja: employmentTypeLabel[f.employmentType],
+    tanggal_surat: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }),
+  };
+
+  return (
+    <div className="space-y-4">
+      <form action={action} onSubmit={submitWithoutReset(action)} className="space-y-3">
+        <FormMessage message={state?.message} />
+        <IssuedNotice state={state} />
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Gaji pokok (Rp/bulan)" htmlFor="salary" errors={e.salary}>
+            <input id="salary" name="salary" type="number" min={0} step={100000} value={f.salary} onChange={set("salary")} className={inputClass} />
+          </Field>
+          <Field label="Status hubungan kerja" htmlFor="offerEmploymentType" errors={e.employmentType}>
+            <select id="offerEmploymentType" name="employmentType" value={f.employmentType} onChange={set("employmentType")} className={inputClass}>
+              {Object.entries(employmentTypeLabel).map(([value, label]) => (
+                <option key={value} value={value}>
+                  {label}
+                </option>
+              ))}
+            </select>
+          </Field>
+          <Field label="Tanggal mulai bekerja" htmlFor="startDate" errors={e.startDate}>
+            <input id="startDate" name="startDate" type="date" value={f.startDate} onChange={set("startDate")} className={inputClass} />
+          </Field>
+          <Field label="Batas konfirmasi" htmlFor="confirmBy" errors={e.confirmBy}>
+            <input id="confirmBy" name="confirmBy" type="date" value={f.confirmBy} onChange={set("confirmBy")} className={inputClass} />
+          </Field>
+        </div>
+        <Field label="Lokasi kerja" htmlFor="location" errors={e.location}>
+          <input id="location" name="location" value={f.location} onChange={set("location")} className={inputClass} />
+        </Field>
+        <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+          {pending ? "Menerbitkan…" : "Terbitkan surat penawaran"}
+        </button>
+      </form>
+      <LetterPreview template={template} vars={previewVars} />
+    </div>
+  );
+}
+
+export function TemplateEditor({ type, template, sampleVars }: { type: LetterType; template: TemplateView & { version: number }; sampleVars: LetterVars }) {
+  const [state, action, pending] = useActionState(saveTemplate.bind(null, type), undefined);
+  const hydrated = useHydrated();
+  const [name, setName] = useState(template.name);
+  const [body, setBody] = useState(template.body);
+
+  return (
+    <div className="grid gap-4 xl:grid-cols-2">
+      <form action={action} onSubmit={submitWithoutReset(action)} className="space-y-3">
+        <FormMessage message={state?.message} />
+        {state?.ok && <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Tersimpan sebagai versi baru.</p>}
+        <Field label="Judul surat" htmlFor={`name-${type}`} errors={state?.errors?.name}>
+          <input id={`name-${type}`} name="name" value={name} onChange={(ev) => setName(ev.target.value)} className={inputClass} />
+        </Field>
+        <Field
+          label={`Isi surat (versi ${template.version})`}
+          htmlFor={`body-${type}`}
+          hint="Baris kosong = paragraf baru. Baris berbentuk “Label : isi” ditata sebagai tabel."
+          errors={state?.errors?.body}
+        >
+          <textarea
+            id={`body-${type}`}
+            name="body"
+            rows={18}
+            value={body}
+            onChange={(ev) => setBody(ev.target.value)}
+            className={`${inputClass} font-mono text-xs`}
+          />
+        </Field>
+        <details className="text-xs text-slate-600">
+          <summary className="cursor-pointer">Daftar isian yang tersedia</summary>
+          <ul className="mt-2 grid gap-1 sm:grid-cols-2">
+            {Object.entries(placeholderHelp).map(([k, v]) => (
+              <li key={k}>
+                <code className="rounded bg-slate-100 px-1">{`{{${k}}}`}</code> {v}
+              </li>
+            ))}
+          </ul>
+        </details>
+        <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+          {pending ? "Menyimpan…" : "Simpan sebagai versi baru"}
+        </button>
+      </form>
+      <LetterPreview template={{ name, body }} vars={sampleVars} />
+    </div>
+  );
+}
+
+export function LettersNav() {
+  return (
+    <div className="flex gap-4 text-sm">
+      <Link href="/dashboard/surat" className="text-teal-700 hover:underline">
+        Daftar surat
+      </Link>
+      <Link href="/dashboard/surat/template" className="text-teal-700 hover:underline">
+        Template surat
+      </Link>
+    </div>
+  );
+}

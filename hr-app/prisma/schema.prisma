@@ -1,0 +1,567 @@
+// HR web app — single company, Indonesia
+// Modules: (1) Hiring, (2) CV screening, (3) HR documents, (4) Bank data update
+//
+// Conventions
+// - Fields ending in `Enc` hold AES-256-GCM ciphertext (encrypted in the app layer,
+//   key kept outside the database). Never select them into lists or logs.
+// - Fields ending in `Last4` are the masked value shown in the UI.
+// - Login: email + password (bcrypt) with a signed session cookie; see src/lib/session.ts.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+// Connection URL lives in prisma.config.ts (DATABASE_URL)
+datasource db {
+  provider = "postgresql"
+}
+
+// ─────────────────────────────────────────────
+// Enums
+// ─────────────────────────────────────────────
+
+enum Role {
+  ADMIN
+  HR
+  HIRING_MANAGER
+  EMPLOYEE
+}
+
+enum JobStatus {
+  DRAFT
+  OPEN
+  CLOSED
+}
+
+enum EmploymentType {
+  PKWT // kontrak / fixed-term
+  PKWTT // tetap / permanent
+  MAGANG // internship
+  HARIAN_LEPAS // daily / freelance
+}
+
+enum ApplicationStage {
+  APPLIED
+  SCREENING
+  INTERVIEW
+  OFFER
+  HIRED
+  REJECTED
+  WITHDRAWN
+}
+
+enum ScreeningDecision {
+  PROCEED
+  HOLD
+  REJECT
+}
+
+enum InterviewMode {
+  ONLINE
+  ONSITE
+}
+
+enum EmployeeStatus {
+  ACTIVE
+  PROBATION
+  RESIGNED
+  TERMINATED
+  CONTRACT_ENDED
+}
+
+enum Gender {
+  L // laki-laki
+  P // perempuan
+}
+
+// Status PTKP for PPh 21
+enum PtkpStatus {
+  TK0
+  TK1
+  TK2
+  TK3
+  K0
+  K1
+  K2
+  K3
+}
+
+enum DocumentType {
+  KTP
+  KK
+  NPWP
+  IJAZAH
+  TRANSKRIP
+  BPJS
+  CONTRACT
+  LETTER
+  CERTIFICATE
+  OTHER
+}
+
+enum LetterType {
+  OFFER_LETTER
+  SURAT_KETERANGAN_KERJA
+  PAKLARING
+  SP1
+  SP2
+  SP3
+  OTHER
+}
+
+enum SignatureStatus {
+  NOT_REQUIRED
+  PENDING
+  SIGNED
+  DECLINED
+}
+
+enum BankChangeStatus {
+  DRAFT // created, OTP not yet confirmed
+  PENDING_APPROVAL // OTP confirmed, waiting for HR
+  APPROVED
+  REJECTED
+  CANCELLED
+}
+
+// ─────────────────────────────────────────────
+// Users & organisation
+// ─────────────────────────────────────────────
+
+model User {
+  id               String    @id @default(cuid())
+  email            String    @unique
+  name             String
+  role             Role      @default(EMPLOYEE)
+  passwordHash       String
+  mustChangePassword Boolean   @default(false) // set when HR creates the account with a temporary password
+  twoFactorEnabled Boolean   @default(false)
+  isActive         Boolean   @default(true)
+  lastLoginAt      DateTime?
+  createdAt        DateTime  @default(now())
+  updatedAt        DateTime  @updatedAt
+
+  employee              Employee?
+  managedDepartments    Department[]        @relation("DepartmentHead")
+  jobsAsHiringManager   Job[]               @relation("JobHiringManager")
+  screeningsReviewed    Screening[]         @relation("ScreeningReviewer")
+  interviews            Interview[]
+  documentsUploaded     Document[]          @relation("DocumentUploader")
+  lettersIssued         Letter[]            @relation("LetterIssuer")
+  bankRequestsReviewed  BankChangeRequest[] @relation("BankRequestReviewer")
+  auditLogs             AuditLog[]
+  notifications         Notification[]
+  kitsEdited            InterviewKit[]      @relation("KitEditor")
+  kitsApproved          InterviewKit[]      @relation("KitApprover")
+}
+
+model Department {
+  id        String   @id @default(cuid())
+  name      String   @unique
+  headId    String?
+  head      User?    @relation("DepartmentHead", fields: [headId], references: [id])
+  createdAt DateTime @default(now())
+
+  jobs      Job[]
+  employees Employee[]
+}
+
+// ─────────────────────────────────────────────
+// Module 1 — Hiring
+// ─────────────────────────────────────────────
+
+model Job {
+  id                 String         @id @default(cuid())
+  title              String
+  slug               String         @unique // used in the careers page URL
+  departmentId       String
+  department         Department     @relation(fields: [departmentId], references: [id])
+  hiringManagerId    String
+  hiringManager      User           @relation("JobHiringManager", fields: [hiringManagerId], references: [id])
+  employmentType     EmploymentType
+  location           String
+  description        String         @db.Text
+  requirements       String         @db.Text // fed to the AI screener
+  minEducation       String? // e.g. "S1", "D3", "SMA/SMK"
+  minExperienceYears Int?
+  salaryMin          Int? // IDR, internal only
+  salaryMax          Int?
+  showSalary         Boolean        @default(false)
+  headcount          Int            @default(1)
+  status             JobStatus      @default(DRAFT)
+  openedAt           DateTime?
+  closedAt           DateTime?
+  createdAt          DateTime       @default(now())
+  updatedAt          DateTime       @updatedAt
+
+  applications  Application[]
+  interviewKits InterviewKit[]
+
+  @@index([status])
+}
+
+// A person who applied. Not a login user.
+model Candidate {
+  id                String    @id @default(cuid())
+  fullName          String
+  email             String    @unique
+  phone             String
+  city              String?
+  lastEducation     String?
+  // UU PDP consent
+  consentAt         DateTime
+  consentVersion    String // version of the privacy notice they accepted
+  talentPoolConsent Boolean   @default(false)
+  retainUntil       DateTime // auto-delete date for personal data
+  anonymizedAt      DateTime? // set when personal data has been wiped
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime  @updatedAt
+
+  applications Application[]
+
+  @@index([retainUntil])
+}
+
+model Application {
+  id               String           @id @default(cuid())
+  candidateId      String
+  candidate        Candidate        @relation(fields: [candidateId], references: [id], onDelete: Cascade)
+  jobId            String
+  job              Job              @relation(fields: [jobId], references: [id])
+  stage            ApplicationStage @default(APPLIED)
+  expectedSalary   Int? // gaji yang diharapkan, IDR
+  noticePeriodDays Int?
+  source           String? // website, LinkedIn, referral, JobStreet, ...
+  rejectionReason  String?
+  appliedAt        DateTime         @default(now())
+  stageChangedAt   DateTime         @default(now())
+
+  resumes    Resume[]
+  screenings Screening[]
+  interviews Interview[]
+  letters    Letter[] // offer letters
+  interviewKit InterviewKit? // candidate-specific questions
+  employee   Employee? // set when the candidate is hired
+
+  @@unique([candidateId, jobId])
+  @@index([jobId, stage])
+}
+
+model Interview {
+  id             String        @id @default(cuid())
+  applicationId  String
+  application    Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  interviewerId  String
+  interviewer    User          @relation(fields: [interviewerId], references: [id])
+  scheduledAt    DateTime
+  durationMin    Int           @default(60)
+  mode           InterviewMode
+  locationOrLink String?
+  rating         Int? // 1–5
+  feedback       String?       @db.Text
+  recommendation ScreeningDecision?
+  createdAt      DateTime      @default(now())
+
+  @@index([scheduledAt])
+}
+
+enum InterviewKitStatus {
+  DRAFT
+  APPROVED // visible to interviewers
+}
+
+// Structured interview guide. applicationId null = the job's kit (one per job);
+// set = extra questions for one candidate, based on their CV screening.
+model InterviewKit {
+  id            String             @id @default(cuid())
+  jobId         String
+  job           Job                @relation(fields: [jobId], references: [id], onDelete: Cascade)
+  applicationId String?            @unique
+  application   Application?       @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  status        InterviewKitStatus @default(DRAFT)
+  content       Json // see src/lib/interview-kit.ts for the shape
+  aiModel       String? // set when the content came from AI
+  promptVersion String?
+  createdById   String
+  createdBy     User               @relation("KitEditor", fields: [createdById], references: [id])
+  approvedById  String?
+  approvedBy    User?              @relation("KitApprover", fields: [approvedById], references: [id])
+  approvedAt    DateTime?
+  createdAt     DateTime           @default(now())
+  updatedAt     DateTime           @updatedAt
+
+  @@index([jobId])
+}
+
+// ─────────────────────────────────────────────
+// Module 2 — CV screening
+// ─────────────────────────────────────────────
+
+model Resume {
+  id            String      @id @default(cuid())
+  applicationId String
+  application   Application @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  fileKey       String // object-storage key
+  fileName      String
+  mimeType      String
+  sizeBytes     Int
+  extractedText String?     @db.Text
+  // Structured data from the AI: skills, experience, education. Protected attributes
+  // (religion, age, marital status, photo) are stripped before this is stored.
+  parsedData    Json?
+  uploadedAt    DateTime    @default(now())
+}
+
+// One row per AI run; the latest row is the current score. Kept for audit.
+model Screening {
+  id            String             @id @default(cuid())
+  applicationId String
+  application   Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  score         Int // 0–100 match against Job.requirements
+  summary       String             @db.Text // in Bahasa Indonesia
+  strengths     Json // string[]
+  gaps          Json // string[]
+  aiModel       String // AI model id used
+  promptVersion String
+  createdAt     DateTime           @default(now())
+  // Human-in-the-loop: the AI never rejects on its own
+  reviewedById  String?
+  reviewedBy    User?              @relation("ScreeningReviewer", fields: [reviewedById], references: [id])
+  reviewedAt    DateTime?
+  decision      ScreeningDecision?
+  decisionNote  String?
+
+  @@index([applicationId, createdAt])
+}
+
+// ─────────────────────────────────────────────
+// Module 3 — HR documents
+// ─────────────────────────────────────────────
+
+model Employee {
+  id             String         @id @default(cuid())
+  employeeNumber String         @unique // NIK karyawan / NIP internal
+  userId         String?        @unique
+  user           User?          @relation(fields: [userId], references: [id])
+  applicationId  String?        @unique
+  application    Application?   @relation(fields: [applicationId], references: [id])
+
+  fullName       String
+  email          String         @unique
+  phone          String
+  departmentId   String
+  department     Department     @relation(fields: [departmentId], references: [id])
+  position       String
+  managerId      String?
+  manager        Employee?      @relation("EmployeeManager", fields: [managerId], references: [id])
+  reports        Employee[]     @relation("EmployeeManager")
+  employmentType EmploymentType
+  status         EmployeeStatus @default(PROBATION)
+  joinDate       DateTime       @db.Date
+  endDate        DateTime?      @db.Date
+
+  // Personal data (UU PDP) — HR/Admin only
+  birthPlace     String?
+  birthDate      DateTime?      @db.Date
+  gender         Gender?
+  address        String?
+  ptkpStatus     PtkpStatus?
+  nikKtpEnc      String? // 16-digit NIK, encrypted
+  nikKtpLast4    String?
+  npwpEnc        String?
+  npwpLast4      String?
+  bpjsKesehatanEnc         String?
+  bpjsKesehatanLast4       String?
+  bpjsKetenagakerjaanEnc   String?
+  bpjsKetenagakerjaanLast4 String?
+
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+
+  contracts          Contract[]
+  documents          Document[]
+  letters            Letter[]
+  bankAccounts       BankAccount[]
+  bankChangeRequests BankChangeRequest[]
+
+  @@index([status])
+}
+
+model Contract {
+  id             String         @id @default(cuid())
+  employeeId     String
+  employee       Employee       @relation(fields: [employeeId], references: [id])
+  type           EmploymentType
+  contractNumber String         @unique
+  position       String
+  startDate      DateTime       @db.Date
+  endDate        DateTime?      @db.Date // required for PKWT, null for PKWTT
+  baseSalaryEnc  String? // encrypted, HR/Admin only
+  documentId     String?        @unique
+  document       Document?      @relation(fields: [documentId], references: [id])
+  renewalOfId    String?        @unique // previous PKWT this one extends
+  renewalOf      Contract?      @relation("ContractRenewal", fields: [renewalOfId], references: [id])
+  renewedBy      Contract?      @relation("ContractRenewal")
+  reminderSentAt DateTime? // H-30 reminder before endDate
+  createdAt      DateTime       @default(now())
+
+  @@index([endDate])
+}
+
+model Document {
+  id           String       @id @default(cuid())
+  employeeId   String
+  employee     Employee     @relation(fields: [employeeId], references: [id])
+  type         DocumentType
+  title        String
+  fileKey      String
+  fileName     String
+  mimeType     String
+  sizeBytes    Int
+  version      Int          @default(1)
+  previousId   String?      @unique // older version this replaces
+  previous     Document?    @relation("DocumentVersion", fields: [previousId], references: [id])
+  nextVersion  Document?    @relation("DocumentVersion")
+  isSensitive  Boolean      @default(false) // KTP, KK, NPWP → true
+  expiresAt    DateTime?    @db.Date
+  uploadedById String
+  uploadedBy   User         @relation("DocumentUploader", fields: [uploadedById], references: [id])
+  createdAt    DateTime     @default(now())
+
+  contract Contract?
+  letter   Letter?
+
+  @@index([employeeId, type])
+}
+
+model LetterTemplate {
+  id        String     @id @default(cuid())
+  type      LetterType
+  name      String
+  body      String     @db.Text // with placeholders like {{nama}}, {{jabatan}}
+  version   Int        @default(1)
+  isActive  Boolean    @default(true)
+  createdAt DateTime   @default(now())
+
+  letters Letter[]
+
+  @@unique([type, version])
+}
+
+// Addressed to an employee, or (offer letter) to a candidate's application.
+// A CHECK constraint requires one of the two.
+model Letter {
+  id              String          @id @default(cuid())
+  employeeId      String?
+  employee        Employee?       @relation(fields: [employeeId], references: [id], onDelete: Restrict)
+  applicationId   String?
+  application     Application?    @relation(fields: [applicationId], references: [id], onDelete: Restrict)
+  recipientName   String // snapshot at issue time
+  fileKey         String? // generated PDF in private storage
+  templateId      String
+  template        LetterTemplate  @relation(fields: [templateId], references: [id])
+  type            LetterType
+  letterNumber    String          @unique // nomor surat, e.g. 012/HR/SP1/X/2026
+  reason          String?         @db.Text // required for SP1–SP3
+  issuedAt        DateTime        @default(now())
+  validUntil      DateTime?       @db.Date // SP is usually valid 6 months
+  issuedById      String
+  issuedBy        User            @relation("LetterIssuer", fields: [issuedById], references: [id])
+  documentId      String?         @unique // generated PDF
+  document        Document?       @relation(fields: [documentId], references: [id])
+  signatureStatus SignatureStatus @default(NOT_REQUIRED)
+  signatureRef    String? // e-sign provider reference (Privy / VIDA)
+
+  @@index([employeeId])
+  @@index([type, issuedAt])
+}
+
+// ─────────────────────────────────────────────
+// Module 4 — Bank data update (maker-checker)
+// ─────────────────────────────────────────────
+
+model BankAccount {
+  id                 String    @id @default(cuid())
+  employeeId         String
+  employee           Employee  @relation(fields: [employeeId], references: [id])
+  bankCode           String // e.g. BCA, MANDIRI, BRI, BNI
+  bankName           String
+  accountNumberEnc   String
+  accountNumberLast4 String
+  accountHolderName  String
+  isActive           Boolean   @default(true) // exactly one active per employee (enforced in app + partial index)
+  effectiveFrom      DateTime  @db.Date
+  deactivatedAt      DateTime?
+  requestId          String?   @unique
+  request            BankChangeRequest? @relation(fields: [requestId], references: [id])
+  createdAt          DateTime  @default(now())
+
+  @@index([employeeId, isActive])
+}
+
+model BankChangeRequest {
+  id                 String           @id @default(cuid())
+  employeeId         String
+  employee           Employee         @relation(fields: [employeeId], references: [id])
+  bankCode           String
+  bankName           String
+  accountNumberEnc   String
+  accountNumberLast4 String
+  accountHolderName  String // as typed by the employee
+  inquiryName        String? // name returned by bank inquiry API (Xendit / Flip)
+  nameMatches        Boolean?
+  status             BankChangeStatus @default(DRAFT)
+  otpHash            String? // sha256 of the one-time code; the code itself is never stored
+  otpExpiresAt       DateTime?
+  otpAttempts        Int              @default(0)
+  otpVerifiedAt      DateTime?
+  submittedAt        DateTime?
+  submittedIp        String?
+  // Checker — must be HR/Admin and must not be the employee themselves
+  reviewedById       String?
+  reviewedBy         User?            @relation("BankRequestReviewer", fields: [reviewedById], references: [id])
+  reviewedAt         DateTime?
+  rejectionReason    String?
+  effectivePayroll   String? // payroll period it applies from, "2026-11"
+  createdAt          DateTime         @default(now())
+
+  resultingAccount BankAccount?
+
+  @@index([status])
+}
+
+// ─────────────────────────────────────────────
+// Shared
+// ─────────────────────────────────────────────
+
+// Append-only. Revoke UPDATE/DELETE on this table from the app's DB user.
+model AuditLog {
+  id         String   @id @default(cuid())
+  actorId    String? // null = system / public candidate
+  actor      User?    @relation(fields: [actorId], references: [id])
+  action     String // e.g. "application.stage_changed", "employee.nik_viewed", "bank_request.approved"
+  entityType String
+  entityId   String
+  changes    Json? // before/after of non-sensitive fields only
+  ip         String?
+  userAgent  String?
+  createdAt  DateTime @default(now())
+
+  @@index([entityType, entityId])
+  @@index([actorId, createdAt])
+}
+
+model Notification {
+  id        String    @id @default(cuid())
+  userId    String
+  user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+  type      String
+  title     String
+  body      String
+  link      String?
+  readAt    DateTime?
+  createdAt DateTime  @default(now())
+
+  @@index([userId, readAt])
+}
