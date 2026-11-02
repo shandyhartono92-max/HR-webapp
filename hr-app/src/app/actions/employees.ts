@@ -12,6 +12,7 @@ import { EmploymentType } from "@/generated/prisma/enums";
 import { findOrCreateDepartment } from "@/lib/departments";
 import { MAX_EMPLOYEE_IMPORT_BYTES, parseEmployeeFile } from "@/lib/employee-import";
 import type { ImportState, RowIssue } from "@/lib/excel";
+import { anyEqualsIgnoringCase, equalsIgnoringCase } from "@/lib/match";
 
 const dateField = (error: string) =>
   z.string().transform((v, ctx) => {
@@ -56,25 +57,31 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
   const parsed = await parseEmployeeFile(Buffer.from(await file.arrayBuffer()));
   if (!parsed.ok) return { message: parsed.message, issues: parsed.issues, attempt };
 
+  // All comparisons ignore case, as the file check does: "uji-001" is the same as "UJI-001"
+  const lower = (s: string) => s.toLowerCase();
   const existing = await db.employee.findMany({
-    where: { employeeNumber: { in: parsed.rows.map((r) => r.employeeNumber) } },
+    where: anyEqualsIgnoringCase("employeeNumber", parsed.rows.map((r) => r.employeeNumber)),
     select: { employeeNumber: true },
   });
-  const known = new Set(existing.map((e) => e.employeeNumber));
-  const fresh = parsed.rows.filter((r) => !known.has(r.employeeNumber));
+  const known = new Set(existing.map((e) => lower(e.employeeNumber)));
+  const fresh = parsed.rows.filter((r) => !known.has(lower(r.employeeNumber)));
 
   // Emails and contract numbers must not clash with other records already in the portal
   const [emailsTaken, contractsTaken] = await Promise.all([
-    db.employee.findMany({ where: { email: { in: fresh.map((r) => r.email) } }, select: { email: true, employeeNumber: true } }),
-    db.contract.findMany({ where: { contractNumber: { in: fresh.map((r) => r.contractNumber) } }, select: { contractNumber: true } }),
+    fresh.length
+      ? db.employee.findMany({ where: anyEqualsIgnoringCase("email", fresh.map((r) => r.email)), select: { email: true, employeeNumber: true } })
+      : [],
+    fresh.length
+      ? db.contract.findMany({ where: anyEqualsIgnoringCase("contractNumber", fresh.map((r) => r.contractNumber)), select: { contractNumber: true } })
+      : [],
   ]);
-  const emailOwner = new Map(emailsTaken.map((e) => [e.email, e.employeeNumber]));
-  const contractSet = new Set(contractsTaken.map((c) => c.contractNumber));
+  const emailOwner = new Map(emailsTaken.map((e) => [lower(e.email), e.employeeNumber]));
+  const contractSet = new Set(contractsTaken.map((c) => lower(c.contractNumber)));
   const issues: RowIssue[] = [];
   for (const r of fresh) {
     const messages = [
-      emailOwner.has(r.email) && `Email: sudah dipakai karyawan ${emailOwner.get(r.email)}.`,
-      contractSet.has(r.contractNumber) && `No. kontrak: ${r.contractNumber} sudah ada.`,
+      emailOwner.has(lower(r.email)) && `Email: sudah dipakai karyawan ${emailOwner.get(lower(r.email))}.`,
+      contractSet.has(lower(r.contractNumber)) && `No. kontrak: ${r.contractNumber} sudah ada.`,
     ].filter(Boolean) as string[];
     if (messages.length) issues.push({ rowNumber: r.rowNumber, name: r.fullName, messages });
   }
@@ -158,9 +165,9 @@ export async function hireCandidate(applicationId: string, _state: FormState, fo
   if (app.employee) return failed(formData, undefined, "Kandidat ini sudah dibuatkan data karyawan.");
 
   const [numberTaken, emailTaken, contractTaken, dept] = await Promise.all([
-    db.employee.findUnique({ where: { employeeNumber: data.employeeNumber }, select: { id: true } }),
-    db.employee.findUnique({ where: { email: app.candidate.email }, select: { id: true } }),
-    db.contract.findUnique({ where: { contractNumber: data.contractNumber }, select: { id: true } }),
+    db.employee.findFirst({ where: { employeeNumber: equalsIgnoringCase(data.employeeNumber) }, select: { id: true } }),
+    db.employee.findFirst({ where: { email: equalsIgnoringCase(app.candidate.email) }, select: { id: true } }),
+    db.contract.findFirst({ where: { contractNumber: equalsIgnoringCase(data.contractNumber) }, select: { id: true } }),
     db.department.findUnique({ where: { id: data.departmentId }, select: { id: true } }),
   ]);
   const errors: Record<string, string[]> = {};

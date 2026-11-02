@@ -14,8 +14,9 @@ import {
   nikError,
   npwpError,
 } from "@/lib/indonesia-id";
-import { parseDateOnly } from "@/lib/labels";
-import { EmployeeStatus, Gender, PtkpStatus } from "@/generated/prisma/enums";
+import { formatDate, parseDateOnly } from "@/lib/labels";
+import { equalsIgnoringCase } from "@/lib/match";
+import { EmployeeStatus, EmploymentType, Gender, PtkpStatus } from "@/generated/prisma/enums";
 
 const notFound: FormState = { message: "Data karyawan tidak ditemukan." };
 
@@ -61,6 +62,132 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
       changes: Object.fromEntries(changed.map((k) => [k, { from: before[k], to: data[k] }])),
     });
   }
+  refresh();
+  return { ok: true, attempt: Date.now() };
+}
+
+// ── Contract extension / new contract ───────────────────────
+
+const requiredDate = (error: string) =>
+  z.string().transform((v, ctx) => {
+    const d = parseDateOnly(v);
+    if (!d) {
+      ctx.addIssue({ code: "custom", message: error });
+      return z.NEVER;
+    }
+    return d;
+  });
+
+const RenewSchema = z
+  .object({
+    type: z.enum(EmploymentType),
+    contractNumber: z.string().trim().min(1, { error: "Isi nomor kontrak." }).max(60),
+    position: z.string().trim().min(2, { error: "Isi jabatan." }).max(120),
+    startDate: requiredDate("Isi tanggal mulai kontrak."),
+    endDate: z.preprocess((v) => (v === "" ? undefined : v), requiredDate("Tanggal tidak valid.").optional()),
+  })
+  .refine((d) => d.type !== "PKWT" || d.endDate, { path: ["endDate"], error: "Kontrak PKWT wajib punya tanggal berakhir." })
+  .refine((d) => !d.endDate || d.endDate > d.startDate, { path: ["endDate"], error: "Harus setelah tanggal mulai." });
+
+// PP 35/2021 Pasal 8: a PKWT, including extensions, may last at most 5 years in total
+const PKWT_MAX_YEARS = 5;
+
+const addYears = (d: Date, years: number) => {
+  const r = new Date(d);
+  r.setUTCFullYear(r.getUTCFullYear() + years);
+  return r;
+};
+
+// Adds the next contract after the current one (extension, renewal, or conversion to
+// PKWTT) and moves the employee's type, position and end date to it. The previous
+// contract stays in the history, linked through renewalOf.
+export async function renewContract(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireRole("ADMIN", "HR");
+
+  const emp = await db.employee.findUnique({
+    where: { id: employeeId },
+    select: {
+      status: true,
+      position: true,
+      employmentType: true,
+      endDate: true,
+      contracts: {
+        orderBy: { startDate: "desc" },
+        select: { id: true, type: true, startDate: true, endDate: true, renewedBy: { select: { id: true } } },
+      },
+    },
+  });
+  if (!emp) return notFound;
+  if (emp.status === "RESIGNED" || emp.status === "TERMINATED") {
+    return { message: "Karyawan ini sudah keluar. Kontrak baru tidak bisa dibuat." };
+  }
+
+  const parsed = RenewSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
+  const d = parsed.data;
+
+  const latest = emp.contracts[0];
+  if (latest && d.startDate <= (latest.endDate ?? latest.startDate)) {
+    return failed(formData, {
+      startDate: [`Harus setelah kontrak sebelumnya ${latest.endDate ? `berakhir (${formatDate(latest.endDate)})` : `dimulai (${formatDate(latest.startDate)})`}.`],
+    });
+  }
+  if (d.type === "PKWT") {
+    const firstPkwt = [...emp.contracts].reverse().find((c) => c.type === "PKWT");
+    const since = firstPkwt?.startDate ?? d.startDate;
+    const limit = addYears(since, PKWT_MAX_YEARS);
+    if (d.endDate! > limit) {
+      return failed(formData, {
+        endDate: [
+          `Total PKWT sejak ${formatDate(since)} tidak boleh lebih dari ${PKWT_MAX_YEARS} tahun (PP 35/2021), paling lambat ${formatDate(limit)}. Pertimbangkan PKWTT.`,
+        ],
+      });
+    }
+  }
+  const taken = await db.contract.findFirst({ where: { contractNumber: equalsIgnoringCase(d.contractNumber) }, select: { id: true } });
+  if (taken) return failed(formData, { contractNumber: ["Nomor kontrak ini sudah dipakai."] });
+
+  const contract = await db.$transaction(async (tx) => {
+    const created = await tx.contract.create({
+      data: {
+        employeeId,
+        type: d.type,
+        contractNumber: d.contractNumber,
+        position: d.position,
+        startDate: d.startDate,
+        endDate: d.endDate ?? null,
+        // renewalOf is unique: only link when the previous contract isn't already followed by one
+        renewalOfId: latest && !latest.renewedBy ? latest.id : null,
+      },
+      select: { id: true },
+    });
+    await tx.employee.update({
+      where: { id: employeeId },
+      data: {
+        employmentType: d.type,
+        position: d.position,
+        endDate: d.endDate ?? null,
+        // Back to work if the previous contract had been marked as ended
+        ...(emp.status === "CONTRACT_ENDED" ? { status: "ACTIVE" as const } : {}),
+      },
+    });
+    return created;
+  });
+
+  await writeAudit({
+    actorId: user.id,
+    action: "contract.renewed",
+    entityType: "Contract",
+    entityId: contract.id,
+    changes: {
+      employeeId,
+      contractNumber: d.contractNumber,
+      type: { from: emp.employmentType, to: d.type },
+      position: { from: emp.position, to: d.position },
+      endDate: { from: emp.endDate?.toISOString().slice(0, 10) ?? null, to: d.endDate?.toISOString().slice(0, 10) ?? null },
+    },
+  });
+  // refresh() also re-renders the menu, so its contract alert badge updates
   refresh();
   return { ok: true, attempt: Date.now() };
 }

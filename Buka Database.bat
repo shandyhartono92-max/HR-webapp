@@ -33,6 +33,8 @@ echo  - Hati-hati mengubah atau menghapus data di Studio: langsung tersimpan, ta
 echo.
 echo Selesai melihat database? Tekan tombol apa saja di jendela ini
 echo untuk menutup Studio dan menyalakan Portal HR lagi.
+echo (Kalau jendela ini terlanjur ditutup dengan X, jalankan saja "Start Portal HR.bat":
+echo  Studio yang tertinggal akan ditutup otomatis.)
 pause >nul
 
 echo.

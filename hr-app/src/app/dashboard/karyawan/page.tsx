@@ -68,7 +68,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
                   , termasuk <strong className="text-red-700">{overdue} yang sudah lewat</strong>
                 </>
               )}
-              . Perpanjang kontrak, atau ubah status karyawan di profilnya.
+              . Buka profil karyawan untuk memperpanjang kontrak atau mengubah statusnya.
             </span>
           </p>
           <Link

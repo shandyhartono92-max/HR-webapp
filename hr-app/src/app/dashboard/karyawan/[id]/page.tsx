@@ -18,7 +18,7 @@ import { activeTemplate } from "@/lib/letters/service";
 import { employeeLetterVars } from "@/lib/letters/vars";
 import type { LetterType } from "@/generated/prisma/enums";
 import { Disclosure, EmployeeLetterForm, type TemplateView } from "../../surat/letter-forms";
-import { EmployeeLoginPanel, EmploymentForm, PersonalForm, SensitiveValue } from "./employee-forms";
+import { EmployeeLoginPanel, EmploymentForm, PersonalForm, RenewContractForm, SensitiveValue } from "./employee-forms";
 
 const employeeLetterTypes: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", "MUTASI", "PROMOSI", "DEMOSI"];
 
@@ -107,6 +107,12 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
   );
 
   const alert = contractAlert(emp.endDate, emp.status);
+  // Defaults for the next contract: the day after the current one ends (or today)
+  const latestContract = emp.contracts[0];
+  const nextContractStart = latestContract?.endDate
+    ? new Date(latestContract.endDate.getTime() + 24 * 60 * 60 * 1000).toISOString().slice(0, 10)
+    : todayIso();
+  const firstPkwt = [...emp.contracts].reverse().find((c) => c.type === "PKWT");
 
   const last4 = {
     nik: emp.nikKtpLast4,
@@ -147,8 +153,8 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
           >
             <AlertIcon className="size-5 shrink-0" />
             {alert.level === "overdue"
-              ? `Kontrak sudah berakhir ${formatDate(emp.endDate!)}, tetapi status masih ${employeeStatusLabel[emp.status]}. Perpanjang kontrak atau ubah statusnya.`
-              : `Kontrak berakhir ${formatDate(emp.endDate!)}. Putuskan perpanjangan atau pengakhiran sebelum tanggal itu.`}
+              ? `Kontrak sudah berakhir ${formatDate(emp.endDate!)}, tetapi status masih ${employeeStatusLabel[emp.status]}. Perpanjang di bagian Riwayat kontrak, atau ubah statusnya di Data kepegawaian.`
+              : `Kontrak berakhir ${formatDate(emp.endDate!)}. Perpanjang di bagian Riwayat kontrak, atau siapkan pengakhiran sebelum tanggal itu.`}
           </p>
         )}
         {missing.length > 0 && (
@@ -256,6 +262,21 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                   </li>
                 ))}
               </ul>
+            )}
+            {emp.status !== "RESIGNED" && emp.status !== "TERMINATED" && (
+              <Disclosure
+                className="mt-4 border-t border-slate-100 pt-4"
+                summary="Perpanjang / kontrak baru"
+                defaultOpen={alert.level !== null}
+              >
+                <div className="mt-3">
+                  <RenewContractForm
+                    employeeId={emp.id}
+                    initial={{ type: emp.employmentType, position: emp.position, startDate: nextContractStart }}
+                    pkwtSince={firstPkwt ? formatDate(firstPkwt.startDate) : null}
+                  />
+                </div>
+              </Disclosure>
             )}
           </section>
         </div>

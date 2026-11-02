@@ -6,6 +6,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { findOrCreateDepartment } from "@/lib/departments";
+import { equalsIgnoringCase } from "@/lib/match";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
 import { EmploymentType, JobStatus } from "@/generated/prisma/enums";
 
@@ -35,26 +36,38 @@ function parse(formData: FormData) {
   return JobSchema.safeParse(Object.fromEntries(formData));
 }
 
-// Department and hiring manager are typed freely. A department name that does not
-// exist yet is created (ignoring case, so "it" reuses "IT"). A manager name that
-// matches an active staff account is linked to it, so that person can see the
-// job's candidates; any other name is kept as text only.
-async function resolveReferences(departmentName: string, hiringManagerName: string) {
-  const [dept, manager] = await Promise.all([
-    findOrCreateDepartment(departmentName),
-    db.user.findFirst({
-      where: {
-        name: { equals: hiringManagerName, mode: "insensitive" },
-        isActive: true,
-        role: { in: ["ADMIN", "HR", "HIRING_MANAGER"] },
-      },
-      select: { id: true, name: true },
-    }),
-  ]);
+const staff = { isActive: true, role: { in: ["ADMIN" as const, "HR" as const, "HIRING_MANAGER" as const] } };
+
+type Linked = { id: string | null; name: string };
+
+// Hiring manager is typed freely. It is linked to an active staff account (giving that
+// person access to the job's candidates) when the text matches the account's email, or
+// its name if exactly one account has that name. Any other text is kept as a name only.
+async function resolveManager(typed: string, current?: Linked): Promise<{ manager: Linked } | { error: string }> {
+  // Unchanged on edit: keep the link even if the account was renamed since
+  if (current?.id && typed.toLowerCase() === current.name.toLowerCase()) {
+    const user = await db.user.findFirst({ where: { id: current.id, ...staff }, select: { id: true, name: true } });
+    if (user) return { manager: user };
+  }
+  const matches = await db.user.findMany({
+    where: { ...staff, OR: [{ email: equalsIgnoringCase(typed) }, { name: equalsIgnoringCase(typed) }] },
+    select: { id: true, name: true, email: true },
+  });
+  const byEmail = matches.find((u) => u.email.toLowerCase() === typed.toLowerCase());
+  if (byEmail) return { manager: { id: byEmail.id, name: byEmail.name } };
+  if (matches.length > 1) {
+    return { error: `Ada ${matches.length} akun bernama "${typed}". Ketik email akunnya untuk memilih: ${matches.map((u) => u.email).join(", ")}.` };
+  }
+  return { manager: matches[0] ? { id: matches[0].id, name: matches[0].name } : { id: null, name: typed } };
+}
+
+// Department is typed freely; a new name is created (ignoring case, so "it" reuses "IT")
+async function resolveReferences(departmentName: string, hiringManagerName: string, current?: Linked) {
+  const resolved = await resolveManager(hiringManagerName, current);
+  if ("error" in resolved) return resolved;
+  const dept = await findOrCreateDepartment(departmentName);
   return {
-    departmentId: dept.id,
-    hiringManagerId: manager?.id ?? null,
-    hiringManagerName: manager?.name ?? hiringManagerName,
+    refs: { departmentId: dept.id, hiringManagerId: resolved.manager.id, hiringManagerName: resolved.manager.name },
   };
 }
 
@@ -84,12 +97,13 @@ export async function createJob(_state: FormState, formData: FormData): Promise<
   const parsed = parse(formData);
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
   const { departmentName, hiringManagerName, ...data } = parsed.data;
-  const refs = await resolveReferences(departmentName, hiringManagerName);
+  const resolved = await resolveReferences(departmentName, hiringManagerName);
+  if ("error" in resolved) return failed(formData, { hiringManagerName: [resolved.error] });
 
   const job = await db.job.create({
     data: {
       ...data,
-      ...refs,
+      ...resolved.refs,
       slug: await uniqueSlug(data.title),
       openedAt: data.status === "OPEN" ? new Date() : null,
       closedAt: data.status === "CLOSED" ? new Date() : null,
@@ -110,19 +124,26 @@ export async function createJob(_state: FormState, formData: FormData): Promise<
 export async function updateJob(jobId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const user = await requireRole("ADMIN", "HR");
 
-  const existing = await db.job.findUnique({ where: { id: jobId }, select: { status: true, openedAt: true, title: true } });
+  const existing = await db.job.findUnique({
+    where: { id: jobId },
+    select: { status: true, openedAt: true, title: true, hiringManagerId: true, hiringManagerName: true },
+  });
   if (!existing) return failed(formData, undefined, "Lowongan tidak ditemukan.");
 
   const parsed = parse(formData);
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
   const { departmentName, hiringManagerName, ...data } = parsed.data;
-  const refs = await resolveReferences(departmentName, hiringManagerName);
+  const resolved = await resolveReferences(departmentName, hiringManagerName, {
+    id: existing.hiringManagerId,
+    name: existing.hiringManagerName,
+  });
+  if ("error" in resolved) return failed(formData, { hiringManagerName: [resolved.error] });
 
   await db.job.update({
     where: { id: jobId },
     data: {
       ...data,
-      ...refs,
+      ...resolved.refs,
       // The slug stays the same so links already shared keep working
       openedAt: data.status === "OPEN" && !existing.openedAt ? new Date() : undefined,
       closedAt: data.status === "CLOSED" ? (existing.status === "CLOSED" ? undefined : new Date()) : null,

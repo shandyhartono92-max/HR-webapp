@@ -18,6 +18,14 @@ if errorlevel 1 (
   exit /b 1
 )
 
+rem A Prisma Studio left open by "Buka Database.bat" (window closed with X) holds the
+rem database's only connection, so close it before the app starts
+for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":5555 .*LISTENING"') do (
+  echo Menutup Prisma Studio yang masih terbuka...
+  taskkill /PID %%p /T /F >nul 2>&1
+)
+taskkill /FI "WINDOWTITLE eq Prisma Studio*" /T /F >nul 2>&1
+
 echo [2/2] Menyalakan aplikasi...
 echo.
 echo Buka dari komputer ini : http://localhost:3000

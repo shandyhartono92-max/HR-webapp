@@ -145,11 +145,15 @@ export const formatRupiah = (n: number) => rupiahFormatter.format(n);
 
 const DAY_MS = 24 * 60 * 60 * 1000;
 
-// Whole days from now until `d` (negative when past). Server components render per request.
-export const daysUntil = (d: Date) => Math.ceil((d.getTime() - Date.now()) / DAY_MS);
-
 // Today's date in WIB as "2026-11-02", for <input type="date"> defaults
 export const todayIso = () => new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
+
+// Today (WIB calendar date) as midnight UTC, the same shape as @db.Date values
+export const todayDate = () => new Date(`${todayIso()}T00:00:00Z`);
+
+// Calendar days from today (WIB) until a @db.Date `d`: 0 on the day itself, negative when past.
+// Comparing against the clock instead would be off by one between 00:00 and 07:00 WIB.
+export const daysUntil = (d: Date) => Math.round((d.getTime() - todayDate().getTime()) / DAY_MS);
 
 // Interviews can get feedback from one hour before their start time
 export const isFeedbackOpen = (scheduledAt: Date) => scheduledAt.getTime() <= Date.now() + 60 * 60 * 1000;

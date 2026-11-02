@@ -130,9 +130,11 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
   const genderRange = addList(lists, 3, Object.values(genderLabel));
 
   for (let r = 2; r <= MAX_EMPLOYEE_ROWS + 1; r++) {
-    // Text format keeps leading zeros of phone, employee and contract numbers
-    for (const key of ["employeeNumber", "phone", "contractNumber"] as const) sheet.getCell(r, COL[key]).numFmt = "@";
-    for (const key of ["joinDate", "endDate", "birthDate"] as const) sheet.getCell(r, COL[key]).numFmt = "dd/mm/yyyy";
+    // Text format keeps leading zeros of phone, employee and contract numbers. Dates are
+    // text too: as date cells, Excel on an English (US) laptop would read 01/02/2026 as 2 Jan.
+    for (const key of ["employeeNumber", "phone", "contractNumber", "joinDate", "endDate", "birthDate"] as const) {
+      sheet.getCell(r, COL[key]).numFmt = "@";
+    }
     sheet.getCell(r, COL.employmentType).dataValidation = dropdown(typeRange, "Pilih jenis karyawan dari daftar.");
     sheet.getCell(r, COL.status).dataValidation = dropdown(statusRange, "Pilih status dari daftar.");
     sheet.getCell(r, COL.gender).dataValidation = dropdown(genderRange, "Pilih jenis kelamin dari daftar.");
@@ -146,7 +148,7 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
     "3. Departemen: ketik bebas. Departemen yang belum ada akan dibuat otomatis.",
     `4. Jenis karyawan: pilih dari dropdown (${Object.values(employmentTypeLabel).join(", ")}).`,
     "5. Status: Aktif atau Masa percobaan. Kosong = Aktif. Kontrak (PKWT) tidak boleh masa percobaan (UU 13/2003 Pasal 58).",
-    "6. Tanggal ditulis DD/MM/YYYY, misal 01/02/2026. Tanggal berakhir wajib untuk Kontrak (PKWT).",
+    "6. Tanggal ditulis DD/MM/YYYY (hari/bulan/tahun), misal 01/02/2026 = 1 Februari 2026. Kolom tanggal berformat teks agar Excel tidak mengubahnya. Tanggal berakhir wajib untuk Kontrak (PKWT).",
     "7. No. kontrak: kosongkan jika belum ada; akan diisi otomatis <No. induk>/IMPOR.",
     "8. No. induk yang sudah ada di Portal HR dilewati (tidak dobel), jadi file yang sama aman diunggah ulang.",
     "9. Jika ada baris yang salah, tidak ada data yang disimpan. Perbaiki baris yang disebutkan, lalu unggah lagi.",

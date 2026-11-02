@@ -1,6 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
-import { daysUntil } from "@/lib/labels";
+import { daysUntil, todayDate } from "@/lib/labels";
 
 // Contracts ending within 6 weeks get an alert: in the menu, the dashboard,
 // the employee list and the employee page. Past end dates stay flagged until
@@ -23,7 +23,7 @@ export function contractAlert(endDate: Date | null, status: string): { level: Co
 export function endingContractsWhere() {
   return {
     status: { in: ["ACTIVE" as const, "PROBATION" as const] },
-    endDate: { not: null, lte: new Date(Date.now() + CONTRACT_ALERT_DAYS * DAY_MS) },
+    endDate: { not: null, lte: new Date(todayDate().getTime() + CONTRACT_ALERT_DAYS * DAY_MS) },
   };
 }
 

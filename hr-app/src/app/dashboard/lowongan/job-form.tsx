@@ -78,7 +78,7 @@ export function JobForm({
           <Field
             label="Hiring manager"
             htmlFor="hiringManagerName"
-            hint="Ketik bebas. Kalau namanya sama dengan akun di portal, orang itu bisa melihat kandidat lowongan ini."
+            hint="Ketik bebas. Kalau nama atau email-nya sama dengan akun di portal, orang itu bisa melihat kandidat lowongan ini."
             errors={e.hiringManagerName}
           >
             <input

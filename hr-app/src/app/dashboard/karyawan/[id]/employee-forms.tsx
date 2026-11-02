@@ -1,11 +1,11 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { revealSensitive, updateEmployment, updatePersonal, type RevealField } from "@/app/actions/employee-profile";
+import { renewContract, revealSensitive, updateEmployment, updatePersonal, type RevealField } from "@/app/actions/employee-profile";
 import { issueEmployeeLogin, type LoginResult } from "@/app/actions/accounts";
-import { Field, FormMessage, inputClass } from "@/app/ui/field";
-import { employeeStatusLabel, genderLabel, ptkpLabel } from "@/lib/labels";
-import type { EmployeeStatus, Gender, PtkpStatus } from "@/generated/prisma/enums";
+import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
+import { employeeStatusLabel, employmentTypeLabel, genderLabel, ptkpLabel } from "@/lib/labels";
+import type { EmployeeStatus, EmploymentType, Gender, PtkpStatus } from "@/generated/prisma/enums";
 
 const buttonClass =
   "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
@@ -71,6 +71,68 @@ export function EmploymentForm({
       <button type="submit" disabled={pending} className={buttonClass}>
         {pending ? "Menyimpan…" : "Simpan data kepegawaian"}
       </button>
+    </form>
+  );
+}
+
+// Next contract: extension of a PKWT, a new PKWT, or conversion to PKWTT
+export function RenewContractForm({
+  employeeId,
+  initial,
+  pkwtSince,
+}: {
+  employeeId: string;
+  initial: { type: EmploymentType; position: string; startDate: string };
+  pkwtSince: string | null;
+}) {
+  const [state, action, pending] = useActionState(renewContract.bind(null, employeeId), undefined);
+  const hydrated = useHydrated();
+  const e = state?.errors ?? {};
+  const v = (k: string, fallback = "") => state?.values?.[k] ?? fallback;
+
+  return (
+    <form key={state?.attempt} action={action} className="space-y-3">
+      <FormMessage message={state?.message} />
+      {state?.ok && <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Kontrak baru tersimpan.</p>}
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Jenis kontrak" htmlFor="renewType" errors={e.type}>
+          <select id="renewType" name="type" defaultValue={v("type", initial.type)} className={inputClass}>
+            {Object.entries(employmentTypeLabel).map(([value, label]) => (
+              <option key={value} value={value}>
+                {label}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Nomor kontrak" htmlFor="renewNumber" errors={e.contractNumber}>
+          <input id="renewNumber" name="contractNumber" defaultValue={v("contractNumber")} className={inputClass} />
+        </Field>
+        <Field label="Jabatan" htmlFor="renewPosition" errors={e.position}>
+          <input id="renewPosition" name="position" defaultValue={v("position", initial.position)} className={inputClass} />
+        </Field>
+        <Field label="Mulai" htmlFor="renewStart" errors={e.startDate}>
+          <input id="renewStart" name="startDate" type="date" defaultValue={v("startDate", initial.startDate)} className={inputClass} />
+        </Field>
+        <Field
+          label="Berakhir"
+          htmlFor="renewEnd"
+          hint={
+            pkwtSince
+              ? `Wajib untuk PKWT. Total PKWT sejak ${pkwtSince} maksimal 5 tahun (PP 35/2021). Kosongkan untuk PKWTT.`
+              : "Wajib untuk PKWT. Kosongkan untuk PKWTT."
+          }
+          errors={e.endDate}
+        >
+          <input id="renewEnd" name="endDate" type="date" defaultValue={v("endDate")} className={inputClass} />
+        </Field>
+      </div>
+      <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+        {pending ? "Menyimpan…" : "Simpan kontrak baru"}
+      </button>
+      <p className="text-xs text-slate-500">
+        Kontrak lama tetap tersimpan di riwayat. Jenis, jabatan dan tanggal berakhir karyawan ikut diperbarui, sehingga alert kontrak
+        menyesuaikan.
+      </p>
     </form>
   );
 }
