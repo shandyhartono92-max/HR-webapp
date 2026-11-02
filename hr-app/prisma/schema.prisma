@@ -337,7 +337,7 @@ model Resume {
   fileName      String       @db.VarChar(255)
   mimeType      String
   sizeBytes     Int
-  extractedText String?      @db.Text
+  extractedText String?      @db.MediumText
   // Structured data from the AI: skills, experience, education. Protected attributes
   // (religion, age, marital status, photo) are stripped before this is stored.
   parsedData    Json?
@@ -476,7 +476,7 @@ model LetterTemplate {
   id        String     @id @default(cuid())
   type      LetterType
   name      String
-  body      String     @db.Text // with placeholders like {{nama}}, {{jabatan}}
+  body      String     @db.MediumText // with placeholders like {{nama}}, {{jabatan}}
   version   Int        @default(1)
   isActive  Boolean    @default(true)
   createdAt DateTime   @default(now())

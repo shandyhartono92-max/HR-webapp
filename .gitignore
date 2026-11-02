@@ -1,2 +1,5 @@
 # Code-only ZIPs made with `git archive` for other machines
 /portal-hr-*.zip
+
+# Passwords kept on this PC only
+/_rahasia/

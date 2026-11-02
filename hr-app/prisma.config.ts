@@ -11,6 +11,7 @@ export default defineConfig({
     url: env("DATABASE_URL"),
     // Only for `prisma migrate dev`: an empty database it may wipe (portal_hr_shadow),
     // since the app's MariaDB user cannot create databases
-    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,
+    // (left out when blank, e.g. on a host that only runs `prisma migrate deploy`)
+    shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL?.trim() || undefined,
   },
 });

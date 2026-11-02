@@ -10,25 +10,29 @@ echo.
 echo === Portal HR ===
 echo.
 echo [1/3] Memeriksa database MariaDB (XAMPP)...
-netstat -ano | findstr /r /c:":3306 .*LISTENING" >nul
-if errorlevel 1 (
-  if not exist "%XAMPP_DIR%\mysql\bin\mysqld.exe" (
-    echo.
-    echo XAMPP tidak ditemukan di %XAMPP_DIR%. Pasang XAMPP, atau nyalakan MySQL dari XAMPP Control Panel.
-    pause
-    exit /b 1
-  )
-  echo       MariaDB belum jalan, menyalakan...
-  start "MariaDB (XAMPP)" /min "%XAMPP_DIR%\mysql\bin\mysqld.exe" --defaults-file="%XAMPP_DIR%\mysql\bin\my.ini" --standalone
-  for /l %%i in (1,1,30) do (
-    netstat -ano | findstr /r /c:":3306 .*LISTENING" >nul && goto db_ready
-    ping -n 2 127.0.0.1 >nul
-  )
+if not exist "%XAMPP_DIR%\mysql\bin\mysqladmin.exe" (
   echo.
-  echo MariaDB tidak bisa dinyalakan. Coba nyalakan MySQL dari XAMPP Control Panel, lalu jalankan file ini lagi.
+  echo XAMPP tidak ditemukan di %XAMPP_DIR%. Pasang XAMPP, atau atur XAMPP_DIR.
   pause
   exit /b 1
 )
+call :db_alive && goto db_ready
+rem Prefer the Windows service (set up in XAMPP Control Panel); it needs admin rights to start
+sc query mysql >nul 2>&1 && (
+  echo       MariaDB belum jalan, menyalakan service "mysql"...
+  net start mysql >nul 2>&1
+)
+call :db_alive && goto db_ready
+echo       MariaDB belum jalan, menyalakan di jendela terpisah (jangan tutup jendela itu)...
+start "MariaDB (XAMPP) - jangan ditutup" /min "%XAMPP_DIR%\mysql\bin\mysqld.exe" --defaults-file="%XAMPP_DIR%\mysql\bin\my.ini" --standalone
+for /l %%i in (1,1,30) do (
+  call :db_alive && goto db_ready
+  ping -n 2 127.0.0.1 >nul
+)
+echo.
+echo MariaDB tidak bisa dinyalakan. Coba nyalakan MySQL dari XAMPP Control Panel, lalu jalankan file ini lagi.
+pause
+exit /b 1
 :db_ready
 
 echo [2/3] Memperbarui struktur database (jika ada perubahan)...
@@ -50,3 +54,10 @@ echo (MacBook/HP harus terhubung ke Wi-Fi yang sama dengan komputer ini.)
 echo.
 call npm run dev
 pause
+exit /b 0
+
+rem Asks the server itself whether it is up. "ping" succeeds even when the made-up
+rem user is refused, so no password is needed; netstat sometimes missed the port.
+:db_alive
+"%XAMPP_DIR%\mysql\bin\mysqladmin.exe" --connect-timeout=2 -h 127.0.0.1 -P 3306 -u ping_check --password=x ping >nul 2>&1
+exit /b %errorlevel%
