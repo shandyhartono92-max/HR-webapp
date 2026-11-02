@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { formatDate, sourceLabel, stageLabel } from "@/lib/labels";
 import type { ScreeningProfile } from "@/lib/screening";
-import { AttachToJobForm } from "../bank-forms";
+import { AttachToJobForm, UploadCvForm } from "../bank-forms";
 
 export const metadata: Metadata = { title: "Profil kandidat" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
@@ -159,6 +159,12 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
               >
                 Unduh CV · {cv.fileName}
               </a>
+            )}
+            {!c.anonymizedAt && (
+              <div className="mt-4 border-t border-slate-100 pt-4">
+                {!cv && <p className="mb-2 text-sm text-amber-800">Belum ada CV. Unggah dulu sebelum memasukkan ke lowongan.</p>}
+                <UploadCvForm candidateId={c.id} hasCv={Boolean(cv)} />
+              </div>
             )}
           </section>
 

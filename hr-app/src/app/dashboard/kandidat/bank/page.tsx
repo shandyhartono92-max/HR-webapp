@@ -15,6 +15,9 @@ export default async function CandidateBankPage({ searchParams }: PageProps<"/da
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";
   const pool = sp.pool === "1";
+  // Result of an import (set by importCandidates' redirect)
+  const imported = typeof sp.impor === "string" && /^\d+$/.test(sp.impor) ? Number(sp.impor) : null;
+  const skipped = typeof sp.lewati === "string" && /^\d+$/.test(sp.lewati) ? Number(sp.lewati) : 0;
   const edu = typeof sp.pendidikan === "string" && (educationLevels as readonly string[]).includes(sp.pendidikan) ? sp.pendidikan : "";
 
   // ~20 applications a month: load the active bank and filter in memory, which also
@@ -77,10 +80,26 @@ export default async function CandidateBankPage({ searchParams }: PageProps<"/da
           <h1 className="text-2xl font-semibold text-slate-900">Bank data kandidat</h1>
           <p className="text-sm text-slate-500">Semua kandidat yang datanya masih disimpan, dari halaman karir maupun ditambahkan HR.</p>
         </div>
-        <Link href="/dashboard/kandidat/bank/tambah" className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
-          Tambah kandidat
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/dashboard/kandidat/bank/import"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Import dari Excel
+          </Link>
+          <Link href="/dashboard/kandidat/bank/tambah" className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800">
+            Tambah kandidat
+          </Link>
+        </div>
       </div>
+
+      {imported !== null && (
+        <p role="status" className="rounded-md bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          {imported} kandidat berhasil di-import
+          {skipped > 0 && `, ${skipped} dilewati karena emailnya sudah ada di bank data`}. Unggah CV dari profil masing-masing sebelum
+          memasukkan ke lowongan.
+        </p>
+      )}
 
       <form className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
         <label className="min-w-56 flex-1 text-sm">

@@ -1,6 +1,7 @@
 "use server";
 
 import { after } from "next/server";
+import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { db } from "@/lib/db";
@@ -12,6 +13,7 @@ import { educationLevels, manualSources } from "@/lib/labels";
 import { MAX_CV_BYTES, PRIVACY_NOTICE_VERSION, retainUntil } from "@/lib/privacy";
 import { isScreeningConfigured, screenApplication } from "@/lib/screening";
 import { deleteFile, detectCvType, saveFile } from "@/lib/storage";
+import { MAX_IMPORT_BYTES, parseImportFile, type RowIssue } from "@/lib/candidate-import";
 
 const sourceKeys = Object.keys(manualSources) as [keyof typeof manualSources, ...(keyof typeof manualSources)[]];
 
@@ -121,6 +123,93 @@ export async function addCandidate(_state: FormState, formData: FormData): Promi
   });
   if (applicationId) scheduleScreening(applicationId);
   redirect(`/dashboard/kandidat/bank/${candidateId}?baru=1`);
+}
+
+export type ImportState = { message?: string; issues?: RowIssue[]; attempt?: number } | undefined;
+
+// Bulk-adds candidates from the Excel template. All rows must be valid or nothing is
+// saved; emails already in the bank are skipped. Consent is HR-attested per row.
+export async function importCandidates(_state: ImportState, formData: FormData): Promise<ImportState> {
+  const user = await requireRole("ADMIN", "HR");
+  const attempt = Date.now();
+
+  if (formData.get("consentConfirmed") !== "on") {
+    return { message: "Centang pernyataan bahwa semua kandidat di file sudah menyetujui datanya disimpan.", attempt };
+  }
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { message: "Pilih file Excel (.xlsx).", attempt };
+  if (file.size > MAX_IMPORT_BYTES) return { message: "Ukuran file maksimal 2 MB.", attempt };
+
+  const parsed = await parseImportFile(Buffer.from(await file.arrayBuffer()));
+  if (!parsed.ok) return { message: parsed.message, issues: parsed.issues, attempt };
+
+  const existing = await db.candidate.findMany({
+    where: { email: { in: parsed.rows.map((r) => r.email) } },
+    select: { email: true },
+  });
+  const known = new Set(existing.map((c) => c.email));
+  const fresh = parsed.rows.filter((r) => !known.has(r.email));
+
+  const now = new Date();
+  const created = fresh.length
+    ? await db.candidate.createManyAndReturn({
+        data: fresh.map((r) => ({
+          fullName: r.fullName,
+          email: r.email,
+          phone: r.phone,
+          city: r.city,
+          lastEducation: r.lastEducation,
+          source: r.source,
+          consentAt: now,
+          consentVersion: PRIVACY_NOTICE_VERSION,
+          consentMethod: "HR_ATTESTED" as const,
+          consentEvidence: r.consentEvidence,
+          consentRecordedById: user.id,
+          talentPoolConsent: r.talentPool,
+          retainUntil: retainUntil(r.talentPool, now),
+        })),
+        select: { id: true, source: true, talentPoolConsent: true },
+      })
+    : [];
+
+  for (const c of created) {
+    await writeAudit({
+      actorId: user.id,
+      action: "candidate.imported_by_hr",
+      entityType: "Candidate",
+      entityId: c.id,
+      changes: { source: c.source, talentPool: c.talentPoolConsent, consentVersion: PRIVACY_NOTICE_VERSION, file: file.name.slice(0, 200) },
+    });
+  }
+  redirect(`/dashboard/kandidat/bank?impor=${created.length}&lewati=${known.size}`);
+}
+
+// Adds or replaces the CV kept on a bank candidate (e.g. after an import without CVs)
+export async function uploadCandidateCv(candidateId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireRole("ADMIN", "HR");
+  const candidate = await db.candidate.findUnique({ where: { id: candidateId }, select: { anonymizedAt: true } });
+  if (!candidate || candidate.anonymizedAt) return { message: "Kandidat tidak ditemukan." };
+
+  const cv = formData.get("cv");
+  if (!(cv instanceof File) || cv.size === 0) return failed(formData, { cv: ["Pilih file CV (PDF atau DOCX)."] });
+  if (cv.size > MAX_CV_BYTES) return failed(formData, { cv: ["Ukuran CV maksimal 5 MB."] });
+  const data = Buffer.from(await cv.arrayBuffer());
+  const type = detectCvType(data);
+  if (!type) return failed(formData, { cv: ["Format CV harus PDF atau DOCX."] });
+
+  const fileKey = await saveFile("cv", data, type.ext);
+  try {
+    await db.resume.create({
+      data: { candidateId, fileKey, fileName: cv.name.slice(0, 200), mimeType: type.mime, sizeBytes: data.length },
+    });
+  } catch (error) {
+    await deleteFile(fileKey);
+    console.error("uploadCandidateCv failed", error);
+    return failed(formData, undefined, "Gagal menyimpan CV. Coba lagi.");
+  }
+  await writeAudit({ actorId: user.id, action: "candidate.cv_uploaded", entityType: "Candidate", entityId: candidateId });
+  refresh();
+  return { ok: true, message: "CV tersimpan.", attempt: Date.now() };
 }
 
 // Puts a bank-data candidate into an open job, reusing their latest CV

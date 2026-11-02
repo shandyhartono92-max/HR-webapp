@@ -97,6 +97,7 @@ It runs automatically in the background after each application (`after()` in `ac
 - **Tambah kandidat**: for CVs received by email, WhatsApp, job fair, referral, etc. HR must tick that the candidate agreed and write the evidence (stored as `consentMethod = HR_ATTESTED` with `consentEvidence` and who recorded it; a database CHECK enforces both). Share `/karir/privasi` with the candidate when asking for consent.
 - Without a job, the CV is stored on the candidate. **Masukkan ke lowongan** creates an application with the latest CV and runs AI screening for that job.
 - Retention applies the same way and also removes candidate-level CVs and the consent evidence text.
+- **Import dari Excel** (`/dashboard/kandidat/bank/import`): HR downloads the template (`import/template`, built by `src/lib/candidate-import.ts` with dropdowns and a "Petunjuk" sheet), fills one row per candidate (max 500) and uploads it. Every row needs consent evidence, and HR ticks a statement for the whole file. If any row is invalid nothing is saved and the page lists the rows to fix; emails already in the bank are skipped. Imported candidates have no CV: upload it from the profile page (**Unggah CV**) before *Masukkan ke lowongan*. Each imported candidate gets a `candidate.imported_by_hr` audit entry.
 
 ### Starting the app and testing from a MacBook or phone
 

@@ -1,7 +1,7 @@
 "use client";
 
 import { useActionState } from "react";
-import { addCandidate, attachToJob } from "@/app/actions/candidate-bank";
+import { addCandidate, attachToJob, importCandidates, uploadCandidateCv } from "@/app/actions/candidate-bank";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import { educationLevels, manualSources } from "@/lib/labels";
 
@@ -105,6 +105,93 @@ export function AddCandidateForm({ jobs }: { jobs: Option[] }) {
 
       <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
         {pending ? "Menyimpan…" : "Simpan kandidat"}
+      </button>
+    </form>
+  );
+}
+
+export function ImportCandidatesForm() {
+  const [state, action, pending] = useActionState(importCandidates, undefined);
+  const hydrated = useHydrated();
+
+  return (
+    <form key={state?.attempt} action={action} className="space-y-4">
+      <FormMessage message={state?.message} />
+      {state?.issues && (
+        <div className="overflow-x-auto rounded-lg border border-red-200">
+          <table className="w-full text-left text-sm">
+            <thead className="bg-red-50 text-red-800">
+              <tr>
+                <th className="px-3 py-2 font-medium">Baris</th>
+                <th className="px-3 py-2 font-medium">Nama</th>
+                <th className="px-3 py-2 font-medium">Yang perlu diperbaiki</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-red-100">
+              {state.issues.map((i) => (
+                <tr key={i.rowNumber}>
+                  <td className="px-3 py-2 tabular-nums text-slate-700">{i.rowNumber}</td>
+                  <td className="px-3 py-2 text-slate-900">{i.name}</td>
+                  <td className="px-3 py-2 text-slate-700">
+                    {i.messages.map((m) => (
+                      <p key={m}>{m}</p>
+                    ))}
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+
+      <Field label="File Excel" htmlFor="importFile" hint="Template yang sudah diisi (.xlsx), maksimal 2 MB.">
+        <input
+          id="importFile"
+          name="file"
+          type="file"
+          required
+          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
+        />
+      </Field>
+
+      <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
+        <input type="checkbox" name="consentConfirmed" className="mt-0.5 size-4 accent-teal-700" />
+        Semua kandidat di file ini sudah menyetujui datanya disimpan dan diproses untuk rekrutmen (UU PDP), dan buktinya
+        sudah ditulis di kolom &quot;Bukti persetujuan&quot;.
+      </label>
+
+      <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+        {pending ? "Mengimpor…" : "Import kandidat"}
+      </button>
+    </form>
+  );
+}
+
+export function UploadCvForm({ candidateId, hasCv }: { candidateId: string; hasCv: boolean }) {
+  const [state, action, pending] = useActionState(uploadCandidateCv.bind(null, candidateId), undefined);
+  const hydrated = useHydrated();
+  return (
+    <form key={state?.attempt} action={action} className="space-y-2">
+      {state?.ok ? (
+        <p role="status" className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">
+          {state.message}
+        </p>
+      ) : (
+        <FormMessage message={state?.message} />
+      )}
+      <Field label={hasCv ? "Ganti CV" : "Unggah CV"} htmlFor="candidateCv" hint="PDF atau DOCX, maksimal 5 MB." errors={state?.errors?.cv}>
+        <input
+          id="candidateCv"
+          name="cv"
+          type="file"
+          required
+          accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
+        />
+      </Field>
+      <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+        {pending ? "Mengunggah…" : "Simpan CV"}
       </button>
     </form>
   );
