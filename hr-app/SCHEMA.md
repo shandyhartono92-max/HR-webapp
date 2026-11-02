@@ -1,6 +1,6 @@
 # HR App — Database Schema
 
-Source: [prisma/schema.prisma](prisma/schema.prisma) · PostgreSQL · 17 tables
+Source: [prisma/schema.prisma](prisma/schema.prisma) · MariaDB / MySQL (XAMPP) · 18 tables, lowercase table names (e.g. `audit_log`)
 
 ## Diagram
 
@@ -79,7 +79,7 @@ Viewing a decrypted value writes an `AuditLog` entry (e.g. `employee.nik_viewed`
 
 ## Rules enforced in the app (not the database)
 
-- Only one active `BankAccount` per employee (also add a partial unique index in a raw SQL migration).
+- Only one active `BankAccount` per employee (enforced in the app and by a database trigger, see the baseline migration).
 - A bank request can't be approved by the employee who submitted it.
 - A `PKWT` contract must have an `endDate`. A reminder goes out 30 days before it ends (`reminderSentAt`).
 - SP1–SP3 letters require a `reason`, and `validUntil` defaults to 6 months.

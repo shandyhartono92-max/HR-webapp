@@ -14,7 +14,7 @@ generator client {
 
 // Connection URL lives in prisma.config.ts (DATABASE_URL)
 datasource db {
-  provider = "postgresql"
+  provider = "mysql" // MariaDB (XAMPP) / MySQL
 }
 
 // ─────────────────────────────────────────────
@@ -133,31 +133,33 @@ enum BankChangeStatus {
 // ─────────────────────────────────────────────
 
 model User {
-  id               String    @id @default(cuid())
-  email            String    @unique
-  name             String
-  role             Role      @default(EMPLOYEE)
+  id                 String    @id @default(cuid())
+  email              String    @unique
+  name               String
+  role               Role      @default(EMPLOYEE)
   passwordHash       String
   mustChangePassword Boolean   @default(false) // set when HR creates the account with a temporary password
-  twoFactorEnabled Boolean   @default(false)
-  isActive         Boolean   @default(true)
-  lastLoginAt      DateTime?
-  createdAt        DateTime  @default(now())
-  updatedAt        DateTime  @updatedAt
+  twoFactorEnabled   Boolean   @default(false)
+  isActive           Boolean   @default(true)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
 
-  employee              Employee?
-  managedDepartments    Department[]        @relation("DepartmentHead")
-  jobsAsHiringManager   Job[]               @relation("JobHiringManager")
-  screeningsReviewed    Screening[]         @relation("ScreeningReviewer")
-  interviews            Interview[]
-  documentsUploaded     Document[]          @relation("DocumentUploader")
-  lettersIssued         Letter[]            @relation("LetterIssuer")
-  bankRequestsReviewed  BankChangeRequest[] @relation("BankRequestReviewer")
-  auditLogs             AuditLog[]
-  notifications         Notification[]
-  consentsRecorded      Candidate[]         @relation("ConsentRecorder")
-  kitsEdited            InterviewKit[]      @relation("KitEditor")
-  kitsApproved          InterviewKit[]      @relation("KitApprover")
+  employee             Employee?
+  managedDepartments   Department[]        @relation("DepartmentHead")
+  jobsAsHiringManager  Job[]               @relation("JobHiringManager")
+  screeningsReviewed   Screening[]         @relation("ScreeningReviewer")
+  interviews           Interview[]
+  documentsUploaded    Document[]          @relation("DocumentUploader")
+  lettersIssued        Letter[]            @relation("LetterIssuer")
+  bankRequestsReviewed BankChangeRequest[] @relation("BankRequestReviewer")
+  auditLogs            AuditLog[]
+  notifications        Notification[]
+  consentsRecorded     Candidate[]         @relation("ConsentRecorder")
+  kitsEdited           InterviewKit[]      @relation("KitEditor")
+  kitsApproved         InterviewKit[]      @relation("KitApprover")
+
+  @@map("user")
 }
 
 model Department {
@@ -169,6 +171,8 @@ model Department {
 
   jobs      Job[]
   employees Employee[]
+
+  @@map("department")
 }
 
 // ─────────────────────────────────────────────
@@ -206,34 +210,36 @@ model Job {
   interviewKits InterviewKit[]
 
   @@index([status])
+  @@map("job")
 }
 
 // A person who applied. Not a login user.
 model Candidate {
-  id                String    @id @default(cuid())
-  fullName          String
-  email             String    @unique
-  phone             String
-  city              String?
-  lastEducation     String?
-  source            String? // how the candidate reached us, see applicationSources / manualSources
+  id                  String        @id @default(cuid())
+  fullName            String
+  email               String        @unique
+  phone               String
+  city                String?
+  lastEducation       String?
+  source              String? // how the candidate reached us, see applicationSources / manualSources
   // UU PDP consent
-  consentAt         DateTime
-  consentVersion    String // version of the privacy notice they accepted
-  consentMethod     ConsentMethod @default(SELF_FORM)
-  consentEvidence   String? // HR_ATTESTED: where/how the candidate agreed, e.g. "email 30 Okt 2026"
+  consentAt           DateTime
+  consentVersion      String // version of the privacy notice they accepted
+  consentMethod       ConsentMethod @default(SELF_FORM)
+  consentEvidence     String?       @db.VarChar(300) // HR_ATTESTED: where/how the candidate agreed, e.g. "email 30 Okt 2026"
   consentRecordedById String?
-  consentRecordedBy User?     @relation("ConsentRecorder", fields: [consentRecordedById], references: [id])
-  talentPoolConsent Boolean   @default(false)
-  retainUntil       DateTime // auto-delete date for personal data
-  anonymizedAt      DateTime? // set when personal data has been wiped
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime  @updatedAt
+  consentRecordedBy   User?         @relation("ConsentRecorder", fields: [consentRecordedById], references: [id])
+  talentPoolConsent   Boolean       @default(false)
+  retainUntil         DateTime // auto-delete date for personal data
+  anonymizedAt        DateTime? // set when personal data has been wiped
+  createdAt           DateTime      @default(now())
+  updatedAt           DateTime      @updatedAt
 
   applications Application[]
   resumes      Resume[] // CVs added by HR before the candidate is linked to a job
 
   @@index([retainUntil])
+  @@map("candidate")
 }
 
 enum ConsentMethod {
@@ -251,37 +257,39 @@ model Application {
   expectedSalary   Int? // gaji yang diharapkan, IDR
   noticePeriodDays Int?
   source           String? // website, LinkedIn, referral, JobStreet, ...
-  rejectionReason  String?
+  rejectionReason  String?          @db.VarChar(500)
   appliedAt        DateTime         @default(now())
   stageChangedAt   DateTime         @default(now())
 
-  resumes    Resume[]
-  screenings Screening[]
-  interviews Interview[]
-  letters    Letter[] // offer letters
+  resumes      Resume[]
+  screenings   Screening[]
+  interviews   Interview[]
+  letters      Letter[] // offer letters
   interviewKit InterviewKit? // candidate-specific questions
-  employee   Employee? // set when the candidate is hired
+  employee     Employee? // set when the candidate is hired
 
   @@unique([candidateId, jobId])
   @@index([jobId, stage])
+  @@map("application")
 }
 
 model Interview {
-  id             String        @id @default(cuid())
+  id             String             @id @default(cuid())
   applicationId  String
-  application    Application   @relation(fields: [applicationId], references: [id], onDelete: Cascade)
+  application    Application        @relation(fields: [applicationId], references: [id], onDelete: Cascade)
   interviewerId  String
-  interviewer    User          @relation(fields: [interviewerId], references: [id])
+  interviewer    User               @relation(fields: [interviewerId], references: [id])
   scheduledAt    DateTime
-  durationMin    Int           @default(60)
+  durationMin    Int                @default(60)
   mode           InterviewMode
-  locationOrLink String?
+  locationOrLink String?            @db.VarChar(300)
   rating         Int? // 1–5
-  feedback       String?       @db.Text
+  feedback       String?            @db.Text
   recommendation ScreeningDecision?
-  createdAt      DateTime      @default(now())
+  createdAt      DateTime           @default(now())
 
   @@index([scheduledAt])
+  @@map("interview")
 }
 
 enum InterviewKitStatus {
@@ -310,6 +318,7 @@ model InterviewKit {
   updatedAt     DateTime           @updatedAt
 
   @@index([jobId])
+  @@map("interview_kit")
 }
 
 // ─────────────────────────────────────────────
@@ -325,14 +334,16 @@ model Resume {
   candidateId   String?
   candidate     Candidate?   @relation(fields: [candidateId], references: [id], onDelete: Cascade)
   fileKey       String // object-storage key
-  fileName      String
+  fileName      String       @db.VarChar(255)
   mimeType      String
   sizeBytes     Int
-  extractedText String?     @db.Text
+  extractedText String?      @db.Text
   // Structured data from the AI: skills, experience, education. Protected attributes
   // (religion, age, marital status, photo) are stripped before this is stored.
   parsedData    Json?
-  uploadedAt    DateTime    @default(now())
+  uploadedAt    DateTime     @default(now())
+
+  @@map("resume")
 }
 
 // One row per AI run; the latest row is the current score. Kept for audit.
@@ -352,9 +363,10 @@ model Screening {
   reviewedBy    User?              @relation("ScreeningReviewer", fields: [reviewedById], references: [id])
   reviewedAt    DateTime?
   decision      ScreeningDecision?
-  decisionNote  String?
+  decisionNote  String?            @db.VarChar(1000)
 
   @@index([applicationId, createdAt])
+  @@map("screening")
 }
 
 // ─────────────────────────────────────────────
@@ -362,12 +374,12 @@ model Screening {
 // ─────────────────────────────────────────────
 
 model Employee {
-  id             String         @id @default(cuid())
-  employeeNumber String         @unique // NIK karyawan / NIP internal
-  userId         String?        @unique
-  user           User?          @relation(fields: [userId], references: [id])
-  applicationId  String?        @unique
-  application    Application?   @relation(fields: [applicationId], references: [id])
+  id             String       @id @default(cuid())
+  employeeNumber String       @unique // NIK karyawan / NIP internal
+  userId         String?      @unique
+  user           User?        @relation(fields: [userId], references: [id])
+  applicationId  String?      @unique
+  application    Application? @relation(fields: [applicationId], references: [id])
 
   fullName       String
   email          String         @unique
@@ -384,22 +396,22 @@ model Employee {
   endDate        DateTime?      @db.Date
 
   // Personal data (UU PDP) — HR/Admin only
-  birthPlace     String?
-  birthDate      DateTime?      @db.Date
-  gender         Gender?
-  address        String?
-  ptkpStatus     PtkpStatus?
-  nikKtpEnc      String? // 16-digit NIK, encrypted
-  nikKtpLast4    String?
-  npwpEnc        String?
-  npwpLast4      String?
+  birthPlace               String?
+  birthDate                DateTime?   @db.Date
+  gender                   Gender?
+  address                  String?     @db.VarChar(500)
+  ptkpStatus               PtkpStatus?
+  nikKtpEnc                String? // 16-digit NIK, encrypted
+  nikKtpLast4              String?
+  npwpEnc                  String?
+  npwpLast4                String?
   bpjsKesehatanEnc         String?
   bpjsKesehatanLast4       String?
   bpjsKetenagakerjaanEnc   String?
   bpjsKetenagakerjaanLast4 String?
 
-  createdAt      DateTime       @default(now())
-  updatedAt      DateTime       @updatedAt
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   contracts          Contract[]
   documents          Document[]
@@ -408,6 +420,7 @@ model Employee {
   bankChangeRequests BankChangeRequest[]
 
   @@index([status])
+  @@map("employee")
 }
 
 model Contract {
@@ -429,6 +442,7 @@ model Contract {
   createdAt      DateTime       @default(now())
 
   @@index([endDate])
+  @@map("contract")
 }
 
 model Document {
@@ -436,9 +450,9 @@ model Document {
   employeeId   String
   employee     Employee     @relation(fields: [employeeId], references: [id])
   type         DocumentType
-  title        String
+  title        String       @db.VarChar(255)
   fileKey      String
-  fileName     String
+  fileName     String       @db.VarChar(255)
   mimeType     String
   sizeBytes    Int
   version      Int          @default(1)
@@ -455,6 +469,7 @@ model Document {
   letter   Letter?
 
   @@index([employeeId, type])
+  @@map("document")
 }
 
 model LetterTemplate {
@@ -469,6 +484,7 @@ model LetterTemplate {
   letters Letter[]
 
   @@unique([type, version])
+  @@map("letter_template")
 }
 
 // Addressed to an employee, or (offer letter) to a candidate's application.
@@ -497,6 +513,7 @@ model Letter {
 
   @@index([employeeId])
   @@index([type, issuedAt])
+  @@map("letter")
 }
 
 // ─────────────────────────────────────────────
@@ -504,22 +521,23 @@ model Letter {
 // ─────────────────────────────────────────────
 
 model BankAccount {
-  id                 String    @id @default(cuid())
+  id                 String             @id @default(cuid())
   employeeId         String
-  employee           Employee  @relation(fields: [employeeId], references: [id])
+  employee           Employee           @relation(fields: [employeeId], references: [id])
   bankCode           String // e.g. BCA, MANDIRI, BRI, BNI
   bankName           String
   accountNumberEnc   String
   accountNumberLast4 String
   accountHolderName  String
-  isActive           Boolean   @default(true) // exactly one active per employee (enforced in app + partial index)
-  effectiveFrom      DateTime  @db.Date
+  isActive           Boolean            @default(true) // exactly one active per employee (enforced in app + database trigger)
+  effectiveFrom      DateTime           @db.Date
   deactivatedAt      DateTime?
-  requestId          String?   @unique
+  requestId          String?            @unique
   request            BankChangeRequest? @relation(fields: [requestId], references: [id])
-  createdAt          DateTime  @default(now())
+  createdAt          DateTime           @default(now())
 
   @@index([employeeId, isActive])
+  @@map("bank_account")
 }
 
 model BankChangeRequest {
@@ -544,20 +562,21 @@ model BankChangeRequest {
   reviewedById       String?
   reviewedBy         User?            @relation("BankRequestReviewer", fields: [reviewedById], references: [id])
   reviewedAt         DateTime?
-  rejectionReason    String?
+  rejectionReason    String?          @db.VarChar(500)
   effectivePayroll   String? // payroll period it applies from, "2026-11"
   createdAt          DateTime         @default(now())
 
   resultingAccount BankAccount?
 
   @@index([status])
+  @@map("bank_change_request")
 }
 
 // ─────────────────────────────────────────────
 // Shared
 // ─────────────────────────────────────────────
 
-// Append-only. Revoke UPDATE/DELETE on this table from the app's DB user.
+// Append-only: a database trigger rejects UPDATE and DELETE (see the init migration).
 model AuditLog {
   id         String   @id @default(cuid())
   actorId    String? // null = system / public candidate
@@ -567,11 +586,12 @@ model AuditLog {
   entityId   String
   changes    Json? // before/after of non-sensitive fields only
   ip         String?
-  userAgent  String?
+  userAgent  String?  @db.Text
   createdAt  DateTime @default(now())
 
   @@index([entityType, entityId])
   @@index([actorId, createdAt])
+  @@map("audit_log")
 }
 
 model Notification {
@@ -580,10 +600,11 @@ model Notification {
   user      User      @relation(fields: [userId], references: [id], onDelete: Cascade)
   type      String
   title     String
-  body      String
+  body      String    @db.Text
   link      String?
   readAt    DateTime?
   createdAt DateTime  @default(now())
 
   @@index([userId, readAt])
+  @@map("notification")
 }

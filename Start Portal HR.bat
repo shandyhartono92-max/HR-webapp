@@ -1,32 +1,46 @@
 @echo off
-rem Starts Portal HR on this PC: the local database (prisma dev) and the web app.
+rem Starts Portal HR on this PC: the MariaDB database from XAMPP and the web app.
 rem Double-click this file, keep the window open while using the app, close it to stop.
+rem XAMPP is expected in C:\xampp; set XAMPP_DIR before running if it lives elsewhere.
 title Portal HR
 cd /d "%~dp0hr-app"
+if not defined XAMPP_DIR set "XAMPP_DIR=C:\xampp"
 
 echo.
 echo === Portal HR ===
 echo.
-echo [1/2] Menyalakan database lokal...
-rem Fixed ports so DATABASE_URL in .env keeps matching. "Already running" is fine.
-call npx prisma dev --name hr-app --detach --port 51213 --db-port 51214 --shadow-db-port 51215 >nul 2>&1
-call npx prisma dev ls 2>nul | findstr /c:"hr-app" | findstr /c:"running" >nul
+echo [1/3] Memeriksa database MariaDB (XAMPP)...
+netstat -ano | findstr /r /c:":3306 .*LISTENING" >nul
+if errorlevel 1 (
+  if not exist "%XAMPP_DIR%\mysql\bin\mysqld.exe" (
+    echo.
+    echo XAMPP tidak ditemukan di %XAMPP_DIR%. Pasang XAMPP, atau nyalakan MySQL dari XAMPP Control Panel.
+    pause
+    exit /b 1
+  )
+  echo       MariaDB belum jalan, menyalakan...
+  start "MariaDB (XAMPP)" /min "%XAMPP_DIR%\mysql\bin\mysqld.exe" --defaults-file="%XAMPP_DIR%\mysql\bin\my.ini" --standalone
+  for /l %%i in (1,1,30) do (
+    netstat -ano | findstr /r /c:":3306 .*LISTENING" >nul && goto db_ready
+    ping -n 2 127.0.0.1 >nul
+  )
+  echo.
+  echo MariaDB tidak bisa dinyalakan. Coba nyalakan MySQL dari XAMPP Control Panel, lalu jalankan file ini lagi.
+  pause
+  exit /b 1
+)
+:db_ready
+
+echo [2/3] Memperbarui struktur database (jika ada perubahan)...
+call npx prisma migrate deploy >nul 2>&1
 if errorlevel 1 (
   echo.
-  echo Database tidak bisa dinyalakan. Lihat bagian "Local database notes" di hr-app\README.md.
+  echo Gagal memperbarui database. Jalankan "npx prisma migrate deploy" di folder hr-app untuk melihat pesannya.
   pause
   exit /b 1
 )
 
-rem A Prisma Studio left open by "Buka Database.bat" (window closed with X) holds the
-rem database's only connection, so close it before the app starts
-for /f "tokens=5" %%p in ('netstat -ano ^| findstr /r /c:":5555 .*LISTENING"') do (
-  echo Menutup Prisma Studio yang masih terbuka...
-  taskkill /PID %%p /T /F >nul 2>&1
-)
-taskkill /FI "WINDOWTITLE eq Prisma Studio*" /T /F >nul 2>&1
-
-echo [2/2] Menyalakan aplikasi...
+echo [3/3] Menyalakan aplikasi...
 echo.
 echo Buka dari komputer ini : http://localhost:3000
 for /f "tokens=2 delims=:" %%a in ('ipconfig ^| findstr /c:"IPv4"') do (

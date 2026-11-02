@@ -1,5 +1,6 @@
 import "server-only";
 import { db } from "@/lib/db";
+import { equalsIgnoringCase } from "@/lib/match";
 
 type Client = Pick<typeof db, "department">;
 
@@ -7,7 +8,7 @@ type Client = Pick<typeof db, "department">;
 // name (ignoring case, so "it" finds "IT"), otherwise create it.
 export async function findOrCreateDepartment(name: string, client: Client = db) {
   const existing = await client.department.findFirst({
-    where: { name: { equals: name, mode: "insensitive" } },
+    where: { name: equalsIgnoringCase(name) },
     select: { id: true },
   });
   return (

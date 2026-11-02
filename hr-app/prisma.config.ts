@@ -9,7 +9,8 @@ export default defineConfig({
   },
   datasource: {
     url: env("DATABASE_URL"),
-    // Only needed when the dev database cannot create a temporary one (e.g. `prisma dev`)
+    // Only for `prisma migrate dev`: an empty database it may wipe (portal_hr_shadow),
+    // since the app's MariaDB user cannot create databases
     shadowDatabaseUrl: process.env.SHADOW_DATABASE_URL,
   },
 });

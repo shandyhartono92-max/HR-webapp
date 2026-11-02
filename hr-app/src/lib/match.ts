@@ -1,10 +1,9 @@
-// Prisma `where` that matches a text column against any of `values`, ignoring case.
-// Unique columns like employeeNumber are case-sensitive in the database, so
-// "uji-001" and "UJI-001" must be compared this way to catch duplicates.
+// Prisma `where` filters that ignore upper/lower case.
+// The database uses the utf8mb4_unicode_ci collation, so a plain comparison already
+// ignores case ("uji-001" = "UJI-001"), and unique columns reject such duplicates.
+// These helpers keep that intent visible at the call sites.
 export function anyEqualsIgnoringCase<F extends string>(field: F, values: string[]) {
-  return {
-    OR: values.map((v) => ({ [field]: { equals: v, mode: "insensitive" as const } }) as Record<F, { equals: string; mode: "insensitive" }>),
-  };
+  return { OR: values.map((v) => ({ [field]: { equals: v } }) as Record<F, { equals: string }>) };
 }
 
-export const equalsIgnoringCase = (value: string) => ({ equals: value, mode: "insensitive" as const });
+export const equalsIgnoringCase = (value: string) => ({ equals: value });

@@ -150,26 +150,36 @@ export async function importCandidates(_state: ImportState, formData: FormData):
   const fresh = parsed.rows.filter((r) => !known.has(r.email));
 
   const now = new Date();
-  const created = fresh.length
-    ? await db.candidate.createManyAndReturn({
-        data: fresh.map((r) => ({
-          fullName: r.fullName,
-          email: r.email,
-          phone: r.phone,
-          city: r.city,
-          lastEducation: r.lastEducation,
-          source: r.source,
-          consentAt: now,
-          consentVersion: PRIVACY_NOTICE_VERSION,
-          consentMethod: "HR_ATTESTED" as const,
-          consentEvidence: r.consentEvidence,
-          consentRecordedById: user.id,
-          talentPoolConsent: r.talentPool,
-          retainUntil: retainUntil(r.talentPool, now),
-        })),
-        select: { id: true, source: true, talentPoolConsent: true },
-      })
-    : [];
+  // One insert per row inside a transaction (MySQL/MariaDB has no createManyAndReturn)
+  const created = await db.$transaction(
+    async (tx) => {
+      const rows = [];
+      for (const r of fresh) {
+        rows.push(
+          await tx.candidate.create({
+            data: {
+              fullName: r.fullName,
+              email: r.email,
+              phone: r.phone,
+              city: r.city,
+              lastEducation: r.lastEducation,
+              source: r.source,
+              consentAt: now,
+              consentVersion: PRIVACY_NOTICE_VERSION,
+              consentMethod: "HR_ATTESTED",
+              consentEvidence: r.consentEvidence,
+              consentRecordedById: user.id,
+              talentPoolConsent: r.talentPool,
+              retainUntil: retainUntil(r.talentPool, now),
+            },
+            select: { id: true, source: true, talentPoolConsent: true },
+          }),
+        );
+      }
+      return rows;
+    },
+    { timeout: 120_000 },
+  );
 
   for (const c of created) {
     await writeAudit({

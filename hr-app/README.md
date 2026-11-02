@@ -3,19 +3,26 @@
 Internal HR web app: hiring, CV screening, HR documents and employee bank data.
 UI in Bahasa Indonesia. Database design: [SCHEMA.md](SCHEMA.md).
 
-**Stack:** Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS 4 · PostgreSQL · Prisma 7 · jose (session cookie) · bcrypt · zod
+**Stack:** Next.js 16 (App Router, Cache Components) · TypeScript · Tailwind CSS 4 · MariaDB / MySQL (XAMPP) · Prisma 7 (`@prisma/adapter-mariadb`) · jose (session cookie) · bcrypt · zod
 
 ## Run locally
 
-Requires Node.js 22+.
+Requires Node.js 22+ and MariaDB/MySQL (on this PC: XAMPP in `C:\xampp`, database `portal_hr`, user `portal_hr`). On Windows just double-click `Start Portal HR.bat`; by hand:
 
 ```bash
 npm install
 cp .env.example .env        # then fill in the values (see below)
-npx prisma dev --name hr-app --detach   # local Postgres, no install needed
-npm run db:migrate
-npm run db:seed
+npx prisma migrate deploy   # creates/updates the tables
+npm run db:seed             # first time only
 npm run dev
+```
+
+A new empty database and its user can be created as MariaDB root (XAMPP: no password):
+
+```sql
+CREATE DATABASE portal_hr CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
+CREATE USER 'portal_hr'@'localhost' IDENTIFIED BY '...';
+GRANT ALL PRIVILEGES ON portal_hr.* TO 'portal_hr'@'localhost';
 ```
 
 Open http://localhost:3000. `/karir` is the public careers page and `/login` is the staff login.
@@ -25,8 +32,9 @@ The seed creates an admin with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from `
 
 | Name | Purpose |
 |---|---|
-| `DATABASE_URL` | PostgreSQL connection string |
-| `SHADOW_DATABASE_URL` | Only for `prisma dev` (port after the main DB port) |
+| `DATABASE_URL` | `mysql://portal_hr:PASSWORD@127.0.0.1:3306/portal_hr` |
+| `SHADOW_DATABASE_URL` | Only for `npx prisma migrate dev`: an empty database it may wipe (`portal_hr_shadow`) |
+| `DATABASE_POOL_MAX` | Optional, database connections kept open by the app (default 5) |
 | `SESSION_SECRET` | Signs the login cookie. 32 random bytes, base64 |
 | `ENCRYPTION_KEY` | Encrypts NIK, NPWP, BPJS, bank account numbers and salary. 32 random bytes, base64. **If it's lost, that data can't be recovered.** Keep a backup outside the server |
 
@@ -41,7 +49,9 @@ node -e "console.log(require('crypto').randomBytes(32).toString('base64'))"
 ```
 prisma/
   schema.prisma          17 tables, see SCHEMA.md
-  migrations/            includes raw SQL rules (append-only audit log, one active bank account, PKWT end date)
+  migrations/            MariaDB baseline incl. raw SQL rules (triggers: append-only audit log, one active bank
+                         account, letter/CV owner, attested consent; CHECK: PKWT end date)
+  migrations-postgresql/ old PostgreSQL history, reference only (not applied)
   seed.ts                development data
 src/
   proxy.ts               quick redirect to /login when there is no session cookie
@@ -104,25 +114,26 @@ It runs automatically in the background after each application (`after()` in `ac
 
 ### Starting the app and testing from a MacBook or phone
 
-1. On this PC, double-click **`Start Portal HR.bat`** (in `D:\Claude HR`). It starts the local database and the app, and prints the address for other devices, e.g. `http://192.168.100.115:3000`. Keep the window open; closing it stops the app.
+1. On this PC, double-click **`Start Portal HR.bat`** (in `D:\Claude HR`). It starts XAMPP's MariaDB if it isn't running, applies any new migrations, starts the app, and prints the address for other devices, e.g. `http://192.168.100.115:3000`. Keep the window open; closing it stops the app (MariaDB keeps running).
 2. On the MacBook (same Wi-Fi/office network), open that address in Safari or Chrome.
 
 - `next.config.ts` allows this PC's current network addresses automatically (read at start-up), so a new Wi-Fi address only needs a restart of the .bat.
 - If the MacBook can't connect: check both are on the same network (guest Wi-Fi often blocks devices from seeing each other), and that Windows Firewall allows port 3000 on Private networks.
 - This is plain `http` in development mode: internal testing with sample data only.
 
-### Local database notes (`prisma dev`)
+### Database (MariaDB in XAMPP)
 
 Start the app from this folder with `npm run dev` (inside `hr-app`). Note: the Claude preview pane's own launcher resolves paths from the session's original folder, so run the dev server directly here.
 
-`prisma dev` is a lightweight local Postgres. It handles one connection at a time, so `.env` sets `DATABASE_POOL_MAX=1`; remove that for a real PostgreSQL server. Avoid running scripts against it while `npm run dev` is running. If the app shows "Connection terminated unexpectedly", stop the app and run:
+- **Where**: XAMPP's MariaDB 10.11 on port 3306, database `portal_hr` (collation `utf8mb4_unicode_ci`), user `portal_hr` whose password is only in `.env`. `portal_hr_shadow` is an empty helper for `prisma migrate dev`.
+- **Table names are lowercase** (`@@map`, e.g. `audit_log`, `bank_account`), so a dump made on Windows imports unchanged on a Linux MySQL/MariaDB host, where table names are case-sensitive.
+- **Case-insensitive comparisons**: the `_ci` collation makes `"uji-001" = "UJI-001"` in queries and in unique indexes (`src/lib/match.ts` only names that intent).
+- **Rules Prisma can't express** live in the baseline migration: triggers for the append-only audit log, one active bank account per employee, a letter's recipient, a CV's owner and HR-attested consent, plus a CHECK for the PKWT end date. (MariaDB rejects CHECKs on columns whose foreign key cascades, hence triggers.)
+- **Changing the schema**: edit `prisma/schema.prisma`, run `npx prisma migrate dev --name what_changed`, commit the new folder under `prisma/migrations`. `Start Portal HR.bat` applies pending migrations (`prisma migrate deploy`) on start.
+- **Moving to hosting**: create a MySQL 8 / MariaDB 10.6+ database with `utf8mb4_unicode_ci`, set `DATABASE_URL`, run `npx prisma migrate deploy` (or import a dump of `portal_hr`). The database user needs the TRIGGER privilege; with binary logging on, MySQL also needs `log_bin_trust_function_creators=1` to create the triggers.
+- **History**: the data was moved from the earlier PostgreSQL (`prisma dev`) on 2 Nov 2026, all 18 tables with matching row counts. The old migrations are in `prisma/migrations-postgresql` for reference.
 
-```bash
-npx prisma dev stop hr-app
-npx prisma dev --name hr-app --detach --port 51213 --db-port 51214 --shadow-db-port 51215
-```
-
-To look at the data, double-click **`Buka Database.bat`** (in `D:\Claude HR`). It stops Portal HR, opens Prisma Studio at http://localhost:5555, and when you press a key in its window it closes Studio and starts Portal HR again. Encrypted fields show as `v1.…`; changes made in Studio skip the app's validation and audit log. If that window is closed with X instead, just run `Start Portal HR.bat`: it closes a leftover Studio (port 5555) before starting the app.
+To look at the data, double-click **`Buka Database.bat`** (in `D:\Claude HR`). With XAMPP's Apache running it opens phpMyAdmin on the `portal_hr` database; otherwise Prisma Studio at http://localhost:5555. Portal HR keeps running meanwhile. Encrypted fields show as `v1.…`; changes made there skip the app's validation and audit log, and `audit_log` rows cannot be changed or deleted.
 
 ### Employee data
 
