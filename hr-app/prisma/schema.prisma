@@ -178,8 +178,11 @@ model Job {
   slug               String         @unique // used in the careers page URL
   departmentId       String
   department         Department     @relation(fields: [departmentId], references: [id])
-  hiringManagerId    String
-  hiringManager      User           @relation("JobHiringManager", fields: [hiringManagerId], references: [id])
+  // Typed freely on the job form. Linked to a user only when the name matches a staff
+  // account, which gives that hiring manager access to the job's candidates.
+  hiringManagerName  String
+  hiringManagerId    String?
+  hiringManager      User?          @relation("JobHiringManager", fields: [hiringManagerId], references: [id])
   employmentType     EmploymentType
   location           String
   description        String         @db.Text

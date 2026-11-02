@@ -11,8 +11,8 @@ import { EmploymentType, JobStatus } from "@/generated/prisma/enums";
 const JobSchema = z
   .object({
     title: z.string().trim().min(3, { error: "Judul minimal 3 karakter." }).max(120),
-    departmentId: z.string().min(1, { error: "Pilih departemen." }),
-    hiringManagerId: z.string().min(1, { error: "Pilih hiring manager." }),
+    departmentName: z.string().trim().min(2, { error: "Departemen wajib diisi." }).max(80),
+    hiringManagerName: z.string().trim().min(2, { error: "Hiring manager wajib diisi." }).max(120),
     employmentType: z.enum(EmploymentType, { error: "Pilih jenis pekerjaan." }),
     location: z.string().trim().min(2, { error: "Lokasi wajib diisi." }).max(120),
     description: z.string().trim().min(20, { error: "Deskripsi minimal 20 karakter." }).max(5000),
@@ -34,19 +34,38 @@ function parse(formData: FormData) {
   return JobSchema.safeParse(Object.fromEntries(formData));
 }
 
-// Hiring manager must be an active staff user
-async function checkReferences(departmentId: string, hiringManagerId: string) {
-  const [dept, manager] = await Promise.all([
-    db.department.findUnique({ where: { id: departmentId }, select: { id: true } }),
-    db.user.findFirst({
-      where: { id: hiringManagerId, isActive: true, role: { in: ["ADMIN", "HR", "HIRING_MANAGER"] } },
+// Department and hiring manager are typed freely. A department name that does not
+// exist yet is created (ignoring case, so "it" reuses "IT"). A manager name that
+// matches an active staff account is linked to it, so that person can see the
+// job's candidates; any other name is kept as text only.
+async function resolveReferences(departmentName: string, hiringManagerName: string) {
+  const [existingDept, manager] = await Promise.all([
+    db.department.findFirst({
+      where: { name: { equals: departmentName, mode: "insensitive" } },
       select: { id: true },
     }),
+    db.user.findFirst({
+      where: {
+        name: { equals: hiringManagerName, mode: "insensitive" },
+        isActive: true,
+        role: { in: ["ADMIN", "HR", "HIRING_MANAGER"] },
+      },
+      select: { id: true, name: true },
+    }),
   ]);
-  const errors: Record<string, string[]> = {};
-  if (!dept) errors.departmentId = ["Departemen tidak ditemukan."];
-  if (!manager) errors.hiringManagerId = ["Hiring manager tidak valid."];
-  return Object.keys(errors).length ? errors : null;
+  const dept =
+    existingDept ??
+    (await db.department.upsert({
+      where: { name: departmentName },
+      update: {},
+      create: { name: departmentName },
+      select: { id: true },
+    }));
+  return {
+    departmentId: dept.id,
+    hiringManagerId: manager?.id ?? null,
+    hiringManagerName: manager?.name ?? hiringManagerName,
+  };
 }
 
 function slugify(title: string) {
@@ -74,14 +93,13 @@ export async function createJob(_state: FormState, formData: FormData): Promise<
 
   const parsed = parse(formData);
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
-  const data = parsed.data;
-
-  const refErrors = await checkReferences(data.departmentId, data.hiringManagerId);
-  if (refErrors) return failed(formData, refErrors);
+  const { departmentName, hiringManagerName, ...data } = parsed.data;
+  const refs = await resolveReferences(departmentName, hiringManagerName);
 
   const job = await db.job.create({
     data: {
       ...data,
+      ...refs,
       slug: await uniqueSlug(data.title),
       openedAt: data.status === "OPEN" ? new Date() : null,
       closedAt: data.status === "CLOSED" ? new Date() : null,
@@ -107,15 +125,14 @@ export async function updateJob(jobId: string, _state: FormState, formData: Form
 
   const parsed = parse(formData);
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
-  const data = parsed.data;
-
-  const refErrors = await checkReferences(data.departmentId, data.hiringManagerId);
-  if (refErrors) return failed(formData, refErrors);
+  const { departmentName, hiringManagerName, ...data } = parsed.data;
+  const refs = await resolveReferences(departmentName, hiringManagerName);
 
   await db.job.update({
     where: { id: jobId },
     data: {
       ...data,
+      ...refs,
       // The slug stays the same so links already shared keep working
       openedAt: data.status === "OPEN" && !existing.openedAt ? new Date() : undefined,
       closedAt: data.status === "CLOSED" ? (existing.status === "CLOSED" ? undefined : new Date()) : null,

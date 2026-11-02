@@ -16,7 +16,7 @@ export default async function EditJobPage({ params }: PageProps<"/dashboard/lowo
   const { id } = await params;
 
   const [job, { departments, managers }] = await Promise.all([
-    db.job.findUnique({ where: { id } }),
+    db.job.findUnique({ where: { id }, include: { department: { select: { name: true } } } }),
     getJobFormOptions(),
   ]);
   if (!job) notFound();
@@ -31,8 +31,8 @@ export default async function EditJobPage({ params }: PageProps<"/dashboard/lowo
         submitLabel="Simpan perubahan"
         initial={{
           title: job.title,
-          departmentId: job.departmentId,
-          hiringManagerId: job.hiringManagerId,
+          departmentName: job.department.name,
+          hiringManagerName: job.hiringManagerName,
           employmentType: job.employmentType,
           location: job.location,
           description: job.description,

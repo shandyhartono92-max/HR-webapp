@@ -9,8 +9,8 @@ import type { EmploymentType, JobStatus } from "@/generated/prisma/enums";
 
 export type JobFormValues = {
   title: string;
-  departmentId: string;
-  hiringManagerId: string;
+  departmentName: string;
+  hiringManagerName: string;
   employmentType: EmploymentType;
   location: string;
   description: string;
@@ -24,8 +24,6 @@ export type JobFormValues = {
   status: JobStatus;
 };
 
-type Option = { id: string; name: string };
-
 export function JobForm({
   action,
   initial,
@@ -35,8 +33,8 @@ export function JobForm({
 }: {
   action: (state: FormState, formData: FormData) => Promise<FormState>;
   initial: JobFormValues;
-  departments: Option[];
-  managers: Option[];
+  departments: string[];
+  managers: string[];
   submitLabel: string;
 }) {
   const [state, formAction, pending] = useActionState(action, undefined);
@@ -55,25 +53,48 @@ export function JobForm({
           <input id="title" name="title" required defaultValue={v("title")} className={inputClass} />
         </Field>
         <div className="grid gap-4 sm:grid-cols-2">
-          <Field label="Departemen" htmlFor="departmentId" errors={e.departmentId}>
-            <select id="departmentId" name="departmentId" required defaultValue={v("departmentId")} className={inputClass}>
-              <option value="">Pilih…</option>
-              {departments.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.name}
-                </option>
+          {/* Free text; the datalist only suggests names already in use */}
+          <Field
+            label="Departemen"
+            htmlFor="departmentName"
+            hint="Ketik bebas. Departemen baru otomatis ditambahkan."
+            errors={e.departmentName}
+          >
+            <input
+              id="departmentName"
+              name="departmentName"
+              list="departmentName-options"
+              required
+              autoComplete="off"
+              defaultValue={v("departmentName")}
+              className={inputClass}
+            />
+            <datalist id="departmentName-options">
+              {departments.map((name) => (
+                <option key={name} value={name} />
               ))}
-            </select>
+            </datalist>
           </Field>
-          <Field label="Hiring manager" htmlFor="hiringManagerId" errors={e.hiringManagerId}>
-            <select id="hiringManagerId" name="hiringManagerId" required defaultValue={v("hiringManagerId")} className={inputClass}>
-              <option value="">Pilih…</option>
-              {managers.map((m) => (
-                <option key={m.id} value={m.id}>
-                  {m.name}
-                </option>
+          <Field
+            label="Hiring manager"
+            htmlFor="hiringManagerName"
+            hint="Ketik bebas. Kalau namanya sama dengan akun di portal, orang itu bisa melihat kandidat lowongan ini."
+            errors={e.hiringManagerName}
+          >
+            <input
+              id="hiringManagerName"
+              name="hiringManagerName"
+              list="hiringManagerName-options"
+              required
+              autoComplete="off"
+              defaultValue={v("hiringManagerName")}
+              className={inputClass}
+            />
+            <datalist id="hiringManagerName-options">
+              {managers.map((name) => (
+                <option key={name} value={name} />
               ))}
-            </select>
+            </datalist>
           </Field>
           <Field label="Jenis pekerjaan" htmlFor="employmentType" errors={e.employmentType}>
             <select id="employmentType" name="employmentType" defaultValue={v("employmentType")} className={inputClass}>

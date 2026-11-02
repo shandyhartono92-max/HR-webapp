@@ -63,6 +63,7 @@ src/
 - Never send `*Enc` fields to the browser. Decrypt only where needed and write an audit entry (e.g. `employee.nik_viewed`).
 - Every new `page.tsx` under `/dashboard` needs `export const instant = false;` (Next.js 16 Cache Components; these pages depend on the session).
 - A hiring manager sees only jobs where `hiringManagerId` is their own user.
+- On the job form, department and hiring manager are free text (`resolveReferences` in `actions/jobs.ts`). A new department name is created (matched ignoring case). The manager name is always stored in `hiringManagerName`; `hiringManagerId` is set only when the name matches an active Admin/HR/Hiring Manager account, so a name without an account gives nobody extra access.
 
 ## Status
 
@@ -116,6 +117,8 @@ Start the app from this folder with `npm run dev` (inside `hr-app`). Note: the C
 npx prisma dev stop hr-app
 npx prisma dev --name hr-app --detach --port 51213 --db-port 51214 --shadow-db-port 51215
 ```
+
+To look at the data, double-click **`Buka Database.bat`** (in `D:\Claude HR`). It stops Portal HR, opens Prisma Studio at http://localhost:5555, and when you press a key in its window it closes Studio and starts Portal HR again. Encrypted fields show as `v1.…`; changes made in Studio skip the app's validation and audit log.
 
 ### Employee data
 

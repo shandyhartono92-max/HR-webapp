@@ -21,8 +21,8 @@ export default async function NewJobPage() {
         submitLabel="Simpan lowongan"
         initial={{
           title: "",
-          departmentId: "",
-          hiringManagerId: user.id,
+          departmentName: "",
+          hiringManagerName: user.name,
           employmentType: "PKWT",
           location: "",
           description: "",
