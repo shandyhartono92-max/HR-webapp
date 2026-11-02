@@ -4,6 +4,8 @@ import { db } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 import { markNotificationsRead } from "@/app/actions/bank";
 import { formatDate, formatDateTime, interviewModeLabel } from "@/lib/labels";
+import { contractAlert, endingContractsWhere } from "@/lib/contracts";
+import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
 
 export const metadata: Metadata = { title: "Ringkasan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
@@ -57,12 +59,9 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     }),
     isHr
       ? db.employee.findMany({
-          where: {
-            status: { in: ["ACTIVE", "PROBATION"] },
-            endDate: { not: null, lte: new Date(now.getTime() + 30 * DAY) },
-          },
+          where: endingContractsWhere(),
           orderBy: { endDate: "asc" },
-          select: { id: true, fullName: true, position: true, endDate: true },
+          select: { id: true, fullName: true, position: true, endDate: true, status: true },
         })
       : [],
   ]);
@@ -193,16 +192,24 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 
         {isHr && (
           <section className="rounded-xl border border-slate-200 bg-white p-5">
-            <h2 className="font-medium text-slate-900">Kontrak berakhir ≤ 30 hari</h2>
+            <h2 className="flex items-center gap-2 font-medium text-slate-900">
+              {endingContracts.length > 0 && <AlertIcon className="size-4 text-amber-600" />}
+              Kontrak berakhir ≤ 6 minggu
+            </h2>
             {endingContracts.length === 0 ? (
-              <p className="mt-2 text-sm text-slate-600">Tidak ada kontrak yang segera berakhir.</p>
+              <p className="mt-2 text-sm text-slate-600">Tidak ada kontrak yang berakhir dalam 6 minggu.</p>
             ) : (
               <ul className="mt-3 divide-y divide-slate-100">
                 {endingContracts.map((e) => (
-                  <li key={e.id} className="py-2 text-sm">
-                    <span className="font-medium text-slate-900">{e.fullName}</span>
-                    <span className="text-slate-600"> · {e.position}</span>
-                    <p className="text-amber-700">Berakhir {formatDate(e.endDate!)}</p>
+                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                    <div>
+                      <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-teal-800 hover:underline">
+                        {e.fullName}
+                      </Link>
+                      <span className="text-slate-600"> · {e.position}</span>
+                      <p className="text-xs text-slate-500">Berakhir {formatDate(e.endDate!)}</p>
+                    </div>
+                    <ContractAlertBadge {...contractAlert(e.endDate, e.status)} />
                   </li>
                 ))}
               </ul>

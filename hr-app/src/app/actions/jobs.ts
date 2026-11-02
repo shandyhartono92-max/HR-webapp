@@ -5,6 +5,7 @@ import * as z from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
+import { findOrCreateDepartment } from "@/lib/departments";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
 import { EmploymentType, JobStatus } from "@/generated/prisma/enums";
 
@@ -39,11 +40,8 @@ function parse(formData: FormData) {
 // matches an active staff account is linked to it, so that person can see the
 // job's candidates; any other name is kept as text only.
 async function resolveReferences(departmentName: string, hiringManagerName: string) {
-  const [existingDept, manager] = await Promise.all([
-    db.department.findFirst({
-      where: { name: { equals: departmentName, mode: "insensitive" } },
-      select: { id: true },
-    }),
+  const [dept, manager] = await Promise.all([
+    findOrCreateDepartment(departmentName),
     db.user.findFirst({
       where: {
         name: { equals: hiringManagerName, mode: "insensitive" },
@@ -53,14 +51,6 @@ async function resolveReferences(departmentName: string, hiringManagerName: stri
       select: { id: true, name: true },
     }),
   ]);
-  const dept =
-    existingDept ??
-    (await db.department.upsert({
-      where: { name: departmentName },
-      update: {},
-      create: { name: departmentName },
-      select: { id: true },
-    }));
   return {
     departmentId: dept.id,
     hiringManagerId: manager?.id ?? null,

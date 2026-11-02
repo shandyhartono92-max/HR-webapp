@@ -1,5 +1,6 @@
 "use server";
 
+import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { db } from "@/lib/db";
@@ -8,6 +9,9 @@ import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
 import { parseDateOnly } from "@/lib/labels";
 import { EmploymentType } from "@/generated/prisma/enums";
+import { findOrCreateDepartment } from "@/lib/departments";
+import { MAX_EMPLOYEE_IMPORT_BYTES, parseEmployeeFile } from "@/lib/employee-import";
+import type { ImportState, RowIssue } from "@/lib/excel";
 
 const dateField = (error: string) =>
   z.string().transform((v, ctx) => {
@@ -37,6 +41,102 @@ const HireSchema = z
     path: ["endDate"],
     error: "Tanggal berakhir harus setelah tanggal mulai.",
   });
+
+// Bulk-adds existing employees with their current contract from the Excel template.
+// All rows must be valid or nothing is saved; employee numbers already in the
+// portal are skipped so the same file can be uploaded again.
+export async function importEmployees(_state: ImportState, formData: FormData): Promise<ImportState> {
+  const user = await requireRole("ADMIN", "HR");
+  const attempt = Date.now();
+
+  const file = formData.get("file");
+  if (!(file instanceof File) || file.size === 0) return { message: "Pilih file Excel (.xlsx).", attempt };
+  if (file.size > MAX_EMPLOYEE_IMPORT_BYTES) return { message: "Ukuran file maksimal 2 MB.", attempt };
+
+  const parsed = await parseEmployeeFile(Buffer.from(await file.arrayBuffer()));
+  if (!parsed.ok) return { message: parsed.message, issues: parsed.issues, attempt };
+
+  const existing = await db.employee.findMany({
+    where: { employeeNumber: { in: parsed.rows.map((r) => r.employeeNumber) } },
+    select: { employeeNumber: true },
+  });
+  const known = new Set(existing.map((e) => e.employeeNumber));
+  const fresh = parsed.rows.filter((r) => !known.has(r.employeeNumber));
+
+  // Emails and contract numbers must not clash with other records already in the portal
+  const [emailsTaken, contractsTaken] = await Promise.all([
+    db.employee.findMany({ where: { email: { in: fresh.map((r) => r.email) } }, select: { email: true, employeeNumber: true } }),
+    db.contract.findMany({ where: { contractNumber: { in: fresh.map((r) => r.contractNumber) } }, select: { contractNumber: true } }),
+  ]);
+  const emailOwner = new Map(emailsTaken.map((e) => [e.email, e.employeeNumber]));
+  const contractSet = new Set(contractsTaken.map((c) => c.contractNumber));
+  const issues: RowIssue[] = [];
+  for (const r of fresh) {
+    const messages = [
+      emailOwner.has(r.email) && `Email: sudah dipakai karyawan ${emailOwner.get(r.email)}.`,
+      contractSet.has(r.contractNumber) && `No. kontrak: ${r.contractNumber} sudah ada.`,
+    ].filter(Boolean) as string[];
+    if (messages.length) issues.push({ rowNumber: r.rowNumber, name: r.fullName, messages });
+  }
+  if (issues.length) {
+    return { message: `${issues.length} baris bentrok dengan data yang sudah ada. Belum ada data yang disimpan.`, issues, attempt };
+  }
+
+  const created = await db.$transaction(
+    async (tx) => {
+      const deptIds = new Map<string, string>();
+      const ids: { id: string; employeeNumber: string; employmentType: EmploymentType }[] = [];
+      for (const r of fresh) {
+        const deptKey = r.department.toLowerCase();
+        if (!deptIds.has(deptKey)) deptIds.set(deptKey, (await findOrCreateDepartment(r.department, tx)).id);
+        const emp = await tx.employee.create({
+          data: {
+            employeeNumber: r.employeeNumber,
+            fullName: r.fullName,
+            email: r.email,
+            phone: r.phone,
+            departmentId: deptIds.get(deptKey)!,
+            position: r.position,
+            employmentType: r.employmentType,
+            status: r.status ?? "ACTIVE",
+            joinDate: r.joinDate,
+            endDate: r.endDate,
+            birthPlace: r.birthPlace,
+            birthDate: r.birthDate,
+            gender: r.gender,
+            contracts: {
+              create: {
+                type: r.employmentType,
+                contractNumber: r.contractNumber,
+                position: r.position,
+                startDate: r.joinDate,
+                endDate: r.endDate,
+              },
+            },
+          },
+          select: { id: true, employeeNumber: true, employmentType: true },
+        });
+        ids.push(emp);
+      }
+      return ids;
+    },
+    // Up to 500 rows, one insert at a time on the single-connection dev database
+    { timeout: 120_000 },
+  );
+
+  for (const e of created) {
+    await writeAudit({
+      actorId: user.id,
+      action: "employee.imported",
+      entityType: "Employee",
+      entityId: e.id,
+      changes: { employeeNumber: e.employeeNumber, employmentType: e.employmentType, file: file.name.slice(0, 200) },
+    });
+  }
+  // The menu badge for ending contracts lives in the dashboard layout
+  revalidatePath("/dashboard", "layout");
+  redirect(`/dashboard/karyawan?impor=${created.length}&lewati=${known.size}`);
+}
 
 export async function hireCandidate(applicationId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const user = await requireRole("ADMIN", "HR");
@@ -108,5 +208,6 @@ export async function hireCandidate(applicationId: string, _state: FormState, fo
     entityId: employee.id,
     changes: { applicationId, employeeNumber: data.employeeNumber, employmentType: data.employmentType },
   });
+  revalidatePath("/dashboard", "layout");
   redirect("/dashboard/karyawan");
 }

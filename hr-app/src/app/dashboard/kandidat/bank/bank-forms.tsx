@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { addCandidate, attachToJob, importCandidates, uploadCandidateCv } from "@/app/actions/candidate-bank";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import { educationLevels, manualSources } from "@/lib/labels";
+import { ImportIssues, XLSX_ACCEPT, xlsxInputClass } from "@/app/ui/import-issues";
 
 const buttonClass =
   "rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
@@ -117,42 +118,10 @@ export function ImportCandidatesForm() {
   return (
     <form key={state?.attempt} action={action} className="space-y-4">
       <FormMessage message={state?.message} />
-      {state?.issues && (
-        <div className="overflow-x-auto rounded-lg border border-red-200">
-          <table className="w-full text-left text-sm">
-            <thead className="bg-red-50 text-red-800">
-              <tr>
-                <th className="px-3 py-2 font-medium">Baris</th>
-                <th className="px-3 py-2 font-medium">Nama</th>
-                <th className="px-3 py-2 font-medium">Yang perlu diperbaiki</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-red-100">
-              {state.issues.map((i) => (
-                <tr key={i.rowNumber}>
-                  <td className="px-3 py-2 tabular-nums text-slate-700">{i.rowNumber}</td>
-                  <td className="px-3 py-2 text-slate-900">{i.name}</td>
-                  <td className="px-3 py-2 text-slate-700">
-                    {i.messages.map((m) => (
-                      <p key={m}>{m}</p>
-                    ))}
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
+      <ImportIssues issues={state?.issues} />
 
       <Field label="File Excel" htmlFor="importFile" hint="Template yang sudah diisi (.xlsx), maksimal 2 MB.">
-        <input
-          id="importFile"
-          name="file"
-          type="file"
-          required
-          accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
-          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
-        />
+        <input id="importFile" name="file" type="file" required accept={XLSX_ACCEPT} className={xlsxInputClass} />
       </Field>
 
       <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">

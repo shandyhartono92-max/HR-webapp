@@ -11,6 +11,8 @@ import {
   letterTypeLabel,
   ptkpLabel,
 } from "@/lib/labels";
+import { contractAlert } from "@/lib/contracts";
+import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
 import { activeTemplate } from "@/lib/letters/service";
 import { employeeLetterVars } from "@/lib/letters/vars";
 import type { LetterType } from "@/generated/prisma/enums";
@@ -103,6 +105,8 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
     (l) => (l.type === "SP1" || l.type === "SP2" || l.type === "SP3") && l.validUntil && l.validUntil >= new Date(),
   );
 
+  const alert = contractAlert(emp.endDate, emp.status);
+
   const last4 = {
     nik: emp.nikKtpLast4,
     npwp: emp.npwpLast4,
@@ -128,10 +132,24 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
           <span className="rounded-full bg-slate-100 px-2.5 py-0.5 text-xs font-medium text-slate-700">
             {employeeStatusLabel[emp.status]}
           </span>
+          <ContractAlertBadge {...alert} />
         </div>
         <p className="text-sm text-slate-500">
           {emp.employeeNumber} · {emp.position} · {emp.department.name}
         </p>
+        {alert.level && (
+          <p
+            role="alert"
+            className={`mt-3 flex items-center gap-2 rounded-md px-4 py-3 text-sm ${
+              alert.level === "overdue" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"
+            }`}
+          >
+            <AlertIcon className="size-5 shrink-0" />
+            {alert.level === "overdue"
+              ? `Kontrak sudah berakhir ${formatDate(emp.endDate!)}, tetapi status masih ${employeeStatusLabel[emp.status]}. Perpanjang kontrak atau ubah statusnya.`
+              : `Kontrak berakhir ${formatDate(emp.endDate!)}. Putuskan perpanjangan atau pengakhiran sebelum tanggal itu.`}
+          </p>
+        )}
         {missing.length > 0 && (
           <p className="mt-3 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Data belum lengkap: {missing.join(", ")}. Dibutuhkan untuk pendaftaran BPJS dan perhitungan PPh 21.

@@ -13,7 +13,8 @@ import { educationLevels, manualSources } from "@/lib/labels";
 import { MAX_CV_BYTES, PRIVACY_NOTICE_VERSION, retainUntil } from "@/lib/privacy";
 import { isScreeningConfigured, screenApplication } from "@/lib/screening";
 import { deleteFile, detectCvType, saveFile } from "@/lib/storage";
-import { MAX_IMPORT_BYTES, parseImportFile, type RowIssue } from "@/lib/candidate-import";
+import { MAX_IMPORT_BYTES, parseImportFile } from "@/lib/candidate-import";
+import type { ImportState } from "@/lib/excel";
 
 const sourceKeys = Object.keys(manualSources) as [keyof typeof manualSources, ...(keyof typeof manualSources)[]];
 
@@ -124,8 +125,6 @@ export async function addCandidate(_state: FormState, formData: FormData): Promi
   if (applicationId) scheduleScreening(applicationId);
   redirect(`/dashboard/kandidat/bank/${candidateId}?baru=1`);
 }
-
-export type ImportState = { message?: string; issues?: RowIssue[]; attempt?: number } | undefined;
 
 // Bulk-adds candidates from the Excel template. All rows must be valid or nothing is
 // saved; emails already in the bank are skipped. Consent is HR-attested per row.

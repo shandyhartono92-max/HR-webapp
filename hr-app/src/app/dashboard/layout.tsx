@@ -2,6 +2,8 @@ import { Suspense } from "react";
 import Link from "next/link";
 import { logout } from "@/app/actions/auth";
 import { requireUser } from "@/lib/dal";
+import { countEndingContracts } from "@/lib/contracts";
+import { AlertIcon } from "@/app/ui/contract-alert";
 import { roleLabel } from "@/lib/labels";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -57,6 +59,9 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
 async function SideNav() {
   const user = await requireUser({ allowPasswordChange: true });
   const items = nav.filter((item) => item.roles.includes(user.role));
+  // Alert badge on "Karyawan" for contracts ending within 6 weeks
+  const badges: Record<string, number> = {};
+  if (user.role === "ADMIN" || user.role === "HR") badges["/dashboard/karyawan"] = await countEndingContracts();
 
   return (
     <nav className="flex gap-1 overflow-x-auto px-3 pb-3 md:flex-col md:overflow-visible">
@@ -65,9 +70,18 @@ async function SideNav() {
           <Link
             key={item.label}
             href={item.href}
-            className="whitespace-nowrap rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
+            className="flex items-center justify-between gap-2 whitespace-nowrap rounded-md px-3 py-2 text-sm text-slate-700 hover:bg-slate-100"
           >
             {item.label}
+            {badges[item.href] ? (
+              <span
+                title={`${badges[item.href]} kontrak berakhir dalam 6 minggu`}
+                className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-800"
+              >
+                <AlertIcon />
+                {badges[item.href]}
+              </span>
+            ) : null}
           </Link>
         ) : (
           <span
