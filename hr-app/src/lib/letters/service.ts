@@ -43,6 +43,9 @@ const typeCode: Record<LetterType, string> = {
   SP3: "SP3",
   SURAT_KETERANGAN_KERJA: "SKK",
   PAKLARING: "PKL",
+  MUTASI: "SK-MUT",
+  PROMOSI: "SK-PRO",
+  DEMOSI: "SK-DEM",
   OFFER_LETTER: "OL",
   OTHER: "LAIN",
 };

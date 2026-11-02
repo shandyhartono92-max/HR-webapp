@@ -8,7 +8,25 @@ import { LettersNav, TemplateEditor } from "../letter-forms";
 export const metadata: Metadata = { title: "Template surat" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
-const editable: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", "OFFER_LETTER"];
+const editable: LetterType[] = [
+  "SP1",
+  "SP2",
+  "SP3",
+  "SURAT_KETERANGAN_KERJA",
+  "PAKLARING",
+  "MUTASI",
+  "PROMOSI",
+  "DEMOSI",
+  "OFFER_LETTER",
+];
+
+// Preview text for {{alasan}}; SP letters use the default below
+const sampleReasons: Partial<Record<LetterType, string>> = {
+  MUTASI: "Kebutuhan tenaga kerja di Kantor Cabang Surabaya dan pengalaman yang bersangkutan di bidang operasional.",
+  PROMOSI: "Hasil penilaian kinerja tahun 2026 dengan nilai sangat baik serta kebutuhan posisi Supervisor Administrasi.",
+  DEMOSI:
+    "Hasil evaluasi kinerja dua periode berturut-turut di bawah target, setelah pembinaan dan Surat Peringatan Kedua tanggal 1 Agustus 2026.",
+};
 
 export default async function TemplatesPage({ searchParams }: PageProps<"/dashboard/surat/template">) {
   await requireRole("ADMIN", "HR");
@@ -27,12 +45,17 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/dashbo
     tanggal_mulai: "1 Maret 2025",
     tanggal_berakhir: "28 Februari 2026",
     tanggal_surat: "30 Oktober 2026",
-    alasan: "Tidak masuk kerja tanpa keterangan selama 3 (tiga) hari berturut-turut pada 20–22 Oktober 2026.",
+    alasan: sampleReasons[selected] ?? "Tidak masuk kerja tanpa keterangan selama 3 (tiga) hari berturut-turut pada 20–22 Oktober 2026.",
     berlaku_hingga: "30 April 2027",
     keperluan: "pengajuan KPR",
     gaji: "Rp7.500.000",
     lokasi: "Jakarta",
     batas_konfirmasi: "6 November 2026",
+    jabatan_baru: selected === "DEMOSI" ? "Staf Junior Administrasi" : selected === "PROMOSI" ? "Supervisor Administrasi" : "Staf Administrasi",
+    departemen_baru: selected === "MUTASI" ? "Operasional" : "Human Resources",
+    lokasi_baru: "Kantor Cabang Surabaya",
+    tanggal_efektif: "1 Desember 2026",
+    gaji_baru: "Rp9.000.000 per bulan",
     nama_perusahaan: c.name,
     kota: c.city,
   };

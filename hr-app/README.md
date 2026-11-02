@@ -135,13 +135,15 @@ To look at the data, double-click **`Buka Database.bat`** (in `D:\Claude HR`). I
 
 ### Letters
 
-`/dashboard/surat` (Admin/HR). SP1–SP3, Surat Keterangan Kerja and Paklaring are issued from the employee page; offer letters from the candidate page at the *Penawaran* stage. Each form shows a live preview.
+`/dashboard/surat` (Admin/HR). SP1–SP3, Surat Keterangan Kerja, Paklaring and the SK Mutasi / Promosi / Demosi decrees are issued from the employee page; offer letters from the candidate page at the *Penawaran* stage. Each form shows a live preview.
+
+- **SK Mutasi / Promosi / Demosi**: HR enters the new position, new department (free text), effective date and the grounds (`{{alasan}}`); mutasi also needs the new work location, promosi/demosi need a different position, and demosi grounds must be at least 20 characters. An optional new salary is printed only in the PDF (blank prints "Sesuai ketentuan perusahaan yang berlaku"). A ticked-by-default box updates the employee's position and department when the letter is issued (audited as `employee.employment_updated` with the letter number). Codes: `SK-MUT`, `SK-PRO`, `SK-DEM`. These letters, like SP, carry a "Diterima oleh" signature space.
 
 - **Templates** (`/dashboard/surat/template`): default wording in `src/lib/letters/defaults.ts` is a **draft** for HR/legal to review. Edits save as a new version; issued letters keep the version they were made from. `{{placeholders}}` are listed in the editor. Lines like `Label : value` render as an aligned table.
 - **Numbering**: running number per letter type per year (WIB), e.g. `001/HR/SP1/XI/2026`. Change the layout with `LETTER_NUMBER_FORMAT` (`{seq}`, `{kode}`, `{bulan}` in Roman numerals, `{tahun}`).
 - **Letterhead and signatory**: `COMPANY_NAME`, `COMPANY_ADDRESS`, `COMPANY_CITY`, `LETTER_SIGNATORY_NAME`, `LETTER_SIGNATORY_TITLE` in `.env`.
 - **PDF**: rendered with pdf-lib (A4, Helvetica) and stored privately under `storage/letters`; downloads are Admin/HR only and audited. SP letters include a "Diterima oleh" signature space for the employee. SP validity is 6 months.
-- Offer-letter salary exists only inside the stored PDF, not in a database column.
+- Offer-letter and promosi/demosi salaries exist only inside the stored PDF, not in a database column.
 
 ### Employee logins and payroll bank account changes
 

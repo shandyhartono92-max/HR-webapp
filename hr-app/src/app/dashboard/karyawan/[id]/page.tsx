@@ -10,16 +10,17 @@ import {
   genderLabel,
   letterTypeLabel,
   ptkpLabel,
+  todayIso,
 } from "@/lib/labels";
 import { contractAlert } from "@/lib/contracts";
 import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
 import { activeTemplate } from "@/lib/letters/service";
 import { employeeLetterVars } from "@/lib/letters/vars";
 import type { LetterType } from "@/generated/prisma/enums";
-import { EmployeeLetterForm, type TemplateView } from "../../surat/letter-forms";
+import { Disclosure, EmployeeLetterForm, type TemplateView } from "../../surat/letter-forms";
 import { EmployeeLoginPanel, EmploymentForm, PersonalForm, SensitiveValue } from "./employee-forms";
 
-const employeeLetterTypes: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING"];
+const employeeLetterTypes: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", "MUTASI", "PROMOSI", "DEMOSI"];
 
 export const metadata: Metadata = { title: "Detail karyawan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
@@ -219,8 +220,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                 ))}
               </ul>
             )}
-            <details className="mt-4 border-t border-slate-100 pt-4" open={emp.letters.length === 0}>
-              <summary className="cursor-pointer text-sm font-medium text-teal-800">Buat surat</summary>
+            <Disclosure className="mt-4 border-t border-slate-100 pt-4" summary="Buat surat" defaultOpen={emp.letters.length === 0}>
               <div className="mt-3">
                 <EmployeeLetterForm
                   employeeId={emp.id}
@@ -232,9 +232,11 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                       ? { type: latestActiveSp.type, validUntil: formatDate(latestActiveSp.validUntil!) }
                       : null
                   }
+                  departments={departments.map((d) => d.name)}
+                  today={todayIso()}
                 />
               </div>
-            </details>
+            </Disclosure>
           </section>
 
           <section className="rounded-xl border border-slate-200 bg-white p-5">

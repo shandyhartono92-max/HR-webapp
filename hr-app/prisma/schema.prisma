@@ -107,6 +107,9 @@ enum LetterType {
   SP1
   SP2
   SP3
+  MUTASI // transfer to another department / location
+  PROMOSI
+  DEMOSI
   OTHER
 }
 

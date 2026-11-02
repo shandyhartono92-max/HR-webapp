@@ -5,7 +5,15 @@ import { startTransition, useActionState, useState, useSyncExternalStore, type F
 import { issueEmployeeLetter, issueOfferLetter, saveTemplate, type IssueState } from "@/app/actions/letters";
 import { Field, FormMessage, inputClass } from "@/app/ui/field";
 import { employmentTypeLabel, letterTypeLabel } from "@/lib/labels";
-import { fillTemplate, missingPlaceholders, placeholderHelp, type LetterVars } from "@/lib/letters/fill";
+import {
+  changeLetterTypes,
+  fillTemplate,
+  isChangeLetter,
+  missingPlaceholders,
+  placeholderHelp,
+  SALARY_UNCHANGED_TEXT,
+  type LetterVars,
+} from "@/lib/letters/fill";
 import type { EmploymentType, LetterType } from "@/generated/prisma/enums";
 
 const buttonClass =
@@ -83,7 +91,10 @@ function IssuedNotice({ state }: { state: IssueState }) {
   );
 }
 
-const employeeLetterTypes: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING"];
+const employeeLetterTypes: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", ...changeLetterTypes];
+
+const longDate = (v: string) =>
+  v ? new Date(`${v}T00:00:00Z`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "";
 
 export function EmployeeLetterForm({
   employeeId,
@@ -91,29 +102,52 @@ export function EmployeeLetterForm({
   vars,
   defaultLastDay,
   activeWarning,
+  departments,
+  today,
 }: {
   employeeId: string;
   templates: Partial<Record<LetterType, TemplateView>>;
   vars: LetterVars;
   defaultLastDay: string;
   activeWarning: { type: LetterType; validUntil: string } | null;
+  departments: string[];
+  today: string;
 }) {
   const [state, action, pending] = useActionState<IssueState, FormData>(issueEmployeeLetter.bind(null, employeeId), undefined);
   const hydrated = useHydrated();
-  const [type, setType] = useState<LetterType>((state?.values?.type as LetterType) ?? "SURAT_KETERANGAN_KERJA");
-  const [reason, setReason] = useState(state?.values?.reason ?? "");
-  const [purpose, setPurpose] = useState(state?.values?.purpose ?? "");
-  const [lastDay, setLastDay] = useState(state?.values?.lastDay ?? defaultLastDay);
+  const v = state?.values;
+  const [type, setType] = useState<LetterType>((v?.type as LetterType) ?? "SURAT_KETERANGAN_KERJA");
+  const [reason, setReason] = useState(v?.reason ?? "");
+  const [purpose, setPurpose] = useState(v?.purpose ?? "");
+  const [lastDay, setLastDay] = useState(v?.lastDay ?? defaultLastDay);
+  // Mutasi / promosi / demosi
+  const [change, setChange] = useState({
+    newPosition: v?.newPosition ?? vars.jabatan ?? "",
+    newDepartment: v?.newDepartment ?? vars.departemen ?? "",
+    newLocation: v?.newLocation ?? "",
+    effectiveDate: v?.effectiveDate ?? today,
+    newSalary: v?.newSalary ?? "",
+  });
+  const [applyChange, setApplyChange] = useState(v ? v.applyChange === "on" : true);
+  const setC = (k: keyof typeof change) => (ev: { target: { value: string } }) => setChange({ ...change, [k]: ev.target.value });
   const e = state?.errors ?? {};
   const isSp = type === "SP1" || type === "SP2" || type === "SP3";
+  const isChange = isChangeLetter(type);
 
   const previewVars: LetterVars = {
     ...vars,
     alasan: reason,
     keperluan: purpose,
     berlaku_hingga: isSp ? "(6 bulan sejak tanggal surat)" : "",
-    tanggal_berakhir: type === "PAKLARING" && lastDay ? new Date(`${lastDay}T00:00:00Z`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : vars.tanggal_berakhir,
+    tanggal_berakhir: type === "PAKLARING" && lastDay ? longDate(lastDay) : vars.tanggal_berakhir,
     tanggal_surat: new Date().toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" }),
+    jabatan_baru: change.newPosition,
+    departemen_baru: change.newDepartment,
+    lokasi_baru: change.newLocation,
+    tanggal_efektif: longDate(change.effectiveDate),
+    gaji_baru: change.newSalary
+      ? `${new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(change.newSalary))} per bulan`
+      : SALARY_UNCHANGED_TEXT,
   };
 
   return (
@@ -135,6 +169,74 @@ export function EmployeeLetterForm({
           <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
             Masih ada {letterTypeLabel[activeWarning.type]} yang berlaku sampai {activeWarning.validUntil}.
           </p>
+        )}
+        {isChange && (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Jabatan baru" htmlFor="newPosition" hint={`Sekarang: ${vars.jabatan}`} errors={e.newPosition}>
+                <input id="newPosition" name="newPosition" value={change.newPosition} onChange={setC("newPosition")} className={inputClass} />
+              </Field>
+              <Field label="Departemen baru" htmlFor="newDepartment" hint={`Sekarang: ${vars.departemen}`} errors={e.newDepartment}>
+                <input
+                  id="newDepartment"
+                  name="newDepartment"
+                  list="newDepartment-options"
+                  autoComplete="off"
+                  value={change.newDepartment}
+                  onChange={setC("newDepartment")}
+                  className={inputClass}
+                />
+                <datalist id="newDepartment-options">
+                  {departments.map((d) => (
+                    <option key={d} value={d} />
+                  ))}
+                </datalist>
+              </Field>
+              {type === "MUTASI" && (
+                <Field label="Lokasi kerja baru" htmlFor="newLocation" hint="Misal: Kantor Cabang Surabaya." errors={e.newLocation}>
+                  <input id="newLocation" name="newLocation" value={change.newLocation} onChange={setC("newLocation")} className={inputClass} />
+                </Field>
+              )}
+              <Field label="Berlaku mulai" htmlFor="effectiveDate" errors={e.effectiveDate}>
+                <input id="effectiveDate" name="effectiveDate" type="date" value={change.effectiveDate} onChange={setC("effectiveDate")} className={inputClass} />
+              </Field>
+              {type !== "MUTASI" && (
+                <Field
+                  label="Gaji pokok baru (opsional)"
+                  htmlFor="newSalary"
+                  hint="Hanya dicetak di PDF. Kosong = “sesuai ketentuan perusahaan”."
+                  errors={e.newSalary}
+                >
+                  <input id="newSalary" name="newSalary" type="number" min={0} step={100000} value={change.newSalary} onChange={setC("newSalary")} className={inputClass} />
+                </Field>
+              )}
+            </div>
+            <Field
+              label="Pertimbangan"
+              htmlFor="reason"
+              hint={
+                type === "DEMOSI"
+                  ? "Dasar demosi: hasil evaluasi kinerja, SP terkait, pasal Peraturan Perusahaan. Pastikan sudah sesuai PP/PKB."
+                  : type === "PROMOSI"
+                    ? "Misal: hasil penilaian kinerja 2026 sangat baik dan kebutuhan posisi Supervisor."
+                    : "Misal: kebutuhan tenaga kerja di cabang Surabaya."
+              }
+              errors={e.reason}
+            >
+              <textarea id="reason" name="reason" rows={3} value={reason} onChange={(ev) => setReason(ev.target.value)} className={inputClass} />
+            </Field>
+            <label className="flex items-start gap-2 text-sm text-slate-700">
+              <input
+                type="checkbox"
+                name="applyChange"
+                checked={applyChange}
+                onChange={(ev) => setApplyChange(ev.target.checked)}
+                className="mt-0.5 size-4 accent-teal-700"
+              />
+              Perbarui jabatan dan departemen di data karyawan saat surat terbit. Kosongkan jika tanggal berlaku masih lama, lalu ubah
+              nanti di Data kepegawaian.
+            </label>
+          </>
         )}
         {isSp && (
           <Field
@@ -189,8 +291,6 @@ export function OfferLetterForm({
   });
   const e = state?.errors ?? {};
   const set = (k: keyof typeof f) => (ev: { target: { value: string } }) => setF({ ...f, [k]: ev.target.value });
-  const longDate = (v: string) =>
-    v ? new Date(`${v}T00:00:00Z`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "";
 
   const previewVars: LetterVars = {
     ...vars,
@@ -284,6 +384,28 @@ export function TemplateEditor({ type, template, sampleVars }: { type: LetterTyp
       </form>
       <LetterPreview template={{ name, body }} vars={sampleVars} />
     </div>
+  );
+}
+
+// <details> whose open state belongs to the browser. A plain open={…} from the server
+// would snap shut on refresh() after the first letter, hiding the "issued" notice.
+export function Disclosure({
+  summary,
+  defaultOpen,
+  className,
+  children,
+}: {
+  summary: string;
+  defaultOpen: boolean;
+  className?: string;
+  children: React.ReactNode;
+}) {
+  const [open, setOpen] = useState(defaultOpen);
+  return (
+    <details className={className} open={open} onToggle={(ev) => setOpen(ev.currentTarget.open)}>
+      <summary className="cursor-pointer text-sm font-medium text-teal-800">{summary}</summary>
+      {children}
+    </details>
   );
 }
 

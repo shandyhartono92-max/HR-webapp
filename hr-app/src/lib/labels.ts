@@ -100,6 +100,9 @@ export const letterTypeLabel: Record<LetterType, string> = {
   SP3: "Surat Peringatan 3",
   SURAT_KETERANGAN_KERJA: "Surat Keterangan Kerja",
   PAKLARING: "Paklaring",
+  MUTASI: "SK Mutasi",
+  PROMOSI: "SK Promosi",
+  DEMOSI: "SK Demosi",
   OFFER_LETTER: "Surat Penawaran Kerja",
   OTHER: "Lainnya",
 };
@@ -144,6 +147,9 @@ const DAY_MS = 24 * 60 * 60 * 1000;
 
 // Whole days from now until `d` (negative when past). Server components render per request.
 export const daysUntil = (d: Date) => Math.ceil((d.getTime() - Date.now()) / DAY_MS);
+
+// Today's date in WIB as "2026-11-02", for <input type="date"> defaults
+export const todayIso = () => new Date(Date.now() + 7 * 60 * 60 * 1000).toISOString().slice(0, 10);
 
 // Interviews can get feedback from one hour before their start time
 export const isFeedbackOpen = (scheduledAt: Date) => scheduledAt.getTime() <= Date.now() + 60 * 60 * 1000;

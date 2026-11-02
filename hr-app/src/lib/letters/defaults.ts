@@ -29,6 +29,28 @@ ${next}
 Demikian surat peringatan ini dibuat untuk diperhatikan dan dipatuhi.`;
 }
 
+// Before/after block shared by the mutasi, promosi and demosi decrees
+function change(verb: string, extraRows = "") {
+  return `Nama : {{nama}}
+Nomor Induk : {{nomor_induk}}
+
+${verb} dari:
+
+Jabatan : {{jabatan}}
+Departemen : {{departemen}}
+
+menjadi:
+
+Jabatan : {{jabatan_baru}}
+Departemen : {{departemen_baru}}${extraRows}`;
+}
+
+const decreeClosing = `Hal-hal lain yang tidak diatur dalam surat keputusan ini tetap mengikuti perjanjian kerja dan Peraturan Perusahaan yang berlaku.
+
+Apabila di kemudian hari terdapat kekeliruan dalam surat keputusan ini, akan diadakan perbaikan sebagaimana mestinya.
+
+Demikian surat keputusan ini dibuat untuk dilaksanakan dengan penuh tanggung jawab.`;
+
 export const defaultTemplates: Record<LetterType, { name: string; body: string }> = {
   SP1: {
     name: "SURAT PERINGATAN PERTAMA (SP-1)",
@@ -74,6 +96,64 @@ adalah benar pernah bekerja di {{nama_perusahaan}} sejak {{tanggal_mulai}} sampa
 Selama bekerja, yang bersangkutan telah menunjukkan dedikasi dan tanggung jawab terhadap pekerjaannya. Kami mengucapkan terima kasih atas kontribusi yang telah diberikan dan berharap kesuksesan untuk yang bersangkutan di masa mendatang.
 
 Demikian surat keterangan ini dibuat dengan sebenarnya untuk dapat dipergunakan sebagaimana mestinya.`,
+  },
+  MUTASI: {
+    name: "SURAT KEPUTUSAN MUTASI KARYAWAN",
+    body: `Yang bertanda tangan di bawah ini, atas nama {{nama_perusahaan}}, dengan pertimbangan:
+
+{{alasan}}
+
+dengan ini memutuskan untuk memindahkan (memutasikan) karyawan berikut:
+
+${change(
+  "Dipindahkan",
+  `
+Lokasi kerja : {{lokasi_baru}}`,
+)}
+
+Mutasi ini berlaku efektif sejak {{tanggal_efektif}}. Yang bersangkutan diminta melakukan serah terima pekerjaan dengan atasan sebelumnya sebelum tanggal tersebut. Status hubungan kerja, masa kerja, serta gaji dan tunjangan yang bersangkutan tidak berubah karena mutasi ini, kecuali ditetapkan lain secara tertulis.
+
+${decreeClosing}`,
+  },
+  PROMOSI: {
+    name: "SURAT KEPUTUSAN PROMOSI JABATAN",
+    body: `Yang bertanda tangan di bawah ini, atas nama {{nama_perusahaan}}, berdasarkan penilaian atas kinerja, kompetensi, dan dedikasi karyawan, dengan pertimbangan:
+
+{{alasan}}
+
+dengan ini memutuskan untuk mempromosikan karyawan berikut:
+
+${change(
+  "Dipromosikan",
+  `
+Gaji pokok : {{gaji_baru}}`,
+)}
+
+Promosi ini berlaku efektif sejak {{tanggal_efektif}}. Dengan jabatan baru tersebut, yang bersangkutan menerima tugas dan tanggung jawab sesuai uraian jabatan yang berlaku.
+
+Kami mengucapkan selamat dan berharap yang bersangkutan dapat terus memberikan kontribusi terbaik bagi {{nama_perusahaan}}.
+
+${decreeClosing}`,
+  },
+  DEMOSI: {
+    name: "SURAT KEPUTUSAN DEMOSI",
+    body: `Yang bertanda tangan di bawah ini, atas nama {{nama_perusahaan}}, setelah melalui evaluasi dan pembinaan sesuai Peraturan Perusahaan, dengan pertimbangan:
+
+{{alasan}}
+
+dengan ini memutuskan untuk menurunkan jabatan (demosi) karyawan berikut:
+
+${change(
+  "Diturunkan",
+  `
+Gaji pokok : {{gaji_baru}}`,
+)}
+
+Demosi ini berlaku efektif sejak {{tanggal_efektif}}. Perusahaan akan melakukan evaluasi kembali atas kinerja yang bersangkutan, dan diharapkan yang bersangkutan dapat memperbaiki kinerjanya.
+
+Apabila yang bersangkutan berkeberatan atas keputusan ini, keberatan dapat disampaikan secara tertulis kepada bagian Human Resources paling lambat 7 (tujuh) hari kerja sejak surat ini diterima.
+
+${decreeClosing}`,
   },
   OFFER_LETTER: {
     name: "SURAT PENAWARAN KERJA",

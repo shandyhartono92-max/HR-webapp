@@ -5,9 +5,18 @@ import * as z from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
-import { failed, type FormState } from "@/lib/forms";
+import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
 import { employmentTypeLabel, formatDateLong, formatRupiah, parseDateOnly } from "@/lib/labels";
-import { fillTemplate, needsAcknowledgement, type LetterVars } from "@/lib/letters/fill";
+import { findOrCreateDepartment } from "@/lib/departments";
+import {
+  changeLetterTypes,
+  fillTemplate,
+  isChangeLetter,
+  needsAcknowledgement,
+  SALARY_UNCHANGED_TEXT,
+  type ChangeLetterType,
+  type LetterVars,
+} from "@/lib/letters/fill";
 import { renderLetterPdf } from "@/lib/letters/pdf";
 import { activeTemplate, companyInfo, dateLine, formatLetterNumber, nextSequence } from "@/lib/letters/service";
 import { employeeLetterVars, offerLetterVars } from "@/lib/letters/vars";
@@ -98,7 +107,7 @@ async function issue(input: IssueInput) {
 
 // ── Letters to employees ────────────────────────────────────
 
-const employeeTypes = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING"] as const;
+const employeeTypes = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", ...changeLetterTypes] as const;
 
 const EmployeeLetterSchema = z.discriminatedUnion("type", [
   z.object({
@@ -113,7 +122,33 @@ const EmployeeLetterSchema = z.discriminatedUnion("type", [
     type: z.literal("PAKLARING"),
     lastDay: dateField("Isi tanggal terakhir bekerja."),
   }),
+  z.object({
+    type: z.enum(changeLetterTypes),
+    newPosition: z.string().trim().min(2, { error: "Isi jabatan baru." }).max(120),
+    newDepartment: z.string().trim().min(2, { error: "Isi departemen baru." }).max(80),
+    newLocation: optionalText(120),
+    effectiveDate: dateField("Isi tanggal berlaku."),
+    reason: z.string().trim().min(10, { error: "Tulis pertimbangan minimal 10 karakter." }).max(3000),
+    newSalary: optionalInt(0, 1_000_000_000, "Isi angka tanpa titik, misal 8500000."),
+    applyChange: checkbox,
+  }),
 ]);
+
+const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
+
+// Mutasi names the (new) work location; promosi/demosi must change the position
+function changeLetterErrors(
+  type: ChangeLetterType,
+  d: { newPosition: string; newLocation?: string; reason: string },
+  current: { jabatan: string },
+): Record<string, string[]> | null {
+  if (type === "MUTASI") {
+    return d.newLocation ? null : { newLocation: ["Isi lokasi kerja baru, misal: Kantor Cabang Surabaya."] };
+  }
+  if (same(d.newPosition, current.jabatan)) return { newPosition: ["Jabatan baru harus berbeda dari jabatan sekarang."] };
+  if (type === "DEMOSI" && d.reason.length < 20) return { reason: ["Uraikan dasar demosi minimal 20 karakter (hasil evaluasi, SP terkait)."] };
+  return null;
+}
 
 const SP_VALID_MONTHS = 6;
 
@@ -149,6 +184,23 @@ export async function issueEmployeeLetter(employeeId: string, _state: IssueState
     case "PAKLARING":
       vars.tanggal_berakhir = formatDateLong(data.lastDay);
       break;
+    case "MUTASI":
+    case "PROMOSI":
+    case "DEMOSI": {
+      const errors = changeLetterErrors(data.type, data, { jabatan: vars.jabatan });
+      if (errors) return failed(formData, errors);
+      reason = data.reason;
+      Object.assign(vars, {
+        alasan: data.reason,
+        jabatan_baru: data.newPosition,
+        departemen_baru: data.newDepartment,
+        lokasi_baru: data.newLocation ?? "",
+        tanggal_efektif: formatDateLong(data.effectiveDate),
+        // The new salary lives only inside the stored PDF, like the offer letter
+        gaji_baru: data.newSalary ? `${formatRupiah(data.newSalary)} per bulan` : SALARY_UNCHANGED_TEXT,
+      });
+      break;
+    }
   }
 
   const result = await issue({
@@ -160,6 +212,21 @@ export async function issueEmployeeLetter(employeeId: string, _state: IssueState
     validUntil,
     issuedById: user.id,
   });
+
+  // Optionally carry the new position and department into the employee record
+  if (isChangeLetter(data.type) && "applyChange" in data && data.applyChange) {
+    const before = await db.employee.findUnique({ where: { id: employeeId }, select: { position: true, departmentId: true } });
+    const dept = await findOrCreateDepartment(data.newDepartment);
+    const after = { position: data.newPosition, departmentId: dept.id };
+    await db.employee.update({ where: { id: employeeId }, data: after });
+    await writeAudit({
+      actorId: user.id,
+      action: "employee.employment_updated",
+      entityType: "Employee",
+      entityId: employeeId,
+      changes: { via: result.letterNumber, position: { from: before?.position, to: after.position }, departmentId: { from: before?.departmentId, to: after.departmentId } },
+    });
+  }
   refresh();
   return { ok: true, ...result, attempt: Date.now() };
 }
