@@ -38,22 +38,38 @@ async function deleteFiles(keys: string[], result: { filesDeleted: number; fileE
 
 const candidateSelect = {
   id: true,
-  applications: { select: { id: true, resumes: { select: { fileKey: true } } } },
+  fullName: true,
+  applications: {
+    select: {
+      id: true,
+      resumes: { select: { fileKey: true } },
+      letters: { select: { fileKey: true } }, // offer letters: name and salary in the PDF
+    },
+  },
   resumes: { select: { fileKey: true } }, // CVs added by HR before any job (bank data)
 } as const;
 
 type CandidateToWipe = {
   id: string;
-  applications: { id: string; resumes: { fileKey: string }[] }[];
+  fullName: string;
+  applications: { id: string; resumes: { fileKey: string }[]; letters: { fileKey: string | null }[] }[];
   resumes: { fileKey: string }[];
 };
 
-// Wipes one candidate in a transaction; returns the CV files to delete afterwards
+// In-app notifications that name a person always start with "<full name> · ".
+// Matching that prefix (not "contains") keeps "Ani" from also hitting "Daniel".
+const notificationsNaming = (fullName: string) => ({ body: { startsWith: `${fullName} · ` } });
+
+// Wipes one candidate in a transaction; returns the CV and letter files to delete afterwards
 async function anonymizeCandidate(candidate: CandidateToWipe, now: Date, reason: string) {
   const applicationIds = candidate.applications.map((a) => a.id);
   // Several resume rows can share one stored file (attachToJob reuses it), so de-duplicate
   const fileKeys = [
-    ...new Set([...candidate.applications.flatMap((a) => a.resumes.map((r) => r.fileKey)), ...candidate.resumes.map((r) => r.fileKey)]),
+    ...new Set([
+      ...candidate.applications.flatMap((a) => a.resumes.map((r) => r.fileKey)),
+      ...candidate.resumes.map((r) => r.fileKey),
+      ...candidate.applications.flatMap((a) => a.letters.map((l) => l.fileKey)).filter((k): k is string => Boolean(k)),
+    ]),
   ];
   const inApps = { applicationId: { in: applicationIds } };
 
@@ -76,6 +92,9 @@ async function anonymizeCandidate(candidate: CandidateToWipe, now: Date, reason:
     db.screening.updateMany({ where: inApps, data: { summary: "", strengths: [], gaps: [], decisionNote: null } }),
     db.interview.updateMany({ where: inApps, data: { feedback: null } }),
     db.application.updateMany({ where: { id: { in: applicationIds } }, data: { rejectionReason: null } }),
+    // Offer letters: keep the number (numbering stays continuous), drop the person and the PDF
+    db.letter.updateMany({ where: inApps, data: { recipientName: "Kandidat dihapus", reason: null, fileKey: null, documentId: null } }),
+    db.notification.deleteMany({ where: notificationsNaming(candidate.fullName) }),
     db.auditLog.create({
       data: {
         action: "candidate.anonymized",
@@ -171,8 +190,8 @@ export async function anonymizeFormerEmployees({ dryRun = false, now = new Date(
         where: { employeeId: e.id },
         data: { accountNumberEnc: "", accountNumberLast4: "----", accountHolderName: "(dihapus)", inquiryName: null, submittedIp: null, rejectionReason: null, otpHash: null },
       }),
-      // Notifications to HR quote the employee's name
-      db.notification.deleteMany({ where: { body: { contains: e.fullName } } }),
+      // HR notifications naming them, and everything sent to their own login
+      db.notification.deleteMany({ where: { OR: [notificationsNaming(e.fullName), ...(e.userId ? [{ userId: e.userId }] : [])] } }),
       ...(e.userId
         ? [db.user.update({ where: { id: e.userId }, data: { name: "Karyawan dihapus", email: `dihapus-${e.userId}@anonim.invalid`, isActive: false } })]
         : []),

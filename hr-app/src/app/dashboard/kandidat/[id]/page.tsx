@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LetterPdfLink } from "@/app/ui/letter-pdf-link";
 import { db } from "@/lib/db";
 import { canAccessApplication, canManageApplication, requireUser } from "@/lib/dal";
 import {
@@ -75,7 +76,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
       },
       job: { select: { id: true, title: true, departmentId: true, employmentType: true } },
       employee: { select: { id: true, employeeNumber: true } },
-      letters: { orderBy: { issuedAt: "desc" }, select: { id: true, letterNumber: true, issuedAt: true } },
+      letters: { orderBy: { issuedAt: "desc" }, select: { id: true, letterNumber: true, issuedAt: true, fileKey: true } },
       interviews: {
         orderBy: { scheduledAt: "asc" },
         select: {
@@ -434,9 +435,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
                       <span className="text-slate-700">
                         {l.letterNumber} · {formatDate(l.issuedAt)}
                       </span>
-                      <a href={`/dashboard/surat/${l.id}/pdf`} target="_blank" className="text-teal-700 hover:underline">
-                        PDF
-                      </a>
+                      <LetterPdfLink letterId={l.id} hasFile={Boolean(l.fileKey)} />
                     </li>
                   ))}
                 </ul>

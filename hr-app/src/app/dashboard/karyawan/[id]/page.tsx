@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
+import { LetterPdfLink } from "@/app/ui/letter-pdf-link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import {
@@ -97,7 +98,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         },
         letters: {
           orderBy: { issuedAt: "desc" },
-          select: { id: true, letterNumber: true, type: true, issuedAt: true, validUntil: true },
+          select: { id: true, letterNumber: true, type: true, issuedAt: true, validUntil: true, fileKey: true },
         },
       },
     }),
@@ -264,9 +265,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                       <span className="text-slate-500"> · {l.letterNumber} · {formatDate(l.issuedAt)}</span>
                       {l.validUntil && <span className="text-slate-500"> · berlaku s.d. {formatDate(l.validUntil)}</span>}
                     </span>
-                    <a href={`/dashboard/surat/${l.id}/pdf`} target="_blank" className="text-teal-700 hover:underline">
-                      PDF
-                    </a>
+                    <LetterPdfLink letterId={l.id} hasFile={Boolean(l.fileKey)} />
                   </li>
                 ))}
               </ul>

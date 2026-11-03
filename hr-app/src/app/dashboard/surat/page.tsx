@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
+import { LetterPdfLink } from "@/app/ui/letter-pdf-link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { formatDate, letterTypeLabel } from "@/lib/labels";
@@ -24,6 +25,7 @@ export default async function LettersPage() {
       validUntil: true,
       employeeId: true,
       applicationId: true,
+      fileKey: true,
       issuedBy: { select: { name: true } },
     },
   });
@@ -87,9 +89,7 @@ export default async function LettersPage() {
                     <td className="px-4 py-3 text-slate-600">{formatDate(l.issuedAt)}</td>
                     <td className="px-4 py-3 text-slate-600">{l.issuedBy.name}</td>
                     <td className="px-4 py-3 text-right">
-                      <a href={`/dashboard/surat/${l.id}/pdf`} target="_blank" className="text-teal-700 hover:underline">
-                        PDF
-                      </a>
+                      <LetterPdfLink letterId={l.id} hasFile={Boolean(l.fileKey)} />
                     </td>
                   </tr>
                 );

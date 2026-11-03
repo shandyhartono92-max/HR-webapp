@@ -104,7 +104,7 @@ export function HrBankForm({ employeeId, defaultHolderName }: { employeeId: stri
       <Field
         label="Dasar pengajuan"
         htmlFor="hrBasis"
-        hint="Misal: formulir perubahan rekening bertanda tangan karyawan, 3 Nov 2026 (arsip HR). Tercatat di log audit."
+        hint="Jenis dokumen dan tanggalnya, misal: formulir bertanda tangan karyawan, 3 Nov 2026 (arsip HR). Jangan tulis nomor rekening/NIK: teks ini tersimpan permanen di log audit."
         errors={e.basis}
       >
         <input id="hrBasis" name="basis" defaultValue={state?.values?.basis ?? ""} className={inputClass} />

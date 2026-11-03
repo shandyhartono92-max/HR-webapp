@@ -208,7 +208,16 @@ export async function cancelBankRequest(requestId: string): Promise<BankFormStat
 // ── HR: enter an account for an employee (maker) ────────────
 
 const HrRequestSchema = RequestSchema.extend({
-  basis: z.string().trim().min(10, { error: "Tulis dasar pengajuan, misal: formulir bertanda tangan karyawan 3 Nov 2026." }).max(300),
+  basis: z
+    .string()
+    .trim()
+    .min(10, { error: "Tulis dasar pengajuan, misal: formulir bertanda tangan karyawan 3 Nov 2026." })
+    .max(300)
+    // The basis goes into the audit log, which can never be edited or wiped: keep
+    // account, NIK and phone numbers out of it (8+ digits in a row, spaces/dots/dashes allowed)
+    .refine((v) => !/(?:\d[\s.-]?){8,}/.test(v), {
+      error: "Jangan tulis nomor rekening, NIK, atau nomor HP di sini; cukup jenis dokumen dan tanggalnya.",
+    }),
 });
 
 // For employees without a login (or who asked HR in person). There is no OTP, so the
@@ -232,8 +241,21 @@ export async function submitBankChangeByHr(employeeId: string, _state: FormState
   const lengthError = accountNumberError(bankCode, accountNumber);
   if (lengthError) return failed(safeValues, { accountNumber: [lengthError] });
 
-  const pending = await db.bankChangeRequest.findFirst({ where: { employeeId, status: "PENDING_APPROVAL" }, select: { id: true } });
-  if (pending) return failed(safeValues, undefined, "Masih ada pengajuan rekening yang menunggu persetujuan untuk karyawan ini.");
+  const open = await db.bankChangeRequest.findFirst({
+    where: { employeeId, status: { in: ["DRAFT", "PENDING_APPROVAL"] } },
+    select: { status: true },
+  });
+  if (open?.status === "PENDING_APPROVAL") {
+    return failed(safeValues, undefined, "Masih ada pengajuan rekening yang menunggu persetujuan untuk karyawan ini.");
+  }
+  // Don't overwrite what the employee is entering themselves
+  if (open?.status === "DRAFT") {
+    return failed(
+      safeValues,
+      undefined,
+      "Karyawan sedang mengajukan rekening sendiri (menunggu kode OTP). Tunggu sampai selesai, atau minta karyawan membatalkannya di menu Rekening Gaji.",
+    );
+  }
 
   const current = await db.bankAccount.findFirst({ where: { employeeId, isActive: true }, select: { bankCode: true, accountNumberLast4: true } });
   if (current && current.bankCode === bankCode && current.accountNumberLast4 === lastFour(accountNumber)) {
@@ -245,25 +267,22 @@ export async function submitBankChangeByHr(employeeId: string, _state: FormState
   const nameMatches = normalizeName(inquiry.holderName) === normalizeName(emp.fullName);
 
   const h = await headers();
-  const request = await db.$transaction(async (tx) => {
-    await tx.bankChangeRequest.updateMany({ where: { employeeId, status: "DRAFT" }, data: { status: "CANCELLED" } });
-    return tx.bankChangeRequest.create({
-      data: {
-        employeeId,
-        bankCode,
-        bankName: banks[bankCode].name,
-        accountNumberEnc: encrypt(accountNumber),
-        accountNumberLast4: lastFour(accountNumber),
-        accountHolderName,
-        inquiryName: inquiry.holderName,
-        nameMatches,
-        status: "PENDING_APPROVAL",
-        requestedById: user.id,
-        submittedAt: new Date(),
-        submittedIp: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
-      },
-      select: { id: true },
-    });
+  const request = await db.bankChangeRequest.create({
+    data: {
+      employeeId,
+      bankCode,
+      bankName: banks[bankCode].name,
+      accountNumberEnc: encrypt(accountNumber),
+      accountNumberLast4: lastFour(accountNumber),
+      accountHolderName,
+      inquiryName: inquiry.holderName,
+      nameMatches,
+      status: "PENDING_APPROVAL",
+      requestedById: user.id,
+      submittedAt: new Date(),
+      submittedIp: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+    },
+    select: { id: true },
   });
   await writeAudit({
     actorId: user.id,

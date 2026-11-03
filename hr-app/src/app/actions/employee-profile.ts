@@ -69,6 +69,9 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
   // Leaving: keep the last working day (typed, else the contract end date for an
   // ended contract, else today). It starts the retention period for personal data.
   const leaving = LEFT.includes(data.status);
+  if (typedExit && !leaving) {
+    return failed(formData, { exitDate: ["Tanggal keluar hanya untuk status Mengundurkan diri, Diberhentikan, atau Kontrak berakhir."] });
+  }
   const exitDate = leaving ? (typedExit ?? before.exitDate ?? (data.status === "CONTRACT_ENDED" ? before.endDate : null) ?? todayDate()) : null;
   if (exitDate && exitDate < before.joinDate) return failed(formData, { exitDate: ["Tanggal keluar sebelum tanggal mulai bekerja."] });
 
@@ -117,6 +120,7 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
       employeeNumber: true,
       joinDate: true,
       endDate: true,
+      exitDate: true,
       userId: true,
       anonymizedAt: true,
       contracts: { orderBy: { startDate: "asc" }, take: 1, select: { startDate: true } },
@@ -129,7 +133,16 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
   const d = parsed.data;
 
+  // The join date opens the employment: no contract may start before it, and it
+  // must come before the contract end and the exit date
+  const firstContract = before.contracts[0]?.startDate;
+  if (firstContract && d.joinDate > firstContract) {
+    return failed(formData, { joinDate: [`Tidak boleh setelah kontrak pertama dimulai (${formatDate(firstContract)}).`] });
+  }
   if (before.endDate && d.joinDate >= before.endDate) return failed(formData, { joinDate: ["Harus sebelum tanggal kontrak berakhir."] });
+  if (before.exitDate && d.joinDate > before.exitDate) {
+    return failed(formData, { joinDate: [`Tidak boleh setelah tanggal keluar (${formatDate(before.exitDate)}).`] });
+  }
   const [numberTaken, emailTaken, loginTaken] = await Promise.all([
     db.employee.findFirst({ where: { employeeNumber: equalsIgnoringCase(d.employeeNumber), id: { not: employeeId } }, select: { id: true } }),
     db.employee.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: employeeId } }, select: { id: true } }),
