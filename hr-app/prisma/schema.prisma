@@ -153,6 +153,7 @@ model User {
   documentsUploaded    Document[]          @relation("DocumentUploader")
   lettersIssued        Letter[]            @relation("LetterIssuer")
   bankRequestsReviewed BankChangeRequest[] @relation("BankRequestReviewer")
+  bankRequestsMade     BankChangeRequest[] @relation("BankRequestRequester")
   auditLogs            AuditLog[]
   notifications        Notification[]
   consentsRecorded     Candidate[]         @relation("ConsentRecorder")
@@ -394,6 +395,10 @@ model Employee {
   status         EmployeeStatus @default(PROBATION)
   joinDate       DateTime       @db.Date
   endDate        DateTime?      @db.Date
+  // Last working day; set when the status becomes resigned / terminated / contract
+  // ended. Personal data is anonymised EMPLOYEE_RETENTION_YEARS after it.
+  exitDate       DateTime?      @db.Date
+  anonymizedAt   DateTime?
 
   // Personal data (UU PDP) — HR/Admin only
   birthPlace               String?
@@ -558,7 +563,10 @@ model BankChangeRequest {
   otpVerifiedAt      DateTime?
   submittedAt        DateTime?
   submittedIp        String?
-  // Checker — must be HR/Admin and must not be the employee themselves
+  // Maker when HR enters the account for the employee (no OTP); null = the employee
+  requestedById      String?
+  requestedBy        User?            @relation("BankRequestRequester", fields: [requestedById], references: [id])
+  // Checker — must be HR/Admin, never the employee themselves nor the HR maker
   reviewedById       String?
   reviewedBy         User?            @relation("BankRequestReviewer", fields: [reviewedById], references: [id])
   reviewedAt         DateTime?

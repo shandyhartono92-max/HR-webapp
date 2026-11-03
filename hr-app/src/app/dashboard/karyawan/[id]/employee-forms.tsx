@@ -1,7 +1,15 @@
 "use client";
 
 import { useActionState, useEffect, useState, useTransition } from "react";
-import { renewContract, revealSensitive, updateEmployment, updatePersonal, type RevealField } from "@/app/actions/employee-profile";
+import {
+  deleteEmployee,
+  renewContract,
+  revealSensitive,
+  updateEmployment,
+  updateIdentity,
+  updatePersonal,
+  type RevealField,
+} from "@/app/actions/employee-profile";
 import { issueEmployeeLogin, type LoginResult } from "@/app/actions/accounts";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import { employeeStatusLabel, employmentTypeLabel, genderLabel, ptkpLabel } from "@/lib/labels";
@@ -25,9 +33,10 @@ export function EmploymentForm({
   employeeId: string;
   departments: Option[];
   managers: Option[];
-  initial: { departmentId: string; position: string; status: EmployeeStatus; managerId: string };
+  initial: { departmentId: string; position: string; status: EmployeeStatus; managerId: string; exitDate: string };
 }) {
   const [state, action, pending] = useActionState(updateEmployment.bind(null, employeeId), undefined);
+  const hydrated = useHydrated();
   const e = state?.errors ?? {};
   const v = (k: keyof typeof initial) => state?.values?.[k] ?? initial[k];
 
@@ -67,9 +76,86 @@ export function EmploymentForm({
             ))}
           </select>
         </Field>
+        <Field
+          label="Tanggal keluar"
+          htmlFor="exitDate"
+          hint="Untuk status Mengundurkan diri / Diberhentikan / Kontrak berakhir. Kosong = tanggal kontrak berakhir, atau hari ini."
+          errors={e.exitDate}
+        >
+          <input id="exitDate" name="exitDate" type="date" defaultValue={v("exitDate")} className={inputClass} />
+        </Field>
       </div>
-      <button type="submit" disabled={pending} className={buttonClass}>
+      <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
         {pending ? "Menyimpan…" : "Simpan data kepegawaian"}
+      </button>
+    </form>
+  );
+}
+
+// Name, contact, employee number and join date, for fixing typos
+export function IdentityForm({
+  employeeId,
+  initial,
+  hasLogin,
+}: {
+  employeeId: string;
+  initial: { fullName: string; email: string; phone: string; employeeNumber: string; joinDate: string };
+  hasLogin: boolean;
+}) {
+  const [state, action, pending] = useActionState(updateIdentity.bind(null, employeeId), undefined);
+  const hydrated = useHydrated();
+  const e = state?.errors ?? {};
+  const v = (k: keyof typeof initial) => state?.values?.[k] ?? initial[k];
+
+  return (
+    <form key={state?.attempt} action={action} className="space-y-3">
+      <FormMessage message={state?.message} />
+      <Saved show={state?.ok} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Nama lengkap" htmlFor="idFullName" errors={e.fullName}>
+          <input id="idFullName" name="fullName" required defaultValue={v("fullName")} className={inputClass} />
+        </Field>
+        <Field label="No. induk" htmlFor="idNumber" errors={e.employeeNumber}>
+          <input id="idNumber" name="employeeNumber" required defaultValue={v("employeeNumber")} className={inputClass} />
+        </Field>
+        <Field label="Email" htmlFor="idEmail" hint={hasLogin ? "Email login karyawan ikut berubah." : undefined} errors={e.email}>
+          <input id="idEmail" name="email" type="email" required defaultValue={v("email")} className={inputClass} />
+        </Field>
+        <Field label="No. HP / WhatsApp" htmlFor="idPhone" errors={e.phone}>
+          <input id="idPhone" name="phone" type="tel" required defaultValue={v("phone")} className={inputClass} />
+        </Field>
+        <Field label="Mulai bekerja" htmlFor="idJoin" errors={e.joinDate}>
+          <input id="idJoin" name="joinDate" type="date" required defaultValue={v("joinDate")} className={inputClass} />
+        </Field>
+      </div>
+      <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+        {pending ? "Menyimpan…" : "Simpan identitas"}
+      </button>
+      <p className="text-xs text-slate-500">Setiap perubahan tercatat di log audit (sebelum → sesudah).</p>
+    </form>
+  );
+}
+
+// Permanent delete, only for a record entered by mistake (the server re-checks the blockers)
+export function DeleteEmployeeForm({ employeeId, employeeNumber }: { employeeId: string; employeeNumber: string }) {
+  const [state, action, pending] = useActionState(deleteEmployee.bind(null, employeeId), undefined);
+  const hydrated = useHydrated();
+  return (
+    <form key={state?.attempt} action={action} className="space-y-3">
+      <FormMessage message={state?.message} />
+      <p className="text-sm text-slate-700">
+        Hanya untuk data yang <strong>salah input</strong>. Data karyawan, kontraknya dan riwayat di halaman ini akan hilang permanen.
+        Untuk karyawan yang keluar, ubah statusnya saja.
+      </p>
+      <Field label={`Ketik ${employeeNumber} untuk mengonfirmasi`} htmlFor="confirmNumber" errors={state?.errors?.confirmNumber}>
+        <input id="confirmNumber" name="confirmNumber" autoComplete="off" className={inputClass} />
+      </Field>
+      <button
+        type="submit"
+        disabled={pending || !hydrated}
+        className="rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
+      >
+        {pending ? "Menghapus…" : "Hapus karyawan permanen"}
       </button>
     </form>
   );

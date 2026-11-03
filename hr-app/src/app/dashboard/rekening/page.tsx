@@ -5,7 +5,7 @@ import { requireUser } from "@/lib/dal";
 import { peekDevOtp } from "@/lib/banking";
 import { formatDate, formatDateTime } from "@/lib/labels";
 import type { BankChangeStatus } from "@/generated/prisma/enums";
-import { BankChangeForm, CancelRequestButton, OtpStep, ReviewForms } from "./bank-forms";
+import { BankChangeForm, CancelRequestButton, HrCancelButton, OtpStep, ReviewForms } from "./bank-forms";
 
 export const metadata: Metadata = { title: "Rekening gaji" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
@@ -70,6 +70,8 @@ export default async function BankAccountPage() {
           inquiryName: true,
           nameMatches: true,
           submittedAt: true,
+          requestedById: true,
+          requestedBy: { select: { name: true } },
           employee: {
             select: {
               id: true,
@@ -121,12 +123,26 @@ export default async function BankAccountPage() {
                         <p className="mt-1">
                           <NameCheck matches={r.nameMatches} inquiryName={r.inquiryName} />
                         </p>
+                        <p className="mt-1 text-xs text-slate-500">
+                          {r.requestedBy ? (
+                            <span className="rounded bg-amber-50 px-1.5 py-0.5 font-medium text-amber-800">
+                              Diinput oleh HR: {r.requestedBy.name} (tanpa OTP karyawan, lihat dasar pengajuan di log audit)
+                            </span>
+                          ) : (
+                            "Diajukan karyawan sendiri, dikonfirmasi dengan OTP"
+                          )}
+                        </p>
                       </div>
                       <p className="text-xs text-slate-500">{r.submittedAt ? formatDateTime(r.submittedAt) : ""}</p>
                     </div>
                     <div className="mt-3 border-t border-slate-100 pt-3">
                       {own ? (
                         <p className="text-sm text-amber-800">Ini permintaan Anda sendiri; harus disetujui oleh HR lain.</p>
+                      ) : r.requestedById === user.id ? (
+                        <div className="flex flex-wrap items-center gap-3">
+                          <p className="text-sm text-amber-800">Anda yang menginput pengajuan ini; harus disetujui oleh HR/Admin lain.</p>
+                          <HrCancelButton requestId={r.id} />
+                        </div>
                       ) : (
                         <ReviewForms requestId={r.id} nameMatches={r.nameMatches} />
                       )}

@@ -16,6 +16,8 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
   // Result of an import (set by importEmployees' redirect)
   const imported = typeof sp.impor === "string" && /^\d+$/.test(sp.impor) ? Number(sp.impor) : null;
   const skipped = typeof sp.lewati === "string" && /^\d+$/.test(sp.lewati) ? Number(sp.lewati) : 0;
+  // Set by deleteEmployee's redirect
+  const deleted = typeof sp.dihapus === "string" ? sp.dihapus.slice(0, 30) : null;
 
   // Non-sensitive columns only; NIK, NPWP, BPJS and salary never load here
   const all = await db.employee.findMany({
@@ -54,6 +56,12 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
           {imported} karyawan berhasil di-import
           {skipped > 0 && `, ${skipped} dilewati karena no. induknya sudah ada`}. Lengkapi NIK, NPWP, BPJS dan rekening dari profil
           masing-masing.
+        </p>
+      )}
+
+      {deleted && (
+        <p role="status" className="rounded-md bg-slate-100 px-4 py-3 text-sm text-slate-800">
+          Karyawan {deleted} sudah dihapus permanen. Penghapusan tercatat di log audit.
         </p>
       )}
 

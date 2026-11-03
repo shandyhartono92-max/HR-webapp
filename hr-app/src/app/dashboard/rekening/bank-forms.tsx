@@ -4,13 +4,15 @@ import { useActionState, useState, useTransition } from "react";
 import {
   approveBankRequest,
   cancelBankRequest,
+  cancelBankRequestByHr,
   confirmBankOtp,
   rejectBankRequest,
   resendBankOtp,
   submitBankChange,
+  submitBankChangeByHr,
   type BankFormState,
 } from "@/app/actions/bank";
-import { Field, FormMessage, inputClass } from "@/app/ui/field";
+import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import { banks, bankCodes } from "@/lib/banks";
 
 const buttonClass =
@@ -61,6 +63,73 @@ export function BankChangeForm({ defaultHolderName }: { defaultHolderName: strin
         {pending ? "Memeriksa rekening…" : "Lanjutkan"}
       </button>
     </form>
+  );
+}
+
+// HR enters the account for an employee; another HR/Admin approves it
+export function HrBankForm({ employeeId, defaultHolderName }: { employeeId: string; defaultHolderName: string }) {
+  const [state, action, pending] = useActionState(submitBankChangeByHr.bind(null, employeeId), undefined);
+  const hydrated = useHydrated();
+  const e = state?.errors ?? {};
+
+  if (state?.ok) {
+    return (
+      <div className="space-y-2 text-sm">
+        <p className="rounded-md bg-sky-50 px-3 py-2 text-sky-900">Pengajuan tersimpan dan menunggu persetujuan HR/Admin lain.</p>
+        {state.message && <p className="rounded-md bg-amber-50 px-3 py-2 text-amber-900">{state.message}</p>}
+      </div>
+    );
+  }
+  return (
+    <form key={state?.attempt} action={action} className="space-y-3" autoComplete="off">
+      <FormMessage message={state?.message} />
+      <div className="grid gap-3 sm:grid-cols-2">
+        <Field label="Bank" htmlFor="hrBankCode" errors={e.bankCode}>
+          <select id="hrBankCode" name="bankCode" defaultValue={state?.values?.bankCode ?? ""} className={inputClass}>
+            <option value="">Pilih bank…</option>
+            {bankCodes.map((c) => (
+              <option key={c} value={c}>
+                {banks[c].name}
+              </option>
+            ))}
+          </select>
+        </Field>
+        <Field label="Nomor rekening" htmlFor="hrAccountNumber" errors={e.accountNumber}>
+          <input id="hrAccountNumber" name="accountNumber" inputMode="numeric" autoComplete="off" required className={`${inputClass} font-mono`} />
+        </Field>
+      </div>
+      <Field label="Nama pemilik rekening" htmlFor="hrHolder" hint="Sesuai buku tabungan, atas nama karyawan." errors={e.accountHolderName}>
+        <input id="hrHolder" name="accountHolderName" required defaultValue={state?.values?.accountHolderName ?? defaultHolderName} className={inputClass} />
+      </Field>
+      <Field
+        label="Dasar pengajuan"
+        htmlFor="hrBasis"
+        hint="Misal: formulir perubahan rekening bertanda tangan karyawan, 3 Nov 2026 (arsip HR). Tercatat di log audit."
+        errors={e.basis}
+      >
+        <input id="hrBasis" name="basis" defaultValue={state?.values?.basis ?? ""} className={inputClass} />
+      </Field>
+      <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+        {pending ? "Memeriksa rekening…" : "Ajukan untuk disetujui"}
+      </button>
+      <p className="text-xs text-slate-500">Harus disetujui oleh HR/Admin lain, bukan Anda. Rekening lama tetap aktif sampai disetujui.</p>
+    </form>
+  );
+}
+
+export function HrCancelButton({ requestId }: { requestId: string }) {
+  const [busy, startTransition] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={busy}
+      onClick={() => {
+        if (confirm("Batalkan pengajuan rekening yang Anda input ini?")) startTransition(async () => void (await cancelBankRequestByHr(requestId)));
+      }}
+      className={secondaryClass}
+    >
+      Batalkan pengajuan saya
+    </button>
   );
 }
 

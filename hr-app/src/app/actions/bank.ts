@@ -205,6 +205,113 @@ export async function cancelBankRequest(requestId: string): Promise<BankFormStat
   return { ok: true };
 }
 
+// ── HR: enter an account for an employee (maker) ────────────
+
+const HrRequestSchema = RequestSchema.extend({
+  basis: z.string().trim().min(10, { error: "Tulis dasar pengajuan, misal: formulir bertanda tangan karyawan 3 Nov 2026." }).max(300),
+});
+
+// For employees without a login (or who asked HR in person). There is no OTP, so the
+// request goes straight to approval, which another HR/Admin must give. The basis
+// (e.g. a signed paper form) is kept in the audit log.
+export async function submitBankChangeByHr(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireRole("ADMIN", "HR");
+  const emp = await db.employee.findUnique({
+    where: { id: employeeId },
+    select: { id: true, fullName: true, status: true, userId: true, anonymizedAt: true },
+  });
+  if (!emp || emp.anonymizedAt) return { message: "Data karyawan tidak ditemukan." };
+  if (emp.status === "RESIGNED" || emp.status === "TERMINATED") return { message: "Karyawan ini sudah keluar." };
+  if (emp.userId === user.id) return { message: "Rekening Anda sendiri diajukan lewat menu Rekening Gaji." };
+
+  const safeValues = new FormData();
+  for (const k of ["bankCode", "accountHolderName", "basis"]) safeValues.set(k, String(formData.get(k) ?? ""));
+  const parsed = HrRequestSchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return failed(safeValues, z.flattenError(parsed.error).fieldErrors);
+  const { bankCode, accountNumber, accountHolderName, basis } = parsed.data;
+  const lengthError = accountNumberError(bankCode, accountNumber);
+  if (lengthError) return failed(safeValues, { accountNumber: [lengthError] });
+
+  const pending = await db.bankChangeRequest.findFirst({ where: { employeeId, status: "PENDING_APPROVAL" }, select: { id: true } });
+  if (pending) return failed(safeValues, undefined, "Masih ada pengajuan rekening yang menunggu persetujuan untuk karyawan ini.");
+
+  const current = await db.bankAccount.findFirst({ where: { employeeId, isActive: true }, select: { bankCode: true, accountNumberLast4: true } });
+  if (current && current.bankCode === bankCode && current.accountNumberLast4 === lastFour(accountNumber)) {
+    return failed(safeValues, { accountNumber: ["Ini sepertinya rekening yang sedang aktif."] });
+  }
+
+  const inquiry = await inquireAccountName(bankCode, accountNumber, emp.fullName);
+  if (!inquiry.ok) return failed(safeValues, undefined, inquiry.error);
+  const nameMatches = normalizeName(inquiry.holderName) === normalizeName(emp.fullName);
+
+  const h = await headers();
+  const request = await db.$transaction(async (tx) => {
+    await tx.bankChangeRequest.updateMany({ where: { employeeId, status: "DRAFT" }, data: { status: "CANCELLED" } });
+    return tx.bankChangeRequest.create({
+      data: {
+        employeeId,
+        bankCode,
+        bankName: banks[bankCode].name,
+        accountNumberEnc: encrypt(accountNumber),
+        accountNumberLast4: lastFour(accountNumber),
+        accountHolderName,
+        inquiryName: inquiry.holderName,
+        nameMatches,
+        status: "PENDING_APPROVAL",
+        requestedById: user.id,
+        submittedAt: new Date(),
+        submittedIp: h.get("x-forwarded-for")?.split(",")[0]?.trim() ?? null,
+      },
+      select: { id: true },
+    });
+  });
+  await writeAudit({
+    actorId: user.id,
+    action: "bank_request.created_by_hr",
+    entityType: "BankChangeRequest",
+    entityId: request.id,
+    changes: { employeeId, bankCode, last4: lastFour(accountNumber), nameMatches, basis, inquiryStub: inquiry.stub },
+  });
+
+  // Any other HR/Admin can approve; the employee (if they log in) sees it as a tamper alert
+  const checkers = (await hrUserIds(user.id)).filter((id) => id !== emp.userId);
+  await notifyUsers(checkers, {
+    type: "bank_request.pending",
+    title: "Perubahan rekening (diinput HR) menunggu persetujuan",
+    body: `${emp.fullName} · ${banks[bankCode].name} ••••${lastFour(accountNumber)} · diinput oleh ${user.name}`,
+    link: "/dashboard/rekening",
+  });
+  if (emp.userId) {
+    await notifyUsers([emp.userId], {
+      type: "bank_request.submitted",
+      title: "HR mengajukan perubahan rekening Anda",
+      body: `${banks[bankCode].name} ••••${lastFour(accountNumber)}. Jika Anda tidak meminta ini, segera hubungi HR.`,
+      link: "/dashboard/rekening",
+    });
+  }
+  refresh();
+  return {
+    ok: true,
+    message: checkers.length
+      ? undefined
+      : "Tersimpan, tetapi belum ada HR/Admin lain yang bisa menyetujui. Buat akun HR kedua terlebih dahulu.",
+    attempt: Date.now(),
+  };
+}
+
+// The HR maker can withdraw their own request before it is reviewed
+export async function cancelBankRequestByHr(requestId: string): Promise<void> {
+  const user = await requireRole("ADMIN", "HR");
+  const req = await db.bankChangeRequest.findFirst({
+    where: { id: requestId, requestedById: user.id, status: "PENDING_APPROVAL" },
+    select: { id: true },
+  });
+  if (!req) return;
+  await db.bankChangeRequest.update({ where: { id: req.id }, data: { status: "CANCELLED" } });
+  await writeAudit({ actorId: user.id, action: "bank_request.cancelled", entityType: "BankChangeRequest", entityId: req.id });
+  refresh();
+}
+
 // ── HR: approve or reject (maker-checker) ───────────────────
 
 async function reviewable(user: CurrentUser, requestId: string) {
@@ -220,12 +327,14 @@ async function reviewable(user: CurrentUser, requestId: string) {
       accountNumberEnc: true,
       accountNumberLast4: true,
       accountHolderName: true,
+      requestedById: true,
       employee: { select: { userId: true } },
     },
   });
   if (!req || req.status !== "PENDING_APPROVAL") return { error: "Permintaan tidak ditemukan atau sudah diproses." } as const;
   // The person who asked for the change can never be the one who approves it
   if (req.employee.userId === user.id) return { error: "Anda tidak bisa memproses permintaan rekening Anda sendiri." } as const;
+  if (req.requestedById === user.id) return { error: "Pengajuan yang Anda input sendiri harus disetujui HR/Admin lain." } as const;
   return { req } as const;
 }
 

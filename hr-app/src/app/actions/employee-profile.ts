@@ -1,6 +1,7 @@
 "use server";
 
-import { refresh } from "next/cache";
+import { refresh, revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
 import * as z from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
@@ -11,36 +12,51 @@ import {
   bpjsKesehatanError,
   bpjsKetenagakerjaanError,
   digitsOnly,
+  isIndonesianMobile,
   nikError,
+  normalizePhone,
   npwpError,
 } from "@/lib/indonesia-id";
-import { formatDate, parseDateOnly } from "@/lib/labels";
+import { formatDate, parseDateOnly, todayDate } from "@/lib/labels";
 import { equalsIgnoringCase } from "@/lib/match";
+import type { Prisma } from "@/generated/prisma/client";
 import { EmployeeStatus, EmploymentType, Gender, PtkpStatus } from "@/generated/prisma/enums";
 
 const notFound: FormState = { message: "Data karyawan tidak ditemukan." };
 
 // ── Employment details ──────────────────────────────────────
 
+const LEFT: EmployeeStatus[] = ["RESIGNED", "TERMINATED", "CONTRACT_ENDED"];
+
 const EmploymentSchema = z.object({
   departmentId: z.string().min(1, { error: "Pilih departemen." }),
   position: z.string().trim().min(2, { error: "Isi jabatan." }).max(120),
   status: z.enum(EmployeeStatus),
   managerId: z.preprocess((v) => (v === "" ? null : v), z.string().nullable()),
+  exitDate: z.preprocess(
+    (v) => (v === "" || v === undefined ? undefined : v),
+    z
+      .string()
+      .transform((v, ctx) => parseDateOnly(v) ?? (ctx.addIssue({ code: "custom", message: "Tanggal tidak valid." }), z.NEVER))
+      .optional(),
+  ),
 });
+
+const iso = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 
 export async function updateEmployment(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const user = await requireRole("ADMIN", "HR");
 
   const before = await db.employee.findUnique({
     where: { id: employeeId },
-    select: { departmentId: true, position: true, status: true, managerId: true },
+    select: { departmentId: true, position: true, status: true, managerId: true, exitDate: true, endDate: true, joinDate: true, anonymizedAt: true },
   });
   if (!before) return notFound;
+  if (before.anonymizedAt) return { message: "Data karyawan ini sudah dianonimkan dan tidak bisa diubah." };
 
   const parsed = EmploymentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
-  const data = parsed.data;
+  const { exitDate: typedExit, ...data } = parsed.data;
 
   if (data.managerId === employeeId) return failed(formData, { managerId: ["Atasan tidak boleh diri sendiri."] });
   const [dept, manager] = await Promise.all([
@@ -50,20 +66,154 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
   if (!dept) return failed(formData, { departmentId: ["Departemen tidak ditemukan."] });
   if (!manager) return failed(formData, { managerId: ["Atasan tidak ditemukan."] });
 
-  await db.employee.update({ where: { id: employeeId }, data });
+  // Leaving: keep the last working day (typed, else the contract end date for an
+  // ended contract, else today). It starts the retention period for personal data.
+  const leaving = LEFT.includes(data.status);
+  const exitDate = leaving ? (typedExit ?? before.exitDate ?? (data.status === "CONTRACT_ENDED" ? before.endDate : null) ?? todayDate()) : null;
+  if (exitDate && exitDate < before.joinDate) return failed(formData, { exitDate: ["Tanggal keluar sebelum tanggal mulai bekerja."] });
+
+  await db.employee.update({ where: { id: employeeId }, data: { ...data, exitDate } });
 
   const changed = (Object.keys(data) as (keyof typeof data)[]).filter((k) => data[k] !== before[k]);
-  if (changed.length) {
+  const changes: Record<string, { from: unknown; to: unknown }> = Object.fromEntries(
+    changed.map((k) => [k, { from: before[k], to: data[k] }]),
+  );
+  if (iso(exitDate) !== iso(before.exitDate)) changes.exitDate = { from: iso(before.exitDate), to: iso(exitDate) };
+  if (Object.keys(changes).length) {
     await writeAudit({
       actorId: user.id,
       action: "employee.employment_updated",
       entityType: "Employee",
       entityId: employeeId,
-      changes: Object.fromEntries(changed.map((k) => [k, { from: before[k], to: data[k] }])),
+      changes: changes as Prisma.InputJsonValue,
     });
   }
   refresh();
   return { ok: true, attempt: Date.now() };
+}
+
+// ── Identity (name, contact, employee number, join date) ────
+
+const IdentitySchema = z.object({
+  fullName: z.string().trim().min(3, { error: "Nama minimal 3 karakter." }).max(120),
+  email: z.email({ error: "Email tidak valid." }).trim().toLowerCase(),
+  phone: z
+    .string()
+    .refine(isIndonesianMobile, { error: "Masukkan nomor HP Indonesia, misal 0812xxxxxxx." })
+    .transform(normalizePhone),
+  employeeNumber: z.string().trim().min(1, { error: "Isi nomor induk." }).max(30),
+  joinDate: z.string().transform((v, ctx) => parseDateOnly(v) ?? (ctx.addIssue({ code: "custom", message: "Isi tanggal mulai bekerja." }), z.NEVER)),
+});
+
+// Fixes typos from hiring or import. The login email (if any) follows the employee's email.
+export async function updateIdentity(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireRole("ADMIN", "HR");
+  const before = await db.employee.findUnique({
+    where: { id: employeeId },
+    select: {
+      fullName: true,
+      email: true,
+      phone: true,
+      employeeNumber: true,
+      joinDate: true,
+      endDate: true,
+      userId: true,
+      anonymizedAt: true,
+      contracts: { orderBy: { startDate: "asc" }, take: 1, select: { startDate: true } },
+    },
+  });
+  if (!before) return notFound;
+  if (before.anonymizedAt) return { message: "Data karyawan ini sudah dianonimkan dan tidak bisa diubah." };
+
+  const parsed = IdentitySchema.safeParse(Object.fromEntries(formData));
+  if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
+  const d = parsed.data;
+
+  if (before.endDate && d.joinDate >= before.endDate) return failed(formData, { joinDate: ["Harus sebelum tanggal kontrak berakhir."] });
+  const [numberTaken, emailTaken, loginTaken] = await Promise.all([
+    db.employee.findFirst({ where: { employeeNumber: equalsIgnoringCase(d.employeeNumber), id: { not: employeeId } }, select: { id: true } }),
+    db.employee.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: employeeId } }, select: { id: true } }),
+    before.userId
+      ? db.user.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: before.userId } }, select: { id: true } })
+      : null,
+  ]);
+  const errors: Record<string, string[]> = {};
+  if (numberTaken) errors.employeeNumber = ["Nomor induk ini sudah dipakai karyawan lain."];
+  if (emailTaken) errors.email = ["Email ini sudah dipakai karyawan lain."];
+  else if (loginTaken) errors.email = ["Email ini sudah dipakai akun login lain."];
+  if (Object.keys(errors).length) return failed(formData, errors);
+
+  await db.$transaction(async (tx) => {
+    await tx.employee.update({ where: { id: employeeId }, data: d });
+    if (before.userId) await tx.user.update({ where: { id: before.userId }, data: { email: d.email, name: d.fullName } });
+  });
+
+  const plain = { ...before, joinDate: iso(before.joinDate) };
+  const after = { ...d, joinDate: iso(d.joinDate) };
+  const keys = ["fullName", "email", "phone", "employeeNumber", "joinDate"] as const;
+  // The audit log can never be edited, so it must not keep personal data that retention
+  // will later wipe: name, email and phone are recorded as "changed" without their values
+  const personal = new Set<string>(["fullName", "email", "phone"]);
+  const changes = Object.fromEntries(
+    keys.filter((k) => plain[k] !== after[k]).map((k) => [k, personal.has(k) ? "changed" : { from: plain[k], to: after[k] }]),
+  );
+  if (Object.keys(changes).length) {
+    await writeAudit({ actorId: user.id, action: "employee.identity_updated", entityType: "Employee", entityId: employeeId, changes });
+  }
+  refresh();
+  return { ok: true, attempt: Date.now() };
+}
+
+// ── Delete an employee entered by mistake ───────────────────
+
+// Only for records with nothing attached yet. Anyone who actually worked here keeps
+// their record: change the status instead, and retention anonymises it later.
+export async function deletionBlockers(employeeId: string): Promise<string[]> {
+  await requireRole("ADMIN", "HR");
+  const e = await db.employee.findUnique({
+    where: { id: employeeId },
+    select: {
+      userId: true,
+      _count: { select: { letters: true, documents: true, bankAccounts: true, bankChangeRequests: true, reports: true } },
+    },
+  });
+  if (!e) return ["Data karyawan tidak ditemukan."];
+  const b: string[] = [];
+  if (e._count.letters) b.push(`${e._count.letters} surat sudah diterbitkan`);
+  if (e._count.documents) b.push(`${e._count.documents} dokumen tersimpan`);
+  if (e._count.bankAccounts || e._count.bankChangeRequests) b.push("ada data rekening gaji");
+  if (e.userId) b.push("sudah punya akun login");
+  if (e._count.reports) b.push(`menjadi atasan ${e._count.reports} karyawan`);
+  return b;
+}
+
+export async function deleteEmployee(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireRole("ADMIN", "HR");
+  const emp = await db.employee.findUnique({
+    where: { id: employeeId },
+    select: { employeeNumber: true, fullName: true, applicationId: true, _count: { select: { contracts: true } } },
+  });
+  if (!emp) return notFound;
+
+  const blockers = await deletionBlockers(employeeId);
+  if (blockers.length) return { message: `Tidak bisa dihapus: ${blockers.join(", ")}. Ubah statusnya saja.`, attempt: Date.now() };
+  if (String(formData.get("confirmNumber") ?? "").trim().toLowerCase() !== emp.employeeNumber.toLowerCase()) {
+    return failed(formData, { confirmNumber: [`Ketik ${emp.employeeNumber} untuk mengonfirmasi.`] });
+  }
+
+  await db.$transaction([
+    db.contract.deleteMany({ where: { employeeId } }),
+    db.employee.delete({ where: { id: employeeId } }),
+  ]);
+  await writeAudit({
+    actorId: user.id,
+    action: "employee.deleted",
+    entityType: "Employee",
+    entityId: employeeId,
+    changes: { employeeNumber: emp.employeeNumber, contracts: emp._count.contracts, fromApplication: emp.applicationId },
+  });
+  revalidatePath("/dashboard", "layout");
+  redirect(`/dashboard/karyawan?dihapus=${encodeURIComponent(emp.employeeNumber)}`);
 }
 
 // ── Contract extension / new contract ───────────────────────
@@ -168,7 +318,7 @@ export async function renewContract(employeeId: string, _state: FormState, formD
         position: d.position,
         endDate: d.endDate ?? null,
         // Back to work if the previous contract had been marked as ended
-        ...(emp.status === "CONTRACT_ENDED" ? { status: "ACTIVE" as const } : {}),
+        ...(emp.status === "CONTRACT_ENDED" ? { status: "ACTIVE" as const, exitDate: null } : {}),
       },
     });
     return created;
@@ -230,9 +380,10 @@ export async function updatePersonal(employeeId: string, _state: FormState, form
 
   const before = await db.employee.findUnique({
     where: { id: employeeId },
-    select: { birthPlace: true, birthDate: true, gender: true, address: true, ptkpStatus: true, nikKtpEnc: true },
+    select: { birthPlace: true, birthDate: true, gender: true, address: true, ptkpStatus: true, nikKtpEnc: true, anonymizedAt: true },
   });
   if (!before) return notFound;
+  if (before.anonymizedAt) return { message: "Data karyawan ini sudah dianonimkan dan tidak bisa diubah." };
 
   const parsed = PersonalSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);

@@ -3,16 +3,90 @@ import { db } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 import type { ApplicationStage } from "@/generated/prisma/enums";
 
-// UU PDP retention: once a candidate's retainUntil date has passed, wipe their
-// personal data and CV files but keep the anonymous application rows, so hiring
-// statistics (counts per job, stage, source, AI score) still add up.
+// UU PDP retention, run daily by scripts/retention.ts.
 //
-// Skipped: candidates still being processed or already hired. Their data is
-// needed for the running process or has become employee data.
+// Candidates: once retainUntil has passed, wipe personal data and CV files but keep
+// the anonymous application rows, so hiring statistics (counts per job, stage,
+// source, AI score) still add up. Skipped: candidates still being processed or
+// hired (their data became employee data, handled below).
+//
+// Former employees: EMPLOYEE_RETENTION_YEARS (default 10, the tax record period of
+// UU KUP Pasal 28) after their exit date, wipe personal data, identity numbers, bank
+// details, letter PDFs and their recruitment record. Kept: employee number,
+// department, position, dates and contracts, for headcount and tenure statistics.
 
 const KEEP_STAGES: ApplicationStage[] = ["SCREENING", "INTERVIEW", "OFFER", "HIRED"];
 
 export type RetentionResult = { candidateIds: string[]; filesDeleted: number; fileErrors: number };
+export type EmployeeRetentionResult = { employeeIds: string[]; filesDeleted: number; fileErrors: number };
+
+export const employeeRetentionYears = () => Number(process.env.EMPLOYEE_RETENTION_YEARS) || 10;
+
+// Files go after the database commit: a leftover file is harmless, a database row
+// pointing at a missing file is not
+async function deleteFiles(keys: string[], result: { filesDeleted: number; fileErrors: number }) {
+  for (const key of keys) {
+    try {
+      await deleteFile(key);
+      result.filesDeleted++;
+    } catch (error) {
+      result.fileErrors++;
+      console.error("Could not delete file", key, error);
+    }
+  }
+}
+
+const candidateSelect = {
+  id: true,
+  applications: { select: { id: true, resumes: { select: { fileKey: true } } } },
+  resumes: { select: { fileKey: true } }, // CVs added by HR before any job (bank data)
+} as const;
+
+type CandidateToWipe = {
+  id: string;
+  applications: { id: string; resumes: { fileKey: string }[] }[];
+  resumes: { fileKey: string }[];
+};
+
+// Wipes one candidate in a transaction; returns the CV files to delete afterwards
+async function anonymizeCandidate(candidate: CandidateToWipe, now: Date, reason: string) {
+  const applicationIds = candidate.applications.map((a) => a.id);
+  // Several resume rows can share one stored file (attachToJob reuses it), so de-duplicate
+  const fileKeys = [
+    ...new Set([...candidate.applications.flatMap((a) => a.resumes.map((r) => r.fileKey)), ...candidate.resumes.map((r) => r.fileKey)]),
+  ];
+  const inApps = { applicationId: { in: applicationIds } };
+
+  await db.$transaction([
+    db.candidate.update({
+      where: { id: candidate.id },
+      data: {
+        fullName: "Kandidat dihapus",
+        email: `dihapus-${candidate.id}@anonim.invalid`,
+        phone: "-",
+        city: null,
+        lastEducation: null,
+        // The database rule needs evidence on HR-attested rows; keep the fact, drop the detail
+        consentEvidence: "(dihapus)",
+        anonymizedAt: now,
+      },
+    }),
+    db.resume.deleteMany({ where: { OR: [inApps, { candidateId: candidate.id }] } }),
+    // Keep the score for statistics; drop text that describes the person
+    db.screening.updateMany({ where: inApps, data: { summary: "", strengths: [], gaps: [], decisionNote: null } }),
+    db.interview.updateMany({ where: inApps, data: { feedback: null } }),
+    db.application.updateMany({ where: { id: { in: applicationIds } }, data: { rejectionReason: null } }),
+    db.auditLog.create({
+      data: {
+        action: "candidate.anonymized",
+        entityType: "Candidate",
+        entityId: candidate.id,
+        changes: { applications: applicationIds.length, files: fileKeys.length, reason },
+      },
+    }),
+  ]);
+  return fileKeys;
+}
 
 export async function anonymizeExpiredCandidates({ dryRun = false, now = new Date() } = {}): Promise<RetentionResult> {
   const candidates = await db.candidate.findMany({
@@ -21,64 +95,102 @@ export async function anonymizeExpiredCandidates({ dryRun = false, now = new Dat
       retainUntil: { lt: now },
       applications: { none: { OR: [{ stage: { in: KEEP_STAGES } }, { employee: { isNot: null } }] } },
     },
-    select: {
-      id: true,
-      applications: { select: { id: true, resumes: { select: { fileKey: true } } } },
-      resumes: { select: { fileKey: true } }, // CVs added by HR before any job (bank data)
-    },
+    select: candidateSelect,
   });
 
   const result: RetentionResult = { candidateIds: candidates.map((c) => c.id), filesDeleted: 0, fileErrors: 0 };
   if (dryRun) return result;
 
   for (const candidate of candidates) {
-    const applicationIds = candidate.applications.map((a) => a.id);
-    // Several resume rows can share one stored file (attachToJob reuses it), so de-duplicate
-    const fileKeys = [
-      ...new Set([...candidate.applications.flatMap((a) => a.resumes.map((r) => r.fileKey)), ...candidate.resumes.map((r) => r.fileKey)]),
-    ];
-    const inApps = { applicationId: { in: applicationIds } };
+    await deleteFiles(await anonymizeCandidate(candidate, now, "retention"), result);
+  }
+  return result;
+}
+
+export async function anonymizeFormerEmployees({ dryRun = false, now = new Date() } = {}): Promise<EmployeeRetentionResult> {
+  const cutoff = new Date(now);
+  cutoff.setUTCFullYear(cutoff.getUTCFullYear() - employeeRetentionYears());
+
+  const employees = await db.employee.findMany({
+    where: {
+      anonymizedAt: null,
+      status: { in: ["RESIGNED", "TERMINATED", "CONTRACT_ENDED"] },
+      exitDate: { not: null, lt: cutoff },
+    },
+    select: {
+      id: true,
+      fullName: true,
+      userId: true,
+      application: { select: { candidate: { select: { ...candidateSelect, anonymizedAt: true } } } },
+      letters: { select: { fileKey: true } },
+      documents: { select: { id: true, fileKey: true } },
+    },
+  });
+
+  const result: EmployeeRetentionResult = { employeeIds: employees.map((e) => e.id), filesDeleted: 0, fileErrors: 0 };
+  if (dryRun) return result;
+
+  for (const e of employees) {
+    const files = [...e.letters.map((l) => l.fileKey), ...e.documents.map((d) => d.fileKey)].filter((k): k is string => Boolean(k));
+    const documentIds = e.documents.map((d) => d.id);
 
     await db.$transaction([
-      db.candidate.update({
-        where: { id: candidate.id },
+      db.employee.update({
+        where: { id: e.id },
         data: {
-          fullName: "Kandidat dihapus",
-          email: `dihapus-${candidate.id}@anonim.invalid`,
+          fullName: "Karyawan dihapus",
+          email: `dihapus-${e.id}@anonim.invalid`,
           phone: "-",
-          city: null,
-          lastEducation: null,
-          // The CHECK constraint needs evidence on HR-attested rows; keep the fact, drop the detail
-          consentEvidence: "(dihapus)",
+          birthPlace: null,
+          birthDate: null,
+          gender: null,
+          address: null,
+          ptkpStatus: null,
+          nikKtpEnc: null,
+          nikKtpLast4: null,
+          npwpEnc: null,
+          npwpLast4: null,
+          bpjsKesehatanEnc: null,
+          bpjsKesehatanLast4: null,
+          bpjsKetenagakerjaanEnc: null,
+          bpjsKetenagakerjaanLast4: null,
           anonymizedAt: now,
         },
       }),
-      db.resume.deleteMany({ where: { OR: [inApps, { candidateId: candidate.id }] } }),
-      // Keep the score for statistics; drop text that describes the person
-      db.screening.updateMany({ where: inApps, data: { summary: "", strengths: [], gaps: [], decisionNote: null } }),
-      db.interview.updateMany({ where: inApps, data: { feedback: null } }),
-      db.application.updateMany({ where: { id: { in: applicationIds } }, data: { rejectionReason: null } }),
+      db.contract.updateMany({ where: { employeeId: e.id }, data: { baseSalaryEnc: null, documentId: null } }),
+      db.letter.updateMany({
+        where: { employeeId: e.id },
+        data: { recipientName: "Karyawan dihapus", reason: null, fileKey: null, documentId: null },
+      }),
+      db.document.deleteMany({ where: { id: { in: documentIds } } }),
+      db.bankAccount.updateMany({
+        where: { employeeId: e.id },
+        data: { accountNumberEnc: "", accountNumberLast4: "----", accountHolderName: "(dihapus)", isActive: false },
+      }),
+      db.bankChangeRequest.updateMany({
+        where: { employeeId: e.id },
+        data: { accountNumberEnc: "", accountNumberLast4: "----", accountHolderName: "(dihapus)", inquiryName: null, submittedIp: null, rejectionReason: null, otpHash: null },
+      }),
+      // Notifications to HR quote the employee's name
+      db.notification.deleteMany({ where: { body: { contains: e.fullName } } }),
+      ...(e.userId
+        ? [db.user.update({ where: { id: e.userId }, data: { name: "Karyawan dihapus", email: `dihapus-${e.userId}@anonim.invalid`, isActive: false } })]
+        : []),
       db.auditLog.create({
         data: {
-          action: "candidate.anonymized",
-          entityType: "Candidate",
-          entityId: candidate.id,
-          changes: { applications: applicationIds.length, files: fileKeys.length },
+          action: "employee.anonymized",
+          entityType: "Employee",
+          entityId: e.id,
+          changes: { files: files.length, retentionYears: employeeRetentionYears() },
         },
       }),
     ]);
 
-    // Files go after the database commit: a leftover file is harmless, a
-    // database row pointing at a missing file is not
-    for (const key of fileKeys) {
-      try {
-        await deleteFile(key);
-        result.filesDeleted++;
-      } catch (error) {
-        result.fileErrors++;
-        console.error("Could not delete file", key, error);
-      }
-    }
+    // Their recruitment record holds the same personal data (CV, contact details)
+    const candidate = e.application?.candidate;
+    if (candidate && !candidate.anonymizedAt) files.push(...(await anonymizeCandidate(candidate, now, "employee_retention")));
+
+    await deleteFiles([...new Set(files)], result);
   }
   return result;
 }

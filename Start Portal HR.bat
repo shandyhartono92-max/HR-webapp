@@ -43,6 +43,8 @@ if errorlevel 1 (
   pause
   exit /b 1
 )
+rem The database client must match the schema, or pages fail after a schema change
+call npx prisma generate >nul 2>&1
 
 echo [3/3] Menyalakan aplikasi...
 echo.
