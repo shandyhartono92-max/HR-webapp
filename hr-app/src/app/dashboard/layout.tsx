@@ -22,6 +22,7 @@ const nav: NavItem[] = [
   { href: "/dashboard/karyawan", label: "Karyawan", roles: HR_ONLY },
   { href: "/dashboard/surat", label: "Surat", roles: HR_ONLY },
   { href: "/dashboard/rekening", label: "Rekening Gaji", roles: ALL },
+  { href: "/dashboard/pengguna", label: "Pengguna", roles: ["ADMIN"] },
   { label: "Log Audit", roles: HR_ONLY },
   { href: "/dashboard/akun", label: "Akun Saya", roles: ALL },
 ];

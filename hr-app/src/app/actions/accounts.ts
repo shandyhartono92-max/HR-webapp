@@ -1,6 +1,5 @@
 "use server";
 
-import { randomInt } from "node:crypto";
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
@@ -9,12 +8,7 @@ import { db } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
-
-// No 0/O, 1/l/I: the temporary password is read out or typed by hand
-const ALPHABET = "abcdefghijkmnpqrstuvwxyzABCDEFGHJKLMNPQRSTUVWXYZ23456789";
-function temporaryPassword(length = 10) {
-  return Array.from({ length }, () => ALPHABET[randomInt(ALPHABET.length)]).join("");
-}
+import { temporaryPassword } from "@/lib/passwords";
 
 export type LoginResult = { error?: string; tempPassword?: string; email?: string };
 

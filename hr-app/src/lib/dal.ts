@@ -3,7 +3,7 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { db } from "@/lib/db";
-import { readSession, SESSION_COOKIE } from "@/lib/session-token";
+import { readSession, SESSION_COOKIE, SESSION_REJECTED_PARAM } from "@/lib/session-token";
 import type { Role } from "@/generated/prisma/enums";
 
 // Data Access Layer: every page and server action checks access here,
@@ -39,7 +39,7 @@ export const CHANGE_PASSWORD_PATH = "/dashboard/akun";
 // Pass allowPasswordChange for that page and for layout chrome (nav, user menu).
 export async function requireUser(opts: { allowPasswordChange?: boolean } = {}): Promise<CurrentUser> {
   const user = await getCurrentUser();
-  if (!user) redirect("/login");
+  if (!user) redirect(`/login?${SESSION_REJECTED_PARAM}=1`); // proxy.ts clears the cookie
   if (user.mustChangePassword && !opts.allowPasswordChange) redirect(CHANGE_PASSWORD_PATH);
   return user;
 }

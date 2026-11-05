@@ -164,6 +164,16 @@ To look at the data, double-click **`Buka Database.bat`** (in `D:\Claude HR`). W
 - **PDF**: rendered with pdf-lib (A4, Helvetica) and stored privately under `storage/letters`; downloads are Admin/HR only and audited. SP letters include a "Diterima oleh" signature space for the employee. SP validity is 6 months.
 - Offer-letter and promosi/demosi salaries exist only inside the stored PDF, not in a database column.
 
+### User management (Pengguna)
+
+`/dashboard/pengguna`, **Admin only** (`src/app/actions/users.ts`). An HR user who could create accounts could make a second one and approve their own bank change.
+
+- **Tambah pengguna**: name, email and role (HR, Hiring Manager, Admin). A 10-character temporary password is shown once and must be changed at first login. Employee logins are created from the employee page instead.
+- **Automatic links on create**: an employee record with the same email and no login is linked (needed so "nobody approves their own bank change" can recognise them), and jobs whose typed hiring manager name matches get `hiringManagerId` unless another active staff account has that name. Both are reported on screen and in the audit log.
+- **Each user**: reset password, deactivate or reactivate (takes effect on the next request), change name, email or role. An account linked to an employee takes its name and email from the employee record (*Ubah identitas*). Former employees' accounts cannot be reactivated.
+- **Guards**: an Admin cannot change their own role or deactivate or reset themselves, so one working Admin always remains. Audit entries hold no passwords, and record name and email only as "changed".
+- **Rejected sessions**: when a valid cookie belongs to a deactivated or missing account, `requireUser` redirects to `/login?sesi_ditolak=1` and `proxy.ts` clears the cookie. Without this, `/login` and `/dashboard` would redirect to each other forever.
+
 ### Employee logins and payroll bank account changes
 
 - **Logins**: HR creates (or resets) an employee's login on the employee page. A 10-character temporary password is shown once; the employee must change it at first login (`mustChangePassword`; `requireUser()` sends them to `/dashboard/akun` until they do).

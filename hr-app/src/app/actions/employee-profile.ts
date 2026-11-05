@@ -158,7 +158,11 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
 
   await db.$transaction(async (tx) => {
     await tx.employee.update({ where: { id: employeeId }, data: d });
-    if (before.userId) await tx.user.update({ where: { id: before.userId }, data: { email: d.email, name: d.fullName } });
+    if (before.userId) {
+      await tx.user.update({ where: { id: before.userId }, data: { email: d.email, name: d.fullName } });
+      // Jobs show the hiring manager's name as text; keep it in step with the account
+      await tx.job.updateMany({ where: { hiringManagerId: before.userId }, data: { hiringManagerName: d.fullName } });
+    }
   });
 
   const plain = { ...before, joinDate: iso(before.joinDate) };

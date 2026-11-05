@@ -5,6 +5,8 @@ import type { Role } from "@/generated/prisma/enums";
 
 export const SESSION_COOKIE = "hr_session";
 export const SESSION_HOURS = 8; // one working day
+// On /login: the database refused this session, so proxy.ts must clear the cookie
+export const SESSION_REJECTED_PARAM = "sesi_ditolak";
 
 export type SessionPayload = {
   userId: string;
