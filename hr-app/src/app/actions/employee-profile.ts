@@ -28,6 +28,11 @@ const notFound: FormState = { message: "Data karyawan tidak ditemukan." };
 
 const LEFT: EmployeeStatus[] = ["RESIGNED", "TERMINATED", "CONTRACT_ENDED"];
 
+const LOGIN_CLOSED = "Akun login karyawan ini otomatis dinonaktifkan.";
+// A returning employee's login stays off: the app cannot tell whether it was closed
+// by their leaving or on purpose. HR turns it back on with a password reset.
+const LOGIN_STILL_OFF = "Akun login karyawan ini masih nonaktif. Klik Reset kata sandi di bagian Akun login untuk mengaktifkannya lagi.";
+
 const EmploymentSchema = z.object({
   departmentId: z.string().min(1, { error: "Pilih departemen." }),
   position: z.string().trim().min(2, { error: "Isi jabatan." }).max(120),
@@ -49,7 +54,18 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
 
   const before = await db.employee.findUnique({
     where: { id: employeeId },
-    select: { departmentId: true, position: true, status: true, managerId: true, exitDate: true, endDate: true, joinDate: true, anonymizedAt: true },
+    select: {
+      departmentId: true,
+      position: true,
+      status: true,
+      managerId: true,
+      exitDate: true,
+      endDate: true,
+      joinDate: true,
+      anonymizedAt: true,
+      userId: true,
+      user: { select: { role: true, isActive: true } },
+    },
   });
   if (!before) return notFound;
   if (before.anonymizedAt) return { message: "Data karyawan ini sudah dianonimkan dan tidak bisa diubah." };
@@ -75,7 +91,32 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
   const exitDate = leaving ? (typedExit ?? before.exitDate ?? (data.status === "CONTRACT_ENDED" ? before.endDate : null) ?? todayDate()) : null;
   if (exitDate && exitDate < before.joinDate) return failed(formData, { exitDate: ["Tanggal keluar sebelum tanggal mulai bekerja."] });
 
-  await db.employee.update({ where: { id: employeeId }, data: { ...data, exitDate } });
+  // Someone who leaves loses access at once. Their login goes with them, so guard
+  // against locking out the person doing this, or the only working Admin.
+  const closesLogin = leaving && Boolean(before.user?.isActive);
+  if (closesLogin && before.userId === user.id) {
+    return failed(formData, { status: ["Anda tidak bisa mengubah status Anda sendiri menjadi keluar. Minta HR/Admin lain."] });
+  }
+  if (closesLogin && before.user?.role === "ADMIN") {
+    const otherAdmins = await db.user.count({ where: { role: "ADMIN", isActive: true, id: { not: before.userId! } } });
+    if (otherAdmins === 0) {
+      return failed(formData, { status: ["Karyawan ini satu-satunya Admin aktif. Jadikan akun lain Admin dulu di menu Pengguna."] });
+    }
+  }
+
+  await db.$transaction(async (tx) => {
+    await tx.employee.update({ where: { id: employeeId }, data: { ...data, exitDate } });
+    if (closesLogin) await tx.user.update({ where: { id: before.userId! }, data: { isActive: false } });
+  });
+  if (closesLogin) {
+    await writeAudit({
+      actorId: user.id,
+      action: "user.deactivated",
+      entityType: "User",
+      entityId: before.userId!,
+      changes: { reason: "employee_left", employeeId, status: data.status },
+    });
+  }
 
   const changed = (Object.keys(data) as (keyof typeof data)[]).filter((k) => data[k] !== before[k]);
   const changes: Record<string, { from: unknown; to: unknown }> = Object.fromEntries(
@@ -92,6 +133,8 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
     });
   }
   refresh();
+  if (closesLogin) return { ok: true, message: LOGIN_CLOSED, attempt: Date.now() };
+  if (!leaving && before.user && !before.user.isActive) return { ok: true, message: LOGIN_STILL_OFF, attempt: Date.now() };
   return { ok: true, attempt: Date.now() };
 }
 
@@ -278,6 +321,7 @@ export async function renewContract(employeeId: string, _state: FormState, formD
       position: true,
       employmentType: true,
       endDate: true,
+      user: { select: { isActive: true } },
       contracts: {
         orderBy: { startDate: "desc" },
         select: { id: true, type: true, startDate: true, endDate: true, renewedBy: { select: { id: true } } },
@@ -356,6 +400,7 @@ export async function renewContract(employeeId: string, _state: FormState, formD
   });
   // refresh() also re-renders the menu, so its contract alert badge updates
   refresh();
+  if (emp.user && !emp.user.isActive) return { ok: true, message: LOGIN_STILL_OFF, attempt: Date.now() };
   return { ok: true, attempt: Date.now() };
 }
 

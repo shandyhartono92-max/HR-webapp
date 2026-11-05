@@ -22,7 +22,9 @@ export async function issueEmployeeLogin(employeeId: string): Promise<LoginResul
     select: { fullName: true, email: true, userId: true, status: true },
   });
   if (!emp) return { error: "Data karyawan tidak ditemukan." };
-  if (emp.status === "RESIGNED" || emp.status === "TERMINATED") return { error: "Karyawan sudah tidak aktif." };
+  if (emp.status === "RESIGNED" || emp.status === "TERMINATED" || emp.status === "CONTRACT_ENDED") {
+    return { error: "Karyawan sudah tidak aktif." };
+  }
   if (emp.userId === user.id) return { error: "Anda tidak bisa mereset akun Anda sendiri dari sini." };
 
   const tempPassword = temporaryPassword();

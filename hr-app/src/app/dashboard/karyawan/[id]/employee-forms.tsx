@@ -12,6 +12,7 @@ import {
 } from "@/app/actions/employee-profile";
 import { issueEmployeeLogin, type LoginResult } from "@/app/actions/accounts";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
+import type { FormState } from "@/lib/forms";
 import { employeeStatusLabel, employmentTypeLabel, genderLabel, ptkpLabel } from "@/lib/labels";
 import type { EmployeeStatus, EmploymentType, Gender, PtkpStatus } from "@/generated/prisma/enums";
 
@@ -22,6 +23,17 @@ type Option = { id: string; name: string };
 
 function Saved({ show }: { show?: boolean }) {
   return show ? <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Tersimpan.</p> : null;
+}
+
+// A saved form can still have something to point out; only an unsaved one shows an error
+function SaveResult({ state, savedText }: { state: FormState; savedText?: string }) {
+  if (!state?.ok) return <FormMessage message={state?.message} />;
+  return (
+    <>
+      <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">{savedText ?? "Tersimpan."}</p>
+      {state.message && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{state.message}</p>}
+    </>
+  );
 }
 
 export function EmploymentForm({
@@ -42,8 +54,7 @@ export function EmploymentForm({
 
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
-      <FormMessage message={state?.message} />
-      <Saved show={state?.ok} />
+      <SaveResult state={state} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Departemen" htmlFor="departmentId" errors={e.departmentId}>
           <select id="departmentId" name="departmentId" defaultValue={v("departmentId")} className={inputClass}>
@@ -178,8 +189,7 @@ export function RenewContractForm({
 
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
-      <FormMessage message={state?.message} />
-      {state?.ok && <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Kontrak baru tersimpan.</p>}
+      <SaveResult state={state} savedText="Kontrak baru tersimpan." />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Jenis kontrak" htmlFor="renewType" errors={e.type}>
           <select id="renewType" name="type" defaultValue={v("type", initial.type)} className={inputClass}>

@@ -197,8 +197,9 @@ export async function setUserActive(userId: string, active: boolean): Promise<{ 
 
   if (active) {
     if (user.employee?.anonymizedAt) return { error: "Data akun ini sudah dianonimkan dan tidak bisa diaktifkan lagi." };
-    if (user.employee?.status === "RESIGNED" || user.employee?.status === "TERMINATED") {
-      return { error: "Karyawan ini sudah keluar. Akunnya tidak bisa diaktifkan lagi." };
+    const status = user.employee?.status;
+    if (status === "RESIGNED" || status === "TERMINATED" || status === "CONTRACT_ENDED") {
+      return { error: "Karyawan ini sudah keluar. Ubah dulu statusnya di profil karyawan jika ia bekerja lagi." };
     }
   }
 
