@@ -12,6 +12,7 @@ import {
   missingPlaceholders,
   placeholderHelp,
   SALARY_UNCHANGED_TEXT,
+  summonsRounds,
   type LetterVars,
 } from "@/lib/letters/fill";
 import type { EmploymentType, LetterType } from "@/generated/prisma/enums";
@@ -91,7 +92,16 @@ function IssuedNotice({ state }: { state: IssueState }) {
   );
 }
 
-const employeeLetterTypes: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", ...changeLetterTypes];
+const employeeLetterTypes: LetterType[] = [
+  "SP1",
+  "SP2",
+  "SP3",
+  "SURAT_KETERANGAN_KERJA",
+  "PAKLARING",
+  ...changeLetterTypes,
+  "BERAKHIR_KONTRAK",
+  "PANGGILAN",
+];
 
 const longDate = (v: string) =>
   v ? new Date(`${v}T00:00:00Z`).toLocaleDateString("id-ID", { day: "numeric", month: "long", year: "numeric", timeZone: "UTC" }) : "";
@@ -129,6 +139,16 @@ export function EmployeeLetterForm({
     newSalary: v?.newSalary ?? "",
   });
   const [applyChange, setApplyChange] = useState(v ? v.applyChange === "on" : true);
+  // Surat panggilan (mangkir)
+  const [summons, setSummons] = useState({
+    summonsRound: v?.summonsRound ?? "Pertama",
+    absentSince: v?.absentSince ?? "",
+    meetDate: v?.meetDate ?? "",
+    meetTime: v?.meetTime ?? "09:00",
+    meetPlace: v?.meetPlace ?? "",
+    recipientAddress: v?.recipientAddress ?? vars.alamat ?? "",
+  });
+  const setS = (k: keyof typeof summons) => (ev: { target: { value: string } }) => setSummons({ ...summons, [k]: ev.target.value });
   const setC = (k: keyof typeof change) => (ev: { target: { value: string } }) => setChange({ ...change, [k]: ev.target.value });
   const e = state?.errors ?? {};
   const isSp = type === "SP1" || type === "SP2" || type === "SP3";
@@ -148,6 +168,20 @@ export function EmployeeLetterForm({
     gaji_baru: change.newSalary
       ? `${new Intl.NumberFormat("id-ID", { style: "currency", currency: "IDR", maximumFractionDigits: 0 }).format(Number(change.newSalary))} per bulan`
       : SALARY_UNCHANGED_TEXT,
+    panggilan_ke: summons.summonsRound,
+    tidak_masuk_sejak: longDate(summons.absentSince),
+    tanggal_menghadap: summons.meetDate
+      ? new Date(`${summons.meetDate}T00:00:00Z`).toLocaleDateString("id-ID", {
+          weekday: "long",
+          day: "numeric",
+          month: "long",
+          year: "numeric",
+          timeZone: "UTC",
+        })
+      : "",
+    jam_menghadap: summons.meetTime.replace(":", "."),
+    tempat_menghadap: summons.meetPlace,
+    alamat: type === "PANGGILAN" ? summons.recipientAddress : vars.alamat,
   };
 
   return (
@@ -252,6 +286,63 @@ export function EmployeeLetterForm({
           <Field label="Keperluan" htmlFor="purpose" hint="Misal: pengajuan KPR, pembuatan visa." errors={e.purpose}>
             <input id="purpose" name="purpose" value={purpose} onChange={(ev) => setPurpose(ev.target.value)} className={inputClass} />
           </Field>
+        )}
+        {type === "BERAKHIR_KONTRAK" &&
+          (vars.tanggal_berakhir ? (
+            <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
+              Kontrak {vars.nomor_kontrak || "terakhir"} berakhir {vars.tanggal_berakhir}. Data diambil dari Riwayat kontrak; tidak ada isian
+              tambahan.
+            </p>
+          ) : (
+            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+              Karyawan ini tidak punya tanggal berakhir kontrak. Surat ini hanya untuk kontrak PKWT.
+            </p>
+          ))}
+        {type === "PANGGILAN" && (
+          <>
+            <div className="grid gap-3 sm:grid-cols-2">
+              <Field label="Panggilan ke-" htmlFor="summonsRound" hint="Setelah 2 kali dipanggil secara tertulis." errors={e.summonsRound}>
+                <select id="summonsRound" name="summonsRound" value={summons.summonsRound} onChange={setS("summonsRound")} className={inputClass}>
+                  {summonsRounds.map((r) => (
+                    <option key={r} value={r}>
+                      {r}
+                    </option>
+                  ))}
+                </select>
+              </Field>
+              <Field label="Tidak masuk sejak" htmlFor="absentSince" errors={e.absentSince}>
+                <input id="absentSince" name="absentSince" type="date" max={today} value={summons.absentSince} onChange={setS("absentSince")} className={inputClass} />
+              </Field>
+              <Field label="Tanggal menghadap" htmlFor="meetDate" errors={e.meetDate}>
+                <input id="meetDate" name="meetDate" type="date" min={today} value={summons.meetDate} onChange={setS("meetDate")} className={inputClass} />
+              </Field>
+              <Field label="Jam menghadap (WIB)" htmlFor="meetTime" errors={e.meetTime}>
+                <input id="meetTime" name="meetTime" type="time" value={summons.meetTime} onChange={setS("meetTime")} className={inputClass} />
+              </Field>
+            </div>
+            <Field label="Tempat menghadap" htmlFor="meetPlace" hint="Misal: Ruang HRD Lt. 2, Kantor Pusat." errors={e.meetPlace}>
+              <input id="meetPlace" name="meetPlace" value={summons.meetPlace} onChange={setS("meetPlace")} className={inputClass} />
+            </Field>
+            <Field
+              label="Alamat tujuan surat"
+              htmlFor="recipientAddress"
+              hint={
+                vars.alamat
+                  ? "Terisi dari alamat KTP. Ganti jika karyawan tinggal di alamat lain (domisili), supaya surat sampai."
+                  : "Alamat KTP belum diisi di Data pribadi. Tulis alamat tempat tinggal karyawan."
+              }
+              errors={e.recipientAddress}
+            >
+              <textarea
+                id="recipientAddress"
+                name="recipientAddress"
+                rows={2}
+                value={summons.recipientAddress}
+                onChange={setS("recipientAddress")}
+                className={inputClass}
+              />
+            </Field>
+          </>
         )}
         {type === "PAKLARING" && (
           <Field label="Tanggal terakhir bekerja" htmlFor="lastDay" errors={e.lastDay}>

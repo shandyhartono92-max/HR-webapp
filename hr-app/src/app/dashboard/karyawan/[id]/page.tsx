@@ -35,7 +35,18 @@ import { HrBankForm } from "../../rekening/bank-forms";
 import { deletionBlockers } from "@/app/actions/employee-profile";
 import { employeeRetentionYears } from "@/lib/retention";
 
-const employeeLetterTypes: LetterType[] = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", "MUTASI", "PROMOSI", "DEMOSI"];
+const employeeLetterTypes: LetterType[] = [
+  "SP1",
+  "SP2",
+  "SP3",
+  "SURAT_KETERANGAN_KERJA",
+  "PAKLARING",
+  "MUTASI",
+  "PROMOSI",
+  "DEMOSI",
+  "BERAKHIR_KONTRAK",
+  "PANGGILAN",
+];
 
 export const metadata: Metadata = { title: "Detail karyawan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx

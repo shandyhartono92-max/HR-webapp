@@ -17,6 +17,8 @@ const editable: LetterType[] = [
   "MUTASI",
   "PROMOSI",
   "DEMOSI",
+  "BERAKHIR_KONTRAK",
+  "PANGGILAN",
   "OFFER_LETTER",
 ];
 
@@ -56,6 +58,14 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/dashbo
     lokasi_baru: "Kantor Cabang Surabaya",
     tanggal_efektif: "1 Desember 2026",
     gaji_baru: "Rp9.000.000 per bulan",
+    nomor_kontrak: "015/PKWT/III/2025",
+    kontrak_mulai: "1 Maret 2025",
+    alamat: "Jl. Melati No. 12, RT 003/RW 005, Kebayoran Baru, Jakarta Selatan",
+    panggilan_ke: "Pertama",
+    tidak_masuk_sejak: "26 Oktober 2026",
+    tanggal_menghadap: "Senin, 2 November 2026",
+    jam_menghadap: "09.00",
+    tempat_menghadap: "Ruang HRD Lt. 2, Kantor Pusat",
     nama_perusahaan: c.name,
     kota: c.city,
   };

@@ -118,6 +118,8 @@ enum LetterType {
   MUTASI // transfer to another department / location
   PROMOSI
   DEMOSI
+  BERAKHIR_KONTRAK // notice that a PKWT ends
+  PANGGILAN // summons for an employee absent without notice (mangkir)
   OTHER
 }
 

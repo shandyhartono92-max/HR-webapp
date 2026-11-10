@@ -6,7 +6,15 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
-import { employmentTypeLabel, formatDateLong, formatRupiah, parseDateOnly } from "@/lib/labels";
+import {
+  employeeStatusLabel,
+  employmentTypeLabel,
+  formatDateLong,
+  formatDayDateLong,
+  formatRupiah,
+  parseDateOnly,
+  todayDate,
+} from "@/lib/labels";
 import { findOrCreateDepartment } from "@/lib/departments";
 import {
   changeLetterTypes,
@@ -14,6 +22,7 @@ import {
   isChangeLetter,
   needsAcknowledgement,
   SALARY_UNCHANGED_TEXT,
+  summonsRounds,
   type ChangeLetterType,
   type LetterVars,
 } from "@/lib/letters/fill";
@@ -107,7 +116,7 @@ async function issue(input: IssueInput) {
 
 // ── Letters to employees ────────────────────────────────────
 
-const employeeTypes = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", ...changeLetterTypes] as const;
+const employeeTypes = ["SP1", "SP2", "SP3", "SURAT_KETERANGAN_KERJA", "PAKLARING", ...changeLetterTypes, "BERAKHIR_KONTRAK", "PANGGILAN"] as const;
 
 const EmployeeLetterSchema = z.discriminatedUnion("type", [
   z.object({
@@ -132,6 +141,22 @@ const EmployeeLetterSchema = z.discriminatedUnion("type", [
     newSalary: optionalInt(0, 1_000_000_000, "Isi angka tanpa titik, misal 8500000."),
     applyChange: checkbox,
   }),
+  // Everything comes from the employee's latest contract
+  z.object({ type: z.literal("BERAKHIR_KONTRAK") }),
+  z.object({
+    type: z.literal("PANGGILAN"),
+    summonsRound: z.enum(summonsRounds, { error: "Pilih panggilan pertama atau kedua." }),
+    absentSince: dateField("Isi tanggal mulai tidak masuk."),
+    meetDate: dateField("Isi tanggal menghadap."),
+    meetTime: z.string().regex(/^([01][0-9]|2[0-3]):[0-5][0-9]$/, { error: "Isi jam menghadap." }),
+    meetPlace: z.string().trim().min(3, { error: "Isi tempat menghadap, misal: Ruang HRD Lt. 2." }).max(150, { error: "Maksimal 150 karakter." }),
+    // Where the letter is sent: the KTP address by default, or where they actually live
+    recipientAddress: z
+      .string()
+      .trim()
+      .min(10, { error: "Isi alamat tujuan surat secara lengkap." })
+      .max(500, { error: "Maksimal 500 karakter." }),
+  }),
 ]);
 
 const same = (a: string, b: string) => a.trim().toLowerCase() === b.trim().toLowerCase();
@@ -151,6 +176,15 @@ function changeLetterErrors(
 }
 
 const SP_VALID_MONTHS = 6;
+
+// Contract-end notices and summons only make sense while someone still works here
+async function notWorking(employeeId: string): Promise<string | null> {
+  const emp = await db.employee.findUnique({ where: { id: employeeId }, select: { status: true } });
+  if (!emp) return "Data karyawan tidak ditemukan.";
+  return emp.status === "ACTIVE" || emp.status === "PROBATION"
+    ? null
+    : `Karyawan ini berstatus ${employeeStatusLabel[emp.status]}. Surat ini hanya untuk karyawan yang masih bekerja.`;
+}
 
 export async function issueEmployeeLetter(employeeId: string, _state: IssueState, formData: FormData): Promise<IssueState> {
   const user = await requireRole("ADMIN", "HR");
@@ -199,6 +233,43 @@ export async function issueEmployeeLetter(employeeId: string, _state: IssueState
         // The new salary lives only inside the stored PDF, like the offer letter
         gaji_baru: data.newSalary ? `${formatRupiah(data.newSalary)} per bulan` : SALARY_UNCHANGED_TEXT,
       });
+      break;
+    }
+    case "BERAKHIR_KONTRAK": {
+      const blocked = await notWorking(employeeId);
+      if (blocked) return failed(formData, undefined, blocked);
+      const emp = await db.employee.findUnique({ where: { id: employeeId }, select: { endDate: true } });
+      if (!emp?.endDate) {
+        return failed(formData, undefined, "Karyawan ini tidak punya tanggal berakhir kontrak. Surat ini hanya untuk kontrak PKWT.");
+      }
+      // The letter says the contract "akan berakhir": only before (or on) that day
+      if (emp.endDate < todayDate()) {
+        return failed(
+          formData,
+          undefined,
+          `Kontrak karyawan ini sudah berakhir pada ${formatDateLong(emp.endDate)}. Surat pemberitahuan dibuat sebelum kontrak berakhir.`,
+        );
+      }
+      break;
+    }
+    case "PANGGILAN": {
+      const blocked = await notWorking(employeeId);
+      if (blocked) return failed(formData, undefined, blocked);
+      const today = todayDate();
+      const errors: Record<string, string[]> = {};
+      if (data.absentSince > today) errors.absentSince = ["Tanggal tidak masuk tidak boleh di masa depan."];
+      if (data.meetDate < today) errors.meetDate = ["Tanggal menghadap tidak boleh sebelum hari ini."];
+      else if (data.meetDate <= data.absentSince) errors.meetDate = ["Tanggal menghadap harus setelah tanggal mulai tidak masuk."];
+      if (Object.keys(errors).length) return failed(formData, errors);
+      Object.assign(vars, {
+        alamat: data.recipientAddress,
+        panggilan_ke: data.summonsRound,
+        tidak_masuk_sejak: formatDateLong(data.absentSince),
+        tanggal_menghadap: formatDayDateLong(data.meetDate),
+        jam_menghadap: data.meetTime.replace(":", "."),
+        tempat_menghadap: data.meetPlace,
+      });
+      reason = `Panggilan ${data.summonsRound}, tidak masuk sejak ${formatDateLong(data.absentSince)}`;
       break;
     }
   }

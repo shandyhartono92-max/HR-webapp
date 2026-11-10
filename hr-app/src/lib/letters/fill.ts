@@ -37,13 +37,30 @@ export const placeholderHelp: Record<string, string> = {
   lokasi_baru: "Lokasi kerja baru (mutasi)",
   tanggal_efektif: "Tanggal berlaku (mutasi / promosi / demosi)",
   gaji_baru: "Gaji pokok baru, atau “sesuai ketentuan” bila kosong",
+  nomor_kontrak: "Nomor kontrak terakhir (berakhir kontrak)",
+  kontrak_mulai: "Tanggal mulai kontrak terakhir (berakhir kontrak)",
+  alamat: "Alamat tujuan surat panggilan (default alamat KTP)",
+  panggilan_ke: "Pertama / Kedua (surat panggilan)",
+  tidak_masuk_sejak: "Tanggal mulai tidak masuk (surat panggilan)",
+  tanggal_menghadap: "Hari dan tanggal menghadap (surat panggilan)",
+  jam_menghadap: "Jam menghadap, misal 09.00 (surat panggilan)",
+  tempat_menghadap: "Tempat menghadap (surat panggilan)",
   nama_perusahaan: "Nama perusahaan",
   kota: "Kota perusahaan",
 };
 
 // Letters that employees sign to acknowledge receipt
 export const needsAcknowledgement = (type: LetterType) =>
-  type === "SP1" || type === "SP2" || type === "SP3" || type === "MUTASI" || type === "PROMOSI" || type === "DEMOSI";
+  type === "SP1" ||
+  type === "SP2" ||
+  type === "SP3" ||
+  type === "MUTASI" ||
+  type === "PROMOSI" ||
+  type === "DEMOSI" ||
+  type === "BERAKHIR_KONTRAK";
+
+// Surat panggilan: which summons this is
+export const summonsRounds = ["Pertama", "Kedua"] as const;
 
 // Changes of position, department or location ("SK"), issued from the employee page
 export const changeLetterTypes = ["MUTASI", "PROMOSI", "DEMOSI"] as const;

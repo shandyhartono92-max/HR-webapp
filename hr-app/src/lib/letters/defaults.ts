@@ -155,6 +155,56 @@ Apabila yang bersangkutan berkeberatan atas keputusan ini, keberatan dapat disam
 
 ${decreeClosing}`,
   },
+  BERAKHIR_KONTRAK: {
+    name: "SURAT PEMBERITAHUAN BERAKHIRNYA PERJANJIAN KERJA",
+    body: `Yang bertanda tangan di bawah ini, atas nama {{nama_perusahaan}}, dengan ini memberitahukan kepada:
+
+${identity}
+
+bahwa Perjanjian Kerja Waktu Tertentu (PKWT) yang bersangkutan:
+
+Nomor kontrak : {{nomor_kontrak}}
+Masa kontrak : {{kontrak_mulai}} s.d. {{tanggal_berakhir}}
+
+akan berakhir pada tanggal {{tanggal_berakhir}} dan tidak diperpanjang. Dengan demikian, hubungan kerja antara yang bersangkutan dan {{nama_perusahaan}} berakhir pada tanggal tersebut.
+
+Sehubungan dengan berakhirnya PKWT tersebut, perusahaan akan memberikan uang kompensasi sesuai ketentuan peraturan perundang-undangan yang berlaku, serta menyelesaikan hak-hak lain yang bersangkutan yang belum diterima.
+
+Yang bersangkutan diminta menyelesaikan serah terima pekerjaan, dokumen, dan inventaris perusahaan kepada atasan langsung paling lambat pada hari terakhir bekerja.
+
+Kami mengucapkan terima kasih atas dedikasi dan kontribusi yang telah diberikan selama bekerja di {{nama_perusahaan}}, dan berharap kesuksesan untuk yang bersangkutan di masa mendatang.
+
+Demikian surat pemberitahuan ini disampaikan untuk diketahui dan dipergunakan sebagaimana mestinya.`,
+  },
+  PANGGILAN: {
+    name: "SURAT PANGGILAN",
+    body: `Kepada Yth.
+Sdr/i {{nama}}
+{{alamat}}
+
+Perihal : Panggilan {{panggilan_ke}}
+
+Dengan hormat,
+
+Berdasarkan catatan kehadiran, karyawan dengan identitas berikut:
+
+${identity}
+
+tidak masuk bekerja sejak {{tidak_masuk_sejak}} sampai dengan tanggal surat ini tanpa keterangan yang sah dan tanpa pemberitahuan kepada perusahaan.
+
+Sehubungan dengan hal tersebut, perusahaan memanggil Saudara/i untuk menghadap pada:
+
+Hari, tanggal : {{tanggal_menghadap}}
+Pukul : {{jam_menghadap}} WIB
+Tempat : {{tempat_menghadap}}
+Menemui : Bagian Human Resources
+
+dengan membawa bukti atau keterangan yang sah atas ketidakhadiran tersebut.
+
+Apabila Saudara/i tidak memenuhi panggilan ini tanpa alasan yang sah, perusahaan akan mengambil tindakan sesuai Peraturan Perusahaan dan peraturan perundang-undangan yang berlaku. Karyawan yang mangkir selama 5 (lima) hari kerja atau lebih berturut-turut tanpa keterangan tertulis yang dilengkapi bukti yang sah, dan telah dipanggil oleh perusahaan 2 (dua) kali secara patut dan tertulis, dapat diputus hubungan kerjanya karena dikualifikasikan mengundurkan diri.
+
+Demikian surat panggilan ini disampaikan untuk dipenuhi.`,
+  },
   OFFER_LETTER: {
     name: "SURAT PENAWARAN KERJA",
     body: `Kepada Yth.

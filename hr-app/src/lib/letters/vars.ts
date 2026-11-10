@@ -16,10 +16,14 @@ export async function employeeLetterVars(employeeId: string): Promise<(LetterVar
       employmentType: true,
       joinDate: true,
       endDate: true,
+      address: true,
       department: { select: { name: true } },
+      // The latest contract, for the contract-end notice
+      contracts: { orderBy: { startDate: "desc" }, take: 1, select: { contractNumber: true, startDate: true } },
     },
   });
   if (!e) return null;
+  const contract = e.contracts[0];
   const c = companyInfo();
   return {
     _name: e.fullName,
@@ -30,6 +34,9 @@ export async function employeeLetterVars(employeeId: string): Promise<(LetterVar
     status_kerja: employmentTypeLabel[e.employmentType],
     tanggal_mulai: formatDateLong(e.joinDate),
     tanggal_berakhir: e.endDate ? formatDateLong(e.endDate) : "",
+    nomor_kontrak: contract?.contractNumber ?? "",
+    kontrak_mulai: contract ? formatDateLong(contract.startDate) : "",
+    alamat: e.address ?? "",
     nama_perusahaan: c.name,
     kota: c.city,
   };

@@ -110,6 +110,8 @@ export const letterTypeLabel: Record<LetterType, string> = {
   MUTASI: "SK Mutasi",
   PROMOSI: "SK Promosi",
   DEMOSI: "SK Demosi",
+  BERAKHIR_KONTRAK: "Pemberitahuan Berakhir Kontrak",
+  PANGGILAN: "Surat Panggilan (Mangkir)",
   OFFER_LETTER: "Surat Penawaran Kerja",
   OTHER: "Lainnya",
 };
@@ -147,6 +149,8 @@ const longDateFormatter = new Intl.DateTimeFormat("id-ID", { day: "numeric", mon
 
 export const formatDate = (d: Date) => dateFormatter.format(d);
 export const formatDateLong = (d: Date) => longDateFormatter.format(d); // "30 Oktober 2026", for letters
+const dayDateFormatter = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: TIME_ZONE });
+export const formatDayDateLong = (d: Date) => dayDateFormatter.format(d); // "Senin, 16 November 2026"
 export const formatDateTime = (d: Date) => `${dateTimeFormatter.format(d)} WIB`;
 export const formatRupiah = (n: number) => rupiahFormatter.format(n);
 

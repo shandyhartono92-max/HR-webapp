@@ -46,6 +46,8 @@ const typeCode: Record<LetterType, string> = {
   MUTASI: "SK-MUT",
   PROMOSI: "SK-PRO",
   DEMOSI: "SK-DEM",
+  BERAKHIR_KONTRAK: "PBK",
+  PANGGILAN: "SPG",
   OFFER_LETTER: "OL",
   OTHER: "LAIN",
 };
