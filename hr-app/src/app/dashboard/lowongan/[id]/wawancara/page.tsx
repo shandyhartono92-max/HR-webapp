@@ -36,7 +36,7 @@ export default async function InterviewKitPage({ params }: PageProps<"/dashboard
   return (
     <div className="max-w-4xl space-y-4">
       <div>
-        <Link href="/dashboard/lowongan" className="text-sm text-teal-700 hover:underline">
+        <Link href="/dashboard/lowongan" className="text-sm text-brand-700 hover:underline">
           ← Lowongan
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Panduan wawancara · {job.title}</h1>
@@ -48,7 +48,7 @@ export default async function InterviewKitPage({ params }: PageProps<"/dashboard
 
       {kit && (
         <p
-          className={`rounded-md px-4 py-2 text-sm ${kit.status === "APPROVED" ? "bg-teal-50 text-teal-900" : "bg-amber-50 text-amber-900"}`}
+          className={`rounded-md px-4 py-2 text-sm ${kit.status === "APPROVED" ? "bg-brand-50 text-brand-900" : "bg-amber-50 text-amber-900"}`}
         >
           {kit.status === "APPROVED"
             ? `Disetujui oleh ${kit.approvedBy?.name} (${formatDateTime(kit.approvedAt!)}) dan tampil untuk pewawancara.`

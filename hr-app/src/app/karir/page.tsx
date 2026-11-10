@@ -36,7 +36,7 @@ export default async function CareersPage() {
             <li key={job.id}>
               <Link
                 href={`/karir/${job.slug}`}
-                className="block rounded-xl border border-slate-200 bg-white p-5 hover:border-teal-600"
+                className="block rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-600"
               >
                 <p className="text-lg font-medium text-slate-900">{job.title}</p>
                 <p className="mt-1 text-sm text-slate-500">

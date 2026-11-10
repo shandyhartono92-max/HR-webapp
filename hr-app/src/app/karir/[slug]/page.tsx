@@ -37,7 +37,7 @@ export default async function JobDetailPage({ params }: PageProps<"/karir/[slug]
   return (
     <main className="mx-auto w-full max-w-3xl flex-1 space-y-8 px-4 py-10">
       <div>
-        <Link href="/karir" className="text-sm text-teal-700 hover:underline">
+        <Link href="/karir" className="text-sm text-brand-700 hover:underline">
           ← Semua lowongan
         </Link>
         <h1 className="mt-3 text-3xl font-semibold text-slate-900">{job.title}</h1>

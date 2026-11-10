@@ -16,7 +16,7 @@ import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import { banks, bankCodes } from "@/lib/banks";
 
 const buttonClass =
-  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 const secondaryClass =
   "rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60";
 
@@ -196,7 +196,7 @@ export function ReviewForms({ requestId, nameMatches }: { requestId: string; nam
   return (
     <div className="space-y-3">
       <div className="flex gap-2 text-sm">
-        <button type="button" onClick={() => setMode("approve")} className={mode === "approve" ? "font-medium text-teal-800 underline" : "text-slate-600"}>
+        <button type="button" onClick={() => setMode("approve")} className={mode === "approve" ? "font-medium text-brand-800 underline" : "text-slate-600"}>
           Setujui
         </button>
         <span className="text-slate-300">|</span>

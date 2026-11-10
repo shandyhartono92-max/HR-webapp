@@ -64,7 +64,7 @@ export default function PrivacyNoticePage() {
         <h2 className="text-lg font-medium text-slate-900">Hak Anda</h2>
         <p>
           Anda berhak meminta akses, perbaikan, atau penghapusan data Anda, serta menarik persetujuan kapan saja.
-          Hubungi kami di <a href={`mailto:${HR_CONTACT_EMAIL}`} className="text-teal-700 underline">{HR_CONTACT_EMAIL}</a>.
+          Hubungi kami di <a href={`mailto:${HR_CONTACT_EMAIL}`} className="text-brand-700 underline">{HR_CONTACT_EMAIL}</a>.
         </p>
       </section>
     </main>

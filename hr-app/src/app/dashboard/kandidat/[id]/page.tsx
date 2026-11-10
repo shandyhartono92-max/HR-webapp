@@ -27,7 +27,7 @@ export const metadata: Metadata = { title: "Detail kandidat" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 function scoreStyle(score: number) {
-  if (score >= 80) return "bg-teal-50 text-teal-800 ring-teal-200";
+  if (score >= 80) return "bg-brand-50 text-brand-800 ring-brand-200";
   if (score >= 60) return "bg-sky-50 text-sky-800 ring-sky-200";
   if (score >= 40) return "bg-amber-50 text-amber-800 ring-amber-200";
   return "bg-slate-100 text-slate-700 ring-slate-200";
@@ -148,7 +148,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
   return (
     <div className="space-y-6">
       <div>
-        <Link href={user.role === "EMPLOYEE" ? "/dashboard" : "/dashboard/kandidat"} className="text-sm text-teal-700 hover:underline">
+        <Link href={user.role === "EMPLOYEE" ? "/dashboard" : "/dashboard/kandidat"} className="text-sm text-brand-700 hover:underline">
           ← {user.role === "EMPLOYEE" ? "Ringkasan" : "Semua kandidat"}
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -288,7 +288,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
                   {(isHr || canManage) && (
                     <>
                       {" "}
-                      <Link href={`/dashboard/lowongan/${app.job.id}/wawancara`} className="text-teal-700 underline">
+                      <Link href={`/dashboard/lowongan/${app.job.id}/wawancara`} className="text-brand-700 underline">
                         Susun panduan
                       </Link>
                     </>
@@ -341,7 +341,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
                                 href={iv.locationOrLink}
                                 target="_blank"
                                 rel="noopener noreferrer"
-                                className="break-all text-sm text-teal-700 hover:underline"
+                                className="break-all text-sm text-brand-700 hover:underline"
                               >
                                 {iv.locationOrLink}
                               </a>
@@ -380,7 +380,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
             )}
             {canSchedule && (
               <details className="mt-4" open={app.interviews.length === 0}>
-                <summary className="cursor-pointer text-sm font-medium text-teal-800">Jadwalkan wawancara</summary>
+                <summary className="cursor-pointer text-sm font-medium text-brand-800">Jadwalkan wawancara</summary>
                 <div className="mt-3">
                   <ScheduleInterviewForm applicationId={app.id} interviewers={interviewers} defaultInterviewerId={user.id} />
                 </div>
@@ -415,7 +415,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
 
         <div className="space-y-6">
           {app.employee && (
-            <section className="rounded-xl border border-teal-200 bg-teal-50 p-5 text-sm text-teal-900">
+            <section className="rounded-xl border border-brand-200 bg-brand-50 p-5 text-sm text-brand-900">
               Sudah menjadi karyawan (No. {app.employee.employeeNumber}).{" "}
               {isHr && (
                 <Link href="/dashboard/karyawan" className="font-medium underline">
@@ -442,7 +442,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
               )}
               {showOfferForm && offerTemplate && offerVars && (
                 <details className="mt-3" open={app.letters.length === 0}>
-                  <summary className="cursor-pointer text-sm font-medium text-teal-800">Buat surat penawaran</summary>
+                  <summary className="cursor-pointer text-sm font-medium text-brand-800">Buat surat penawaran</summary>
                   <div className="mt-3">
                     <OfferLetterForm
                       applicationId={app.id}
@@ -457,7 +457,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
           )}
 
           {showHireForm && (
-            <section className="rounded-xl border border-teal-200 bg-white p-5">
+            <section className="rounded-xl border border-brand-200 bg-white p-5">
               <h2 className="font-medium text-slate-900">Buat data karyawan</h2>
               <p className="mt-1 text-sm text-slate-600">
                 Kandidat sudah diterima. Isi data berikut untuk membuat data karyawan dan kontrak pertamanya.
@@ -489,7 +489,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
             <h2 className="font-medium text-slate-900">Data pelamar</h2>
             <dl className="mt-2 divide-y divide-slate-100">
               <Row label="Email">
-                <a href={`mailto:${candidate.email}`} className="text-teal-700 hover:underline">
+                <a href={`mailto:${candidate.email}`} className="text-brand-700 hover:underline">
                   {candidate.email}
                 </a>
               </Row>

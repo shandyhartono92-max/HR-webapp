@@ -21,7 +21,7 @@ const statusLabel: Record<BankChangeStatus, string> = {
 function NameCheck({ matches, inquiryName }: { matches: boolean | null; inquiryName: string | null }) {
   if (matches === null) return <span className="text-slate-500">Nama belum dicek</span>;
   return matches ? (
-    <span className="rounded bg-teal-50 px-1.5 py-0.5 text-xs font-medium text-teal-800">Nama cocok: {inquiryName}</span>
+    <span className="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-medium text-brand-800">Nama cocok: {inquiryName}</span>
   ) : (
     <span className="rounded bg-red-50 px-1.5 py-0.5 text-xs font-medium text-red-800">Nama di bank: {inquiryName}</span>
   );
@@ -110,7 +110,7 @@ export default async function BankAccountPage() {
                   <li key={r.id} className="rounded-lg border border-slate-200 p-4">
                     <div className="flex flex-wrap items-start justify-between gap-2">
                       <div className="text-sm">
-                        <Link href={`/dashboard/karyawan/${r.employee.id}`} className="font-medium text-teal-800 hover:underline">
+                        <Link href={`/dashboard/karyawan/${r.employee.id}`} className="font-medium text-brand-800 hover:underline">
                           {r.employee.fullName}
                         </Link>
                         <span className="text-slate-500"> · {r.employee.employeeNumber}</span>

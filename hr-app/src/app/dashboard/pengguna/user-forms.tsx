@@ -14,7 +14,7 @@ import { roleLabel } from "@/lib/labels";
 import type { Role } from "@/generated/prisma/enums";
 
 const buttonClass =
-  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 const secondaryClass =
   "rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60";
 
@@ -115,7 +115,7 @@ export function EditUserForm({
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
       <FormMessage message={state?.message} />
-      {state?.ok && <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Tersimpan.</p>}
+      {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p>}
       <div className="grid gap-3 sm:grid-cols-3">
         <Field label="Nama" htmlFor={`name-${user.id}`} hint={linked ? "Mengikuti data karyawan." : undefined} errors={e.name}>
           <input id={`name-${user.id}`} name="name" required readOnly={linked} defaultValue={v("name")} className={inputClass} />

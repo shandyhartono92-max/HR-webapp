@@ -7,7 +7,7 @@ import { decisionLabel, stageLabel } from "@/lib/labels";
 import type { ApplicationStage, ScreeningDecision } from "@/generated/prisma/enums";
 
 const buttonClass =
-  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 export function StageForm({ applicationId, stage }: { applicationId: string; stage: ApplicationStage }) {
   const [state, action, pending] = useActionState(changeStage.bind(null, applicationId), undefined);
@@ -84,9 +84,9 @@ export function ReviewForm({
           {Object.entries(decisionLabel).map(([value, label]) => (
             <label
               key={value}
-              className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm has-[:checked]:border-teal-700 has-[:checked]:bg-teal-50"
+              className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50"
             >
-              <input type="radio" name="decision" value={value} defaultChecked={current === value} className="accent-teal-700" />
+              <input type="radio" name="decision" value={value} defaultChecked={current === value} className="accent-brand-700" />
               {label}
             </label>
           ))}

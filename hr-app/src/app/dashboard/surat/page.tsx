@@ -79,7 +79,7 @@ export default async function LettersPage() {
                     </td>
                     <td className="px-4 py-3">
                       {recipientHref ? (
-                        <Link href={recipientHref} className="text-teal-800 hover:underline">
+                        <Link href={recipientHref} className="text-brand-800 hover:underline">
                           {l.recipientName}
                         </Link>
                       ) : (

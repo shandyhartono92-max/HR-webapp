@@ -38,7 +38,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
     <div className="flex flex-1 flex-col md:flex-row">
       <aside className="border-b border-slate-200 bg-white md:w-60 md:shrink-0 md:border-b-0 md:border-r">
         <div className="px-5 py-4">
-          <p className="text-base font-semibold text-teal-800">Portal HR</p>
+          <p className="text-base font-semibold text-brand-800">Portal HR</p>
         </div>
         <Suspense fallback={<div className="h-10 px-3" />}>
           <SideNav />

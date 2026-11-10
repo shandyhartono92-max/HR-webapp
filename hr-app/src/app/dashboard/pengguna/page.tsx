@@ -65,7 +65,7 @@ export default async function UsersPage() {
                       {u.employee && !anonymized && (
                         <>
                           {" · "}
-                          <Link href={`/dashboard/karyawan/${u.employee.id}`} className="text-teal-700 hover:underline">
+                          <Link href={`/dashboard/karyawan/${u.employee.id}`} className="text-brand-700 hover:underline">
                             Karyawan {u.employee.employeeNumber}
                           </Link>
                         </>
@@ -73,7 +73,7 @@ export default async function UsersPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
-                    <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-teal-800">{roleLabel[u.role]}</span>
+                    <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-brand-800">{roleLabel[u.role]}</span>
                     {!u.isActive && <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-slate-700">Nonaktif</span>}
                     {u.isActive && u.mustChangePassword && (
                       <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-800">Belum ganti kata sandi</span>
@@ -91,7 +91,7 @@ export default async function UsersPage() {
                   <div className="mt-3 space-y-3">
                     {!isSelf && <UserActions userId={u.id} name={u.name} isActive={u.isActive} />}
                     <details>
-                      <summary className="cursor-pointer text-sm font-medium text-teal-800">Ubah nama, email, atau peran</summary>
+                      <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah nama, email, atau peran</summary>
                       <div className="mt-3">
                         <EditUserForm user={u} isSelf={isSelf} linked={Boolean(u.employee)} />
                       </div>

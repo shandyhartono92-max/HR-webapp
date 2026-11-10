@@ -13,7 +13,7 @@ export default async function ImportCandidatesPage() {
   return (
     <div className="max-w-3xl space-y-4">
       <div>
-        <Link href="/dashboard/kandidat/bank" className="text-sm text-teal-700 hover:underline">
+        <Link href="/dashboard/kandidat/bank" className="text-sm text-brand-700 hover:underline">
           ← Bank data kandidat
         </Link>
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Import kandidat dari Excel</h1>

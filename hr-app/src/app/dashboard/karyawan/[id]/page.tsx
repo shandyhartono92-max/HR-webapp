@@ -153,7 +153,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
   if (anonymized) {
     return (
       <div className="max-w-3xl space-y-4">
-        <Link href="/dashboard/karyawan" className="text-sm text-teal-700 hover:underline">
+        <Link href="/dashboard/karyawan" className="text-sm text-brand-700 hover:underline">
           ← Semua karyawan
         </Link>
         <h1 className="text-2xl font-semibold text-slate-900">{emp.fullName}</h1>
@@ -177,7 +177,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/dashboard/karyawan" className="text-sm text-teal-700 hover:underline">
+        <Link href="/dashboard/karyawan" className="text-sm text-brand-700 hover:underline">
           ← Semua karyawan
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
@@ -237,7 +237,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
             <p className="mt-2 text-xs text-slate-500">Setiap kali nomor lengkap dilihat, tercatat di log audit.</p>
 
             <details className="mt-4 border-t border-slate-100 pt-4">
-              <summary className="cursor-pointer text-sm font-medium text-teal-800">Ubah data pribadi</summary>
+              <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah data pribadi</summary>
               <div className="mt-3">
                 <PersonalForm
                   employeeId={emp.id}
@@ -345,7 +345,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
               <Row label="Telepon">{emp.phone}</Row>
             </dl>
             {emp.applicationId && (
-              <Link href={`/dashboard/kandidat/${emp.applicationId}`} className="mt-2 inline-block text-sm text-teal-700 hover:underline">
+              <Link href={`/dashboard/kandidat/${emp.applicationId}`} className="mt-2 inline-block text-sm text-brand-700 hover:underline">
                 Lihat data rekrutmen
               </Link>
             )}
@@ -391,7 +391,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                 emp.status !== "RESIGNED" &&
                 emp.status !== "TERMINATED" && (
                   <details className="mt-3">
-                    <summary className="cursor-pointer text-sm font-medium text-teal-800">
+                    <summary className="cursor-pointer text-sm font-medium text-brand-800">
                       {emp.bankAccounts[0] ? "Ganti rekening (diinput HR)" : "Daftarkan rekening (diinput HR)"}
                     </summary>
                     <p className="mt-2 text-xs text-slate-500">
@@ -406,7 +406,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
               )}
             </div>
             <details className="mt-4 border-t border-slate-100 pt-4">
-              <summary className="cursor-pointer text-sm font-medium text-teal-800">Ubah data kepegawaian</summary>
+              <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah data kepegawaian</summary>
               <div className="mt-3">
                 <EmploymentForm
                   employeeId={emp.id}
@@ -423,7 +423,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
               </div>
             </details>
             <details className="mt-4 border-t border-slate-100 pt-4">
-              <summary className="cursor-pointer text-sm font-medium text-teal-800">Ubah identitas (nama, email, No. HP, No. induk)</summary>
+              <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah identitas (nama, email, No. HP, No. induk)</summary>
               <div className="mt-3">
                 <IdentityForm
                   employeeId={emp.id}

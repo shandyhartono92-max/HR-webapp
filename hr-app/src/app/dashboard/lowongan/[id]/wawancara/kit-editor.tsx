@@ -6,7 +6,7 @@ import { inputClass } from "@/app/ui/field";
 import { emptyQuestion, questionTypes, type JobKit, type KitQuestionT } from "@/lib/interview-kit-schema";
 
 const buttonClass =
-  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 const secondaryClass =
   "rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60";
 
@@ -89,7 +89,7 @@ export function KitEditor({
           )}
         </div>
       )}
-      {result?.ok && !dirty && <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Tersimpan.</p>}
+      {result?.ok && !dirty && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p>}
 
       <label className="block text-sm">
         <span className="font-medium text-slate-700">Kompetensi yang dinilai (satu per baris)</span>

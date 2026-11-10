@@ -17,12 +17,12 @@ import { employeeStatusLabel, employmentTypeLabel, genderLabel, ptkpLabel } from
 import type { EmployeeStatus, EmploymentType, Gender, PtkpStatus } from "@/generated/prisma/enums";
 
 const buttonClass =
-  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 type Option = { id: string; name: string };
 
 function Saved({ show }: { show?: boolean }) {
-  return show ? <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Tersimpan.</p> : null;
+  return show ? <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p> : null;
 }
 
 // A saved form can still have something to point out; only an unsaved one shows an error
@@ -30,7 +30,7 @@ function SaveResult({ state, savedText }: { state: FormState; savedText?: string
   if (!state?.ok) return <FormMessage message={state?.message} />;
   return (
     <>
-      <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">{savedText ?? "Tersimpan."}</p>
+      <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">{savedText ?? "Tersimpan."}</p>
       {state.message && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{state.message}</p>}
     </>
   );
@@ -412,7 +412,7 @@ export function SensitiveValue({ employeeId, field, last4 }: { employeeId: strin
               } else setError(r.error);
             })
           }
-          className="text-xs text-teal-700 hover:underline disabled:opacity-60"
+          className="text-xs text-brand-700 hover:underline disabled:opacity-60"
         >
           {pending ? "Memuat…" : "Lihat"}
         </button>

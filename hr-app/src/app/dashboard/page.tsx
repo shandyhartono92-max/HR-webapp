@@ -88,7 +88,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         </p>
       )}
       {sandi === "diubah" && (
-        <p role="status" className="rounded-md bg-teal-50 px-4 py-3 text-sm text-teal-800">
+        <p role="status" className="rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
           Kata sandi berhasil diganti.
         </p>
       )}
@@ -129,11 +129,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 
       {user.role === "EMPLOYEE" && (
         <section className="grid gap-4 sm:grid-cols-2">
-          <Link href="/dashboard/rekening" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-teal-600">
+          <Link href="/dashboard/rekening" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-600">
             <p className="font-medium text-slate-900">Rekening gaji</p>
             <p className="mt-1 text-sm text-slate-600">Lihat atau ajukan perubahan rekening untuk penggajian.</p>
           </Link>
-          <Link href="/dashboard/akun" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-teal-600">
+          <Link href="/dashboard/akun" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-600">
             <p className="font-medium text-slate-900">Akun saya</p>
             <p className="mt-1 text-sm text-slate-600">Ganti kata sandi.</p>
           </Link>
@@ -176,7 +176,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             <ul className="mt-3 divide-y divide-slate-100">
               {upcoming.map((iv) => (
                 <li key={iv.id} className="py-2 text-sm">
-                  <Link href={`/dashboard/kandidat/${iv.applicationId}`} className="font-medium text-teal-800 hover:underline">
+                  <Link href={`/dashboard/kandidat/${iv.applicationId}`} className="font-medium text-brand-800 hover:underline">
                     {iv.application.candidate.fullName}
                   </Link>
                   <span className="text-slate-600"> · {iv.application.job.title}</span>
@@ -203,7 +203,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
                 {endingContracts.map((e) => (
                   <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
                     <div>
-                      <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-teal-800 hover:underline">
+                      <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-brand-800 hover:underline">
                         {e.fullName}
                       </Link>
                       <span className="text-slate-600"> · {e.position}</span>

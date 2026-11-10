@@ -75,7 +75,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/dashbo
           <a
             key={t}
             href={`?jenis=${t}`}
-            className={`rounded-full px-3 py-1 text-sm ${t === selected ? "bg-teal-700 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"}`}
+            className={`rounded-full px-3 py-1 text-sm ${t === selected ? "bg-brand-700 text-white" : "bg-white text-slate-700 ring-1 ring-slate-200 hover:bg-slate-50"}`}
           >
             {letterTypeLabel[t]}
           </a>

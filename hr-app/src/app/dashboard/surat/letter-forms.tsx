@@ -17,7 +17,7 @@ import {
 import type { EmploymentType, LetterType } from "@/generated/prisma/enums";
 
 const buttonClass =
-  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 export type TemplateView = { name: string; body: string };
 
@@ -82,7 +82,7 @@ export function LetterPreview({ template, vars }: { template: TemplateView; vars
 function IssuedNotice({ state }: { state: IssueState }) {
   if (!state?.ok || !state.letterId) return null;
   return (
-    <div className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-900">
+    <div className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-900">
       Surat <strong>{state.letterNumber}</strong> diterbitkan.{" "}
       <a href={`/dashboard/surat/${state.letterId}/pdf`} className="font-medium underline">
         Unduh PDF
@@ -231,7 +231,7 @@ export function EmployeeLetterForm({
                 name="applyChange"
                 checked={applyChange}
                 onChange={(ev) => setApplyChange(ev.target.checked)}
-                className="mt-0.5 size-4 accent-teal-700"
+                className="mt-0.5 size-4 accent-brand-700"
               />
               Perbarui jabatan dan departemen di data karyawan saat surat terbit. Kosongkan jika tanggal berlaku masih lama, lalu ubah
               nanti di Data kepegawaian.
@@ -349,7 +349,7 @@ export function TemplateEditor({ type, template, sampleVars }: { type: LetterTyp
     <div className="grid gap-4 xl:grid-cols-2">
       <form action={action} onSubmit={submitWithoutReset(action)} className="space-y-3">
         <FormMessage message={state?.message} />
-        {state?.ok && <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Tersimpan sebagai versi baru.</p>}
+        {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan sebagai versi baru.</p>}
         <Field label="Judul surat" htmlFor={`name-${type}`} errors={state?.errors?.name}>
           <input id={`name-${type}`} name="name" value={name} onChange={(ev) => setName(ev.target.value)} className={inputClass} />
         </Field>
@@ -403,7 +403,7 @@ export function Disclosure({
   const [open, setOpen] = useState(defaultOpen);
   return (
     <details className={className} open={open} onToggle={(ev) => setOpen(ev.currentTarget.open)}>
-      <summary className="cursor-pointer text-sm font-medium text-teal-800">{summary}</summary>
+      <summary className="cursor-pointer text-sm font-medium text-brand-800">{summary}</summary>
       {children}
     </details>
   );
@@ -412,10 +412,10 @@ export function Disclosure({
 export function LettersNav() {
   return (
     <div className="flex gap-4 text-sm">
-      <Link href="/dashboard/surat" className="text-teal-700 hover:underline">
+      <Link href="/dashboard/surat" className="text-brand-700 hover:underline">
         Daftar surat
       </Link>
-      <Link href="/dashboard/surat/template" className="text-teal-700 hover:underline">
+      <Link href="/dashboard/surat/template" className="text-brand-700 hover:underline">
         Template surat
       </Link>
     </div>

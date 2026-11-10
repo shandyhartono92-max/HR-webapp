@@ -7,7 +7,7 @@ import { educationLevels, manualSources } from "@/lib/labels";
 import { ImportIssues, XLSX_ACCEPT, xlsxInputClass } from "@/app/ui/import-issues";
 
 const buttonClass =
-  "rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+  "rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 type Option = { id: string; name: string };
 
@@ -87,7 +87,7 @@ export function AddCandidateForm({ jobs }: { jobs: Option[] }) {
           <code className="rounded bg-white px-1">/karir/privasi</code>
         </p>
         <label className="flex items-start gap-2 text-sm text-amber-900">
-          <input type="checkbox" name="consentConfirmed" defaultChecked={v("consentConfirmed") === "on"} className="mt-0.5 size-4 accent-teal-700" />
+          <input type="checkbox" name="consentConfirmed" defaultChecked={v("consentConfirmed") === "on"} className="mt-0.5 size-4 accent-brand-700" />
           Kandidat sudah menyetujui datanya disimpan dan diproses untuk rekrutmen.
         </label>
         {e.consentConfirmed?.map((m) => (
@@ -99,7 +99,7 @@ export function AddCandidateForm({ jobs }: { jobs: Option[] }) {
           <input id="consentEvidence" name="consentEvidence" defaultValue={v("consentEvidence")} className={inputClass} />
         </Field>
         <label className="flex items-start gap-2 text-sm text-amber-900">
-          <input type="checkbox" name="talentPool" defaultChecked={v("talentPool") === "on"} className="mt-0.5 size-4 accent-teal-700" />
+          <input type="checkbox" name="talentPool" defaultChecked={v("talentPool") === "on"} className="mt-0.5 size-4 accent-brand-700" />
           Kandidat setuju disimpan di talent pool hingga 2 tahun (jika tidak, 6 bulan).
         </label>
       </div>
@@ -125,7 +125,7 @@ export function ImportCandidatesForm() {
       </Field>
 
       <label className="flex items-start gap-2 rounded-lg border border-amber-200 bg-amber-50 p-4 text-sm text-amber-900">
-        <input type="checkbox" name="consentConfirmed" className="mt-0.5 size-4 accent-teal-700" />
+        <input type="checkbox" name="consentConfirmed" className="mt-0.5 size-4 accent-brand-700" />
         Semua kandidat di file ini sudah menyetujui datanya disimpan dan diproses untuk rekrutmen (UU PDP), dan buktinya
         sudah ditulis di kolom &quot;Bukti persetujuan&quot;.
       </label>
@@ -143,7 +143,7 @@ export function UploadCvForm({ candidateId, hasCv }: { candidateId: string; hasC
   return (
     <form key={state?.attempt} action={action} className="space-y-2">
       {state?.ok ? (
-        <p role="status" className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">
+        <p role="status" className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">
           {state.message}
         </p>
       ) : (

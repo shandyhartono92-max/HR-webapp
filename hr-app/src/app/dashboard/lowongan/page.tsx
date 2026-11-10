@@ -9,7 +9,7 @@ export const instant = false; // waits for the session check, see dashboard/layo
 
 const statusStyle = {
   DRAFT: "bg-slate-100 text-slate-700",
-  OPEN: "bg-teal-50 text-teal-800",
+  OPEN: "bg-brand-50 text-brand-800",
   CLOSED: "bg-slate-200 text-slate-600",
 } as const;
 
@@ -41,7 +41,7 @@ export default async function JobsPage() {
         {canEdit && (
           <Link
             href="/dashboard/lowongan/baru"
-            className="rounded-md bg-teal-700 px-4 py-2 text-sm font-medium text-white hover:bg-teal-800"
+            className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
           >
             Tambah lowongan
           </Link>
@@ -68,14 +68,14 @@ export default async function JobsPage() {
                 <tr key={job.id}>
                   <td className="px-4 py-3">
                     {canEdit ? (
-                      <Link href={`/dashboard/lowongan/${job.id}/ubah`} className="font-medium text-teal-800 hover:underline">
+                      <Link href={`/dashboard/lowongan/${job.id}/ubah`} className="font-medium text-brand-800 hover:underline">
                         {job.title}
                       </Link>
                     ) : (
                       <p className="font-medium text-slate-900">{job.title}</p>
                     )}
                     <p className="text-xs text-slate-500">
-                      <Link href={`/dashboard/lowongan/${job.id}/wawancara`} className="text-teal-700 hover:underline">
+                      <Link href={`/dashboard/lowongan/${job.id}/wawancara`} className="text-brand-700 hover:underline">
                         Panduan wawancara
                       </Link>
                       {" · "}
@@ -83,7 +83,7 @@ export default async function JobsPage() {
                       {job.status === "OPEN" && (
                         <>
                           {" · "}
-                          <Link href={`/karir/${job.slug}`} target="_blank" className="text-teal-700 hover:underline">
+                          <Link href={`/karir/${job.slug}`} target="_blank" className="text-brand-700 hover:underline">
                             Lihat di karir
                           </Link>
                         </>
@@ -98,7 +98,7 @@ export default async function JobsPage() {
                     </span>
                   </td>
                   <td className="px-4 py-3 text-right tabular-nums">
-                    <Link href={`/dashboard/kandidat?lowongan=${job.id}`} className="text-teal-700 hover:underline">
+                    <Link href={`/dashboard/kandidat?lowongan=${job.id}`} className="text-brand-700 hover:underline">
                       {job._count.applications}
                     </Link>
                   </td>

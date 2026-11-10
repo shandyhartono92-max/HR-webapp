@@ -52,7 +52,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       </div>
 
       {imported !== null && (
-        <p role="status" className="rounded-md bg-teal-50 px-4 py-3 text-sm text-teal-800">
+        <p role="status" className="rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
           {imported} karyawan berhasil di-import
           {skipped > 0 && `, ${skipped} dilewati karena no. induknya sudah ada`}. Lengkapi NIK, NPWP, BPJS dan rekening dari profil
           masing-masing.
@@ -111,7 +111,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
                 <tr key={e.id} className={e.alert.level === "overdue" ? "bg-red-50/50" : e.alert.level ? "bg-amber-50/50" : undefined}>
                   <td className="px-4 py-3 font-mono text-xs text-slate-600">{e.employeeNumber}</td>
                   <td className="px-4 py-3">
-                    <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-teal-800 hover:underline">
+                    <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-brand-800 hover:underline">
                       {e.fullName}
                     </Link>
                     <p className="text-xs text-slate-500">{e.position}</p>

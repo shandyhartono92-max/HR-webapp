@@ -50,7 +50,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/dashb
                 {items.map((a) => {
                   const score = a.screenings[0]?.score;
                   return (
-                    <li key={a.id} className="relative rounded-lg border border-slate-200 bg-white p-3 hover:border-teal-600">
+                    <li key={a.id} className="relative rounded-lg border border-slate-200 bg-white p-3 hover:border-brand-600">
                       <div className="flex items-start justify-between gap-2">
                         <Link
                           href={`/dashboard/kandidat/${a.id}`}
@@ -61,7 +61,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/dashb
                         {score !== undefined && (
                           <span
                             title="Skor kecocokan AI (perlu ditinjau HR)"
-                            className="rounded bg-teal-50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-teal-800"
+                            className="rounded bg-brand-50 px-1.5 py-0.5 text-xs font-medium tabular-nums text-brand-800"
                           >
                             {score}
                           </span>

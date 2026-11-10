@@ -79,18 +79,18 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
   return (
     <div className="space-y-6">
       <div>
-        <Link href="/dashboard/kandidat/bank" className="text-sm text-teal-700 hover:underline">
+        <Link href="/dashboard/kandidat/bank" className="text-sm text-brand-700 hover:underline">
           ← Bank data kandidat
         </Link>
         <div className="mt-2 flex flex-wrap items-center gap-3">
           <h1 className="text-2xl font-semibold text-slate-900">{c.fullName}</h1>
-          {c.talentPoolConsent && <span className="rounded-full bg-teal-50 px-2.5 py-0.5 text-xs font-medium text-teal-800">talent pool</span>}
+          {c.talentPoolConsent && <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-800">talent pool</span>}
         </div>
         <p className="text-sm text-slate-500">
           Masuk bank data {formatDate(c.createdAt)} · sumber: {sourceLabel(c.source ?? c.applications.at(-1)?.source)}
         </p>
         {baru === "1" && (
-          <p role="status" className="mt-3 rounded-md bg-teal-50 px-4 py-3 text-sm text-teal-800">
+          <p role="status" className="mt-3 rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
             Kandidat tersimpan di bank data.
           </p>
         )}
@@ -111,7 +111,7 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
               <ul className="mt-2 divide-y divide-slate-100">
                 {c.applications.map((a) => (
                   <li key={a.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
-                    <Link href={`/dashboard/kandidat/${a.id}`} className="font-medium text-teal-800 hover:underline">
+                    <Link href={`/dashboard/kandidat/${a.id}`} className="font-medium text-brand-800 hover:underline">
                       {a.job.title}
                     </Link>
                     <span className="text-slate-600">

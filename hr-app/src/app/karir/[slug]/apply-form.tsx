@@ -13,9 +13,9 @@ export function ApplyForm({ jobId }: { jobId: string }) {
 
   if (state?.ok) {
     return (
-      <div role="status" className="rounded-xl border border-teal-200 bg-teal-50 p-6">
-        <p className="font-medium text-teal-900">Terima kasih, lamaran Anda sudah kami terima.</p>
-        <p className="mt-1 text-sm text-teal-800">
+      <div role="status" className="rounded-xl border border-brand-200 bg-brand-50 p-6">
+        <p className="font-medium text-brand-900">Terima kasih, lamaran Anda sudah kami terima.</p>
+        <p className="mt-1 text-sm text-brand-800">
           Tim HR akan meninjau CV Anda dan menghubungi Anda melalui email atau telepon jika Anda lolos ke tahap berikutnya.
         </p>
       </div>
@@ -90,10 +90,10 @@ export function ApplyForm({ jobId }: { jobId: string }) {
 
       <div className="space-y-2 rounded-lg bg-slate-50 p-4">
         <label className="flex items-start gap-2 text-sm text-slate-700">
-          <input type="checkbox" name="consent" required defaultChecked={v("consent") === "on"} className="mt-0.5 size-4 accent-teal-700" />
+          <input type="checkbox" name="consent" required defaultChecked={v("consent") === "on"} className="mt-0.5 size-4 accent-brand-700" />
           <span>
             Saya telah membaca dan menyetujui{" "}
-            <Link href="/karir/privasi" target="_blank" className="text-teal-700 underline">
+            <Link href="/karir/privasi" target="_blank" className="text-brand-700 underline">
               pemberitahuan privasi
             </Link>{" "}
             dan mengizinkan data saya diproses untuk rekrutmen ini.
@@ -105,7 +105,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
           </p>
         ))}
         <label className="flex items-start gap-2 text-sm text-slate-700">
-          <input type="checkbox" name="talentPool" defaultChecked={v("talentPool") === "on"} className="mt-0.5 size-4 accent-teal-700" />
+          <input type="checkbox" name="talentPool" defaultChecked={v("talentPool") === "on"} className="mt-0.5 size-4 accent-brand-700" />
           <span>(Opsional) Simpan data saya hingga 2 tahun untuk lowongan lain yang sesuai.</span>
         </label>
       </div>
@@ -113,7 +113,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-teal-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60 sm:w-auto"
+        className="w-full rounded-md bg-brand-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60 sm:w-auto"
       >
         {pending ? "Mengirim…" : "Kirim lamaran"}
       </button>

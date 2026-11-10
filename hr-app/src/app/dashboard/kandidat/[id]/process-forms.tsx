@@ -9,7 +9,7 @@ import { decisionLabel, employmentTypeLabel, interviewModeLabel } from "@/lib/la
 import type { EmploymentType } from "@/generated/prisma/enums";
 
 const buttonClass =
-  "rounded-md bg-teal-700 px-3 py-2 text-sm font-medium text-white hover:bg-teal-800 disabled:opacity-60";
+  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 type Option = { id: string; name: string };
 
@@ -30,7 +30,7 @@ export function ScheduleInterviewForm({
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
       <FormMessage message={state?.message} />
-      {state?.ok && <p className="rounded-md bg-teal-50 px-3 py-2 text-sm text-teal-800">Wawancara dijadwalkan.</p>}
+      {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Wawancara dijadwalkan.</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Tanggal & jam (WIB)" htmlFor="scheduledAt" errors={e.scheduledAt}>
           <input id="scheduledAt" name="scheduledAt" type="datetime-local" required defaultValue={v("scheduledAt")} className={inputClass} />
@@ -88,7 +88,7 @@ export function FeedbackForm({ interviewId }: { interviewId: string }) {
           {[1, 2, 3, 4, 5].map((n) => (
             <label
               key={n}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-slate-300 text-sm has-[:checked]:border-teal-700 has-[:checked]:bg-teal-50"
+              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-slate-300 text-sm has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50"
             >
               <input type="radio" name="rating" value={n} defaultChecked={v("rating") === String(n)} className="sr-only" />
               {n}
