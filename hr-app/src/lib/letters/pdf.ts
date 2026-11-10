@@ -10,6 +10,10 @@ const MARGIN = { x: 64, top: 56, bottom: 64 };
 const BODY_SIZE = 10.5;
 const LINE = 15;
 const LABEL_COL = 150; // width of the "Label" column in key–value rows
+// Vertical space the signature block below uses: gap 10 + date line + "Hormat kami" line
+// + 70 for the signature + title line. Reserving more pushed it to a page of its own
+// while the last page still had room.
+const SIGNATURE_HEIGHT = 10 + LINE + LINE + 70 + LINE;
 const INK = rgb(0.1, 0.12, 0.16);
 const MUTED = rgb(0.4, 0.43, 0.48);
 
@@ -124,7 +128,7 @@ export async function renderLetterPdf(input: LetterPdfInput): Promise<Buffer> {
   }
 
   // Signature block (kept together on one page)
-  ensureSpace(150);
+  ensureSpace(SIGNATURE_HEIGHT);
   y -= 10;
   const rightX = A4.width - MARGIN.x - 190;
   text(input.dateLine, rightX);
