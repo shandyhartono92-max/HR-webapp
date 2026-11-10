@@ -28,9 +28,11 @@ export async function deleteFile(key: string) {
   await rm(path.join(ROOT, key), { force: true });
 }
 
+export const isPdf = (data: Buffer) => data.subarray(0, 5).toString("latin1") === "%PDF-";
+
 // Check the file's real content, not just its name or the browser's MIME type
 export function detectCvType(data: Buffer): { ext: "pdf" | "docx"; mime: string } | null {
-  if (data.subarray(0, 5).toString("latin1") === "%PDF-") {
+  if (isPdf(data)) {
     return { ext: "pdf", mime: "application/pdf" };
   }
   const isZip = data[0] === 0x50 && data[1] === 0x4b && data[2] === 0x03 && data[3] === 0x04;

@@ -11,6 +11,8 @@ import {
   type RevealField,
 } from "@/app/actions/employee-profile";
 import { issueEmployeeLogin, type LoginResult } from "@/app/actions/accounts";
+import { uploadContractDocument } from "@/app/actions/contract-documents";
+import { MAX_CONTRACT_PDF_BYTES } from "@/lib/privacy";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import type { FormState } from "@/lib/forms";
 import { employeeStatusLabel, employmentTypeLabel, genderLabel, ptkpLabel } from "@/lib/labels";
@@ -451,5 +453,47 @@ export function SensitiveValue({ employeeId, field, last4 }: { employeeId: strin
       )}
       {error && <span className="text-xs text-red-700">{error}</span>}
     </span>
+  );
+}
+
+// Attaches (or replaces) the signed contract PDF on one row of Riwayat kontrak
+export function ContractDocumentForm({ contractId, hasFile }: { contractId: string; hasFile: boolean }) {
+  const [state, action, pending] = useActionState(uploadContractDocument.bind(null, contractId), undefined);
+  // Checked here too: a file over the server's body limit would fail before the action can explain why
+  const [tooBig, setTooBig] = useState(false);
+  const inputId = `contract-file-${contractId}`;
+  const errors = tooBig ? ["Ukuran file maksimal 10 MB."] : state?.errors?.file;
+
+  return (
+    <details className="mt-1" open={Boolean(state && !state.ok)}>
+      <summary className="cursor-pointer text-xs font-medium text-brand-800">
+        {hasFile ? "Ganti file" : "Unggah kontrak bertanda tangan"}
+      </summary>
+      <form key={state?.attempt} action={action} className="mt-2 space-y-2">
+        {state?.ok ? (
+          <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">{state.message}</p>
+        ) : (
+          <FormMessage message={state?.message} />
+        )}
+        <Field label="File PDF" htmlFor={inputId} hint="Hasil scan kontrak yang sudah ditandatangani. PDF, maksimal 10 MB." errors={errors}>
+          <input
+            id={inputId}
+            name="file"
+            type="file"
+            required
+            accept="application/pdf,.pdf"
+            onChange={(ev) => setTooBig((ev.currentTarget.files?.[0]?.size ?? 0) > MAX_CONTRACT_PDF_BYTES)}
+            className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-800 hover:file:bg-brand-100"
+          />
+        </Field>
+        <button
+          type="submit"
+          disabled={pending || tooBig}
+          className="rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
+        >
+          {pending ? "Mengunggah…" : "Simpan file"}
+        </button>
+      </form>
+    </details>
   );
 }

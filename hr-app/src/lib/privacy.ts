@@ -6,6 +6,8 @@ export const RETENTION_MONTHS = 6;
 export const TALENT_POOL_RETENTION_MONTHS = 24;
 
 export const MAX_CV_BYTES = 5 * 1024 * 1024;
+// Signed contracts are scans, so they get more room (next.config bodySizeLimit follows)
+export const MAX_CONTRACT_PDF_BYTES = 10 * 1024 * 1024;
 
 export function retainUntil(talentPool: boolean, from = new Date()) {
   const d = new Date(from);

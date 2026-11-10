@@ -27,6 +27,7 @@ import {
   EmploymentForm,
   IdentityForm,
   PersonalForm,
+  ContractDocumentForm,
   RenewContractForm,
   SensitiveValue,
 } from "./employee-forms";
@@ -40,6 +41,10 @@ export const metadata: Metadata = { title: "Detail karyawan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 const isoDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
+
+// 1258291 → "1,2 MB", 48000 → "47 KB"
+const fileSize = (bytes: number) =>
+  bytes >= 1024 * 1024 ? `${(bytes / 1024 / 1024).toFixed(1).replace(".", ",")} MB` : `${Math.max(1, Math.round(bytes / 1024))} KB`;
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
@@ -100,7 +105,18 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         bpjsKetenagakerjaanLast4: true,
         contracts: {
           orderBy: { startDate: "desc" },
-          select: { id: true, contractNumber: true, type: true, position: true, startDate: true, endDate: true },
+          select: {
+            id: true,
+            contractNumber: true,
+            type: true,
+            position: true,
+            startDate: true,
+            endDate: true,
+            // The newest signed file; older versions stay reachable through previousId
+            document: {
+              select: { id: true, fileName: true, sizeBytes: true, version: true, createdAt: true, uploadedBy: { select: { name: true } } },
+            },
+          },
         },
         letters: {
           orderBy: { issuedAt: "desc" },
@@ -314,6 +330,24 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                     <p className="text-slate-600">
                       {c.position} · {formatDate(c.startDate)} – {c.endDate ? formatDate(c.endDate) : "tidak terbatas"}
                     </p>
+                    {c.document ? (
+                      <p className="mt-1 break-words text-xs text-slate-600">
+                        <a
+                          href={`/dashboard/karyawan/${emp.id}/dokumen/${c.document.id}`}
+                          target="_blank"
+                          rel="noopener"
+                          className="font-medium text-brand-800 hover:underline"
+                        >
+                          📎 {c.document.fileName}
+                        </a>{" "}
+                        · {fileSize(c.document.sizeBytes)}
+                        {c.document.version > 1 && ` · versi ${c.document.version}`} · diunggah {formatDate(c.document.createdAt)} oleh{" "}
+                        {c.document.uploadedBy.name}
+                      </p>
+                    ) : (
+                      <p className="mt-1 text-xs text-slate-500">Belum ada file kontrak bertanda tangan.</p>
+                    )}
+                    {!anonymized && <ContractDocumentForm contractId={c.id} hasFile={Boolean(c.document)} />}
                   </li>
                 ))}
               </ul>
