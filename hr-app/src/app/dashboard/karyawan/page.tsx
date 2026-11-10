@@ -8,6 +8,7 @@ import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
 import { initials } from "@/lib/nav";
 import { isInTraining } from "@/lib/training";
 import { TrainingBadge } from "@/app/ui/training-badge";
+import { nextSort, parseSort, sortEmployees, type Sort, type SortKey } from "@/lib/employee-sort";
 
 // Columns hidden on phones; name and contract end stay (details are on the profile)
 const WIDE = "hidden md:table-cell";
@@ -19,6 +20,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
   await requireRole("ADMIN", "HR");
   const sp = await searchParams;
   const onlyEnding = sp.kontrak === "berakhir";
+  const sort = parseSort(sp.urut, sp.arah);
   // Result of an import (set by importEmployees' redirect)
   const imported = typeof sp.impor === "string" && /^\d+$/.test(sp.impor) ? Number(sp.impor) : null;
   const skipped = typeof sp.lewati === "string" && /^\d+$/.test(sp.lewati) ? Number(sp.lewati) : 0;
@@ -45,7 +47,11 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
   const withAlert = all.map((e) => ({ ...e, alert: contractAlert(e.endDate, e.status) }));
   const ending = withAlert.filter((e) => e.alert.level);
   const overdue = ending.filter((e) => e.alert.level === "overdue").length;
-  const employees = onlyEnding ? ending.sort((a, b) => a.alert.daysLeft! - b.alert.daysLeft!) : withAlert;
+  const shown = onlyEnding ? ending.sort((a, b) => a.alert.daysLeft! - b.alert.daysLeft!) : withAlert;
+  const employees = sort ? sortEmployees(shown, sort) : shown;
+  const header = (key: SortKey, label: string, className = "") => (
+    <SortHeader key={key} column={key} label={label} sort={sort} onlyEnding={onlyEnding} className={className} />
+  );
 
   return (
     <div className="space-y-4">
@@ -88,7 +94,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
             </span>
           </p>
           <Link
-            href={onlyEnding ? "/dashboard/karyawan" : "/dashboard/karyawan?kontrak=berakhir"}
+            href={listHref(!onlyEnding, sort)}
             className="text-sm font-medium text-amber-900 underline"
           >
             {onlyEnding ? "Tampilkan semua karyawan" : "Lihat daftarnya"}
@@ -105,13 +111,13 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
           <table className="w-full text-left text-sm">
             <thead className="table-head border-b border-slate-200">
               <tr>
-                <th className={`${WIDE} px-4 py-3 font-medium`}>Employee ID</th>
-                <th className="px-4 py-3 font-medium">Nama</th>
-                <th className={`${WIDE} px-4 py-3 font-medium`}>Departemen</th>
-                <th className={`${WIDE} px-4 py-3 font-medium`}>Jenis</th>
-                <th className={`${WIDE} px-4 py-3 font-medium`}>Status</th>
-                <th className={`${WIDE} px-4 py-3 font-medium`}>Mulai</th>
-                <th className="px-4 py-3 font-medium">Kontrak berakhir</th>
+                {header("id", "Employee ID", WIDE)}
+                {header("nama", "Nama")}
+                {header("departemen", "Departemen", WIDE)}
+                {header("jenis", "Jenis", WIDE)}
+                {header("status", "Status", WIDE)}
+                {header("mulai", "Mulai", WIDE)}
+                {header("berakhir", "Kontrak berakhir")}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
@@ -168,5 +174,49 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
         </div>
       )}
     </div>
+  );
+}
+
+// The list's URL with the contract filter and the column order; both survive each other's links
+function listHref(onlyEnding: boolean, sort: Sort | null) {
+  const params = new URLSearchParams();
+  if (onlyEnding) params.set("kontrak", "berakhir");
+  if (sort) {
+    params.set("urut", sort.key);
+    params.set("arah", sort.dir);
+  }
+  const query = params.toString();
+  return query ? `/dashboard/karyawan?${query}` : "/dashboard/karyawan";
+}
+
+// A column header that sorts the list: first click A-Z, the next Z-A
+function SortHeader({
+  column,
+  label,
+  sort,
+  onlyEnding,
+  className,
+}: {
+  column: SortKey;
+  label: string;
+  sort: Sort | null;
+  onlyEnding: boolean;
+  className: string;
+}) {
+  const active = sort?.key === column ? sort.dir : null;
+  return (
+    <th className={`${className} px-4 py-3 font-medium`} aria-sort={active ? (active === "az" ? "ascending" : "descending") : undefined}>
+      <Link
+        href={listHref(onlyEnding, nextSort(sort, column))}
+        scroll={false}
+        title={`Urutkan ${label} ${active === "az" ? "Z-A" : "A-Z"}`}
+        className="group inline-flex items-center gap-1 whitespace-nowrap hover:text-brand-800"
+      >
+        {label}
+        <span aria-hidden="true" className={active ? "text-brand-700" : "text-slate-300 group-hover:text-slate-500"}>
+          {active === "az" ? "▲" : active === "za" ? "▼" : "↕"}
+        </span>
+      </Link>
+    </th>
   );
 }
