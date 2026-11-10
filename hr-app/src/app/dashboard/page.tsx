@@ -41,7 +41,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
   const interviewScope = isHr ? {} : { interviewerId: user.id };
   const [upcoming, needFeedback, endingContracts] = await Promise.all([
     db.interview.findMany({
-      where: { ...interviewScope, scheduledAt: { gte: now, lte: new Date(now.getTime() + 14 * DAY) } },
+      where: { ...interviewScope, status: "SCHEDULED", scheduledAt: { gte: now, lte: new Date(now.getTime() + 14 * DAY) } },
       orderBy: { scheduledAt: "asc" },
       take: 10,
       select: {
@@ -54,7 +54,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       },
     }),
     db.interview.findMany({
-      where: { interviewerId: user.id, rating: null, scheduledAt: { lt: now } },
+      where: { interviewerId: user.id, status: "SCHEDULED", rating: null, scheduledAt: { lt: now } },
       orderBy: { scheduledAt: "desc" },
       select: {
         id: true,

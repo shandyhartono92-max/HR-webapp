@@ -3,6 +3,8 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { formatDate, pipelineStages, stageLabel } from "@/lib/labels";
+import { InterviewStatusPill } from "@/app/ui/interview-status";
+import type { InterviewStatus } from "@/generated/prisma/enums";
 
 export const metadata: Metadata = { title: "Kandidat" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
@@ -30,6 +32,8 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/dashb
       job: { select: { title: true } },
       // Latest AI score only
       screenings: { select: { score: true }, orderBy: { createdAt: "desc" }, take: 1 },
+      // Most recently created first: [0] is the current interview (a moved slot can lie later in time)
+      interviews: { select: { status: true, scheduledAt: true }, orderBy: { createdAt: "desc" } },
     },
   });
 
@@ -72,6 +76,7 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/dashb
                         {a.candidate.lastEducation ? `${a.candidate.lastEducation} · ` : ""}
                         {formatDate(a.appliedAt)}
                       </p>
+                      {stage === "INTERVIEW" && <InterviewBadges interviews={a.interviews} />}
                     </li>
                   );
                 })}
@@ -80,6 +85,23 @@ export default async function CandidatesPage({ searchParams }: PageProps<"/dashb
           );
         })}
       </div>
+    </div>
+  );
+}
+
+// Status of the latest interview, plus how often the slot was moved
+function InterviewBadges({ interviews }: { interviews: { status: InterviewStatus; scheduledAt: Date }[] }) {
+  const latest = interviews[0];
+  if (!latest) return null;
+  const moved = interviews.filter((i) => i.status === "RESCHEDULED").length;
+  return (
+    <div className="mt-2 flex flex-wrap gap-1.5">
+      {latest.status === "SCHEDULED" ? (
+        <InterviewStatusPill status="SCHEDULED">Terjadwal · {formatDate(latest.scheduledAt)}</InterviewStatusPill>
+      ) : (
+        <InterviewStatusPill status={latest.status} />
+      )}
+      {moved > 0 && <InterviewStatusPill status="RESCHEDULED">Reschedule {moved}×</InterviewStatusPill>}
     </div>
   );
 }

@@ -3,7 +3,7 @@
 import { useActionState, useState, useTransition } from "react";
 import { generateCandidateQuestions } from "@/app/actions/interview-kits";
 import { hireCandidate } from "@/app/actions/employees";
-import { cancelInterview, scheduleInterview, submitFeedback } from "@/app/actions/interviews";
+import { cancelInterview, rescheduleInterview, scheduleInterview, setNoShow, submitFeedback } from "@/app/actions/interviews";
 import { Field, FormMessage, inputClass } from "@/app/ui/field";
 import { decisionLabel, employmentTypeLabel, interviewModeLabel } from "@/lib/labels";
 import type { EmploymentType } from "@/generated/prisma/enums";
@@ -13,33 +13,61 @@ const buttonClass =
 
 type Option = { id: string; name: string };
 
+type Reschedule = {
+  interviewId: string;
+  // The old slot's settings; the new date and time are always typed fresh
+  defaults: { interviewerId: string; durationMin: number; mode: string; locationOrLink: string };
+};
+
+// Schedules a new interview, or with `reschedule` moves an existing one to a new slot
 export function ScheduleInterviewForm({
   applicationId,
   interviewers,
   defaultInterviewerId,
+  reschedule,
 }: {
   applicationId: string;
   interviewers: Option[];
   defaultInterviewerId: string;
+  reschedule?: Reschedule;
 }) {
-  const [state, action, pending] = useActionState(scheduleInterview.bind(null, applicationId), undefined);
+  const [state, action, pending] = useActionState(
+    reschedule ? rescheduleInterview.bind(null, reschedule.interviewId) : scheduleInterview.bind(null, applicationId),
+    undefined,
+  );
   const e = state?.errors ?? {};
+  const d = reschedule?.defaults;
   // After success the form remounts empty; after an error it keeps what was typed
   const v = (name: string, fallback = "") => (state?.ok ? fallback : (state?.values?.[name] ?? fallback));
+  const idPrefix = reschedule ? `rs-${reschedule.interviewId}-` : "";
 
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
       <FormMessage message={state?.message} />
-      {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Wawancara dijadwalkan.</p>}
+      {state?.ok && !reschedule && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Wawancara dijadwalkan.</p>}
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Tanggal & jam (WIB)" htmlFor="scheduledAt" errors={e.scheduledAt}>
-          <input id="scheduledAt" name="scheduledAt" type="datetime-local" required defaultValue={v("scheduledAt")} className={inputClass} />
+        <Field label={reschedule ? "Tanggal & jam baru (WIB)" : "Tanggal & jam (WIB)"} htmlFor={`${idPrefix}scheduledAt`} errors={e.scheduledAt}>
+          <input id={`${idPrefix}scheduledAt`} name="scheduledAt" type="datetime-local" required defaultValue={v("scheduledAt")} className={inputClass} />
         </Field>
-        <Field label="Durasi (menit)" htmlFor="durationMin" errors={e.durationMin}>
-          <input id="durationMin" name="durationMin" type="number" min={15} max={480} step={15} defaultValue={v("durationMin", "60")} className={inputClass} />
+        <Field label="Durasi (menit)" htmlFor={`${idPrefix}durationMin`} errors={e.durationMin}>
+          <input
+            id={`${idPrefix}durationMin`}
+            name="durationMin"
+            type="number"
+            min={15}
+            max={480}
+            step={15}
+            defaultValue={v("durationMin", String(d?.durationMin ?? 60))}
+            className={inputClass}
+          />
         </Field>
-        <Field label="Pewawancara" htmlFor="interviewerId" errors={e.interviewerId}>
-          <select id="interviewerId" name="interviewerId" defaultValue={v("interviewerId", defaultInterviewerId)} className={inputClass}>
+        <Field label="Pewawancara" htmlFor={`${idPrefix}interviewerId`} errors={e.interviewerId}>
+          <select
+            id={`${idPrefix}interviewerId`}
+            name="interviewerId"
+            defaultValue={v("interviewerId", d?.interviewerId ?? defaultInterviewerId)}
+            className={inputClass}
+          >
             {interviewers.map((i) => (
               <option key={i.id} value={i.id}>
                 {i.name}
@@ -47,8 +75,8 @@ export function ScheduleInterviewForm({
             ))}
           </select>
         </Field>
-        <Field label="Jenis" htmlFor="mode" errors={e.mode}>
-          <select id="mode" name="mode" defaultValue={v("mode", "ONLINE")} className={inputClass}>
+        <Field label="Jenis" htmlFor={`${idPrefix}mode`} errors={e.mode}>
+          <select id={`${idPrefix}mode`} name="mode" defaultValue={v("mode", d?.mode ?? "ONLINE")} className={inputClass}>
             {Object.entries(interviewModeLabel).map(([value, label]) => (
               <option key={value} value={value}>
                 {label}
@@ -57,18 +85,18 @@ export function ScheduleInterviewForm({
           </select>
         </Field>
       </div>
-      <Field label="Lokasi atau tautan meeting" htmlFor="locationOrLink" errors={e.locationOrLink}>
+      <Field label="Lokasi atau tautan meeting" htmlFor={`${idPrefix}locationOrLink`} errors={e.locationOrLink}>
         <input
-          id="locationOrLink"
+          id={`${idPrefix}locationOrLink`}
           name="locationOrLink"
           required
           placeholder="https://meet.google.com/… atau Ruang Rapat Lt. 3"
-          defaultValue={v("locationOrLink")}
+          defaultValue={v("locationOrLink", d?.locationOrLink ?? "")}
           className={inputClass}
         />
       </Field>
       <button type="submit" disabled={pending} className={buttonClass}>
-        {pending ? "Menjadwalkan…" : "Jadwalkan wawancara"}
+        {reschedule ? (pending ? "Menyimpan…" : "Simpan jadwal baru") : pending ? "Menjadwalkan…" : "Jadwalkan wawancara"}
       </button>
     </form>
   );
@@ -137,6 +165,27 @@ export function CancelInterviewButton({ interviewId }: { interviewId: string }) 
       className="text-xs text-red-700 hover:underline disabled:opacity-60"
     >
       {pending ? "Membatalkan…" : "Batalkan"}
+    </button>
+  );
+}
+
+// "No show" after the interview time; with undo, takes back a mistaken mark
+export function NoShowButton({ interviewId, undo = false }: { interviewId: string; undo?: boolean }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        if (!confirm(undo ? "Batalkan tanda No show? Wawancara kembali berstatus Terjadwal." : "Tandai kandidat tidak hadir (No show)?")) return;
+        startTransition(async () => {
+          const result = await setNoShow(interviewId, !undo);
+          if (result?.message) alert(result.message);
+        });
+      }}
+      className={`text-xs hover:underline disabled:opacity-60 ${undo ? "text-slate-600" : "text-red-700"}`}
+    >
+      {pending ? "Menyimpan…" : undo ? "Batalkan tanda No show" : "No show"}
     </button>
   );
 }

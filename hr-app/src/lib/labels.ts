@@ -5,6 +5,7 @@ import type {
   EmploymentType,
   Gender,
   InterviewMode,
+  InterviewStatus,
   JobStatus,
   LetterType,
   PtkpStatus,
@@ -86,6 +87,12 @@ export const interviewModeLabel: Record<InterviewMode, string> = {
   ONSITE: "Tatap muka",
 };
 
+export const interviewStatusLabel: Record<InterviewStatus, string> = {
+  SCHEDULED: "Terjadwal",
+  RESCHEDULED: "Reschedule",
+  NO_SHOW: "No show",
+};
+
 export const employeeStatusLabel: Record<EmployeeStatus, string> = {
   PROBATION: "Masa percobaan",
   ACTIVE: "Aktif",
@@ -156,6 +163,8 @@ export const todayDate = () => new Date(`${todayIso()}T00:00:00Z`);
 export const daysUntil = (d: Date) => Math.round((d.getTime() - todayDate().getTime()) / DAY_MS);
 
 // Interviews can get feedback from one hour before their start time
+// No show can be marked once the interview time has passed
+export const hasStarted = (d: Date) => d.getTime() <= Date.now();
 export const isFeedbackOpen = (scheduledAt: Date) => scheduledAt.getTime() <= Date.now() + 60 * 60 * 1000;
 
 // <input type="datetime-local"> value ("2026-11-03T10:00") read as WIB

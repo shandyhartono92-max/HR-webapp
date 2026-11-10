@@ -62,6 +62,14 @@ enum InterviewMode {
   ONSITE
 }
 
+// SCHEDULED until it happens; RESCHEDULED keeps the old slot in the history when a
+// new interview replaces it; NO_SHOW when the candidate did not attend
+enum InterviewStatus {
+  SCHEDULED
+  RESCHEDULED
+  NO_SHOW
+}
+
 enum EmployeeStatus {
   ACTIVE
   PROBATION
@@ -284,6 +292,7 @@ model Interview {
   durationMin    Int                @default(60)
   mode           InterviewMode
   locationOrLink String?            @db.VarChar(300)
+  status         InterviewStatus    @default(SCHEDULED)
   rating         Int? // 1–5
   feedback       String?            @db.Text
   recommendation ScreeningDecision?

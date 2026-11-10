@@ -11,12 +11,14 @@ import {
   formatDateTime,
   formatRupiah,
   interviewModeLabel,
+  hasStarted,
   isFeedbackOpen,
   stageLabel,
 } from "@/lib/labels";
 import { isScreeningConfigured, type ScreeningProfile } from "@/lib/screening";
 import { RescreenButton, ReviewForm, StageForm } from "./candidate-actions";
-import { CancelInterviewButton, FeedbackForm, GenerateQuestionsButton, HireForm, ScheduleInterviewForm } from "./process-forms";
+import { CancelInterviewButton, FeedbackForm, GenerateQuestionsButton, HireForm, NoShowButton, ScheduleInterviewForm } from "./process-forms";
+import { InterviewStatusPill } from "@/app/ui/interview-status";
 import { isAiConfigured } from "@/lib/ai";
 import { CandidateQuestionsContent, JobKitContent } from "@/lib/interview-kit-schema";
 import { activeTemplate } from "@/lib/letters/service";
@@ -78,13 +80,14 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
       employee: { select: { id: true, employeeNumber: true } },
       letters: { orderBy: { issuedAt: "desc" }, select: { id: true, letterNumber: true, issuedAt: true, fileKey: true } },
       interviews: {
-        orderBy: { scheduledAt: "asc" },
+        orderBy: { createdAt: "asc" }, // history in the order it happened (reschedules included)
         select: {
           id: true,
           scheduledAt: true,
           durationMin: true,
           mode: true,
           locationOrLink: true,
+          status: true,
           rating: true,
           recommendation: true,
           feedback: true,
@@ -327,11 +330,16 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
               <ul className="mt-3 space-y-4">
                 {app.interviews.map((iv) => {
                   const canGiveFeedback = iv.interviewerId === user.id || isHr;
+                  const held = iv.status === "SCHEDULED";
+                  const open = held && iv.rating === null;
                   return (
-                    <li key={iv.id} className="rounded-lg border border-slate-200 p-4">
+                    <li key={iv.id} className={`rounded-lg border border-slate-200 p-4 ${held ? "" : "bg-slate-50"}`}>
                       <div className="flex flex-wrap items-start justify-between gap-2">
                         <div>
-                          <p className="text-sm font-medium text-slate-900">{formatDateTime(iv.scheduledAt)}</p>
+                          <p className="flex flex-wrap items-center gap-2 text-sm font-medium text-slate-900">
+                            <span className={iv.status === "RESCHEDULED" ? "text-slate-500 line-through decoration-slate-400" : ""}>{formatDateTime(iv.scheduledAt)}</span>
+                            <InterviewStatusPill status={iv.status} />
+                          </p>
                           <p className="text-sm text-slate-600">
                             {iv.durationMin} menit · {interviewModeLabel[iv.mode]} · dengan {iv.interviewer.name}
                           </p>
@@ -349,8 +357,36 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
                               <p className="text-sm text-slate-600">{iv.locationOrLink}</p>
                             ))}
                         </div>
-                        {canManage && iv.rating === null && <CancelInterviewButton interviewId={iv.id} />}
+                        {canManage && open && (
+                          <div className="flex flex-wrap items-center gap-3">
+                            {hasStarted(iv.scheduledAt) && <NoShowButton interviewId={iv.id} />}
+                            <CancelInterviewButton interviewId={iv.id} />
+                          </div>
+                        )}
+                        {canManage && iv.status === "NO_SHOW" && iv.rating === null && <NoShowButton interviewId={iv.id} undo />}
                       </div>
+
+                      {canManage && open && canSchedule && (
+                        <details className="mt-3">
+                          <summary className="cursor-pointer text-sm font-medium text-brand-800">Reschedule</summary>
+                          <div className="mt-3">
+                            <ScheduleInterviewForm
+                              applicationId={app.id}
+                              interviewers={interviewers}
+                              defaultInterviewerId={user.id}
+                              reschedule={{
+                                interviewId: iv.id,
+                                defaults: {
+                                  interviewerId: iv.interviewerId,
+                                  durationMin: iv.durationMin,
+                                  mode: iv.mode,
+                                  locationOrLink: iv.locationOrLink ?? "",
+                                },
+                              }}
+                            />
+                          </div>
+                        </details>
+                      )}
 
                       {iv.rating !== null ? (
                         <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
@@ -367,6 +403,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
                         </div>
                       ) : (
                         canGiveFeedback &&
+                        held &&
                         isFeedbackOpen(iv.scheduledAt) && (
                           <div className="mt-3 border-t border-slate-100 pt-3">
                             <FeedbackForm interviewId={iv.id} />
