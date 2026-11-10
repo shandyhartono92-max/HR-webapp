@@ -6,6 +6,12 @@ import { markNotificationsRead } from "@/app/actions/bank";
 import { formatDate, formatDateTime, interviewModeLabel } from "@/lib/labels";
 import { contractAlert, endingContractsWhere } from "@/lib/contracts";
 import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
+import { NavIcon } from "@/app/ui/icons";
+import type { NavIconName } from "@/lib/nav";
+
+// Interview date tile: "12" over "NOV", in WIB like every date in the app
+const tileDay = new Intl.DateTimeFormat("id-ID", { day: "numeric", timeZone: "Asia/Jakarta" });
+const tileMonth = new Intl.DateTimeFormat("id-ID", { month: "short", timeZone: "Asia/Jakarta" });
 
 export const metadata: Metadata = { title: "Ringkasan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
@@ -73,11 +79,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     select: { id: true, title: true, body: true, link: true, createdAt: true },
   });
 
-  const stats = [
-    { label: "Lowongan dibuka", value: openJobs },
-    { label: "Lamaran baru", value: newApplications },
-    { label: "Tahap wawancara", value: inInterview },
-    ...(isHr ? [{ label: "Perubahan rekening menunggu", value: pendingBankRequests }] : []),
+  const stats: { label: string; value: number; icon: NavIconName }[] = [
+    { label: "Lowongan dibuka", value: openJobs, icon: "brief" },
+    { label: "Lamaran baru", value: newApplications, icon: "users" },
+    { label: "Tahap wawancara", value: inInterview, icon: "cal" },
+    ...(isHr ? [{ label: "Perubahan rekening menunggu", value: pendingBankRequests, icon: "bank" as const }] : []),
   ];
 
   return (
@@ -141,11 +147,16 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       )}
 
       {canSeeRecruitment && (
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2.5 sm:gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))]">
           {stats.map((s) => (
-            <div key={s.label} className="card p-5">
-              <p className="text-sm text-slate-500">{s.label}</p>
-              <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">{s.value}</p>
+            <div key={s.label} className="card flex items-center gap-2.5 border-l-4 border-l-brand-700 p-3 sm:gap-3.5 sm:p-4">
+              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-100 text-brand-700 sm:size-11">
+                <NavIcon name={s.icon} className="size-[18px] sm:size-[22px]" />
+              </span>
+              <div className="min-w-0">
+                <p className="text-xs text-slate-500 sm:text-[13px]">{s.label}</p>
+                <p className="text-[22px] font-bold leading-tight tabular-nums text-slate-900 sm:text-[26px]">{s.value}</p>
+              </div>
             </div>
           ))}
         </div>
@@ -175,15 +186,21 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           ) : (
             <ul className="mt-3 divide-y divide-slate-100">
               {upcoming.map((iv) => (
-                <li key={iv.id} className="py-2 text-sm">
-                  <Link href={`/dashboard/kandidat/${iv.applicationId}`} className="font-medium text-brand-800 hover:underline">
-                    {iv.application.candidate.fullName}
-                  </Link>
-                  <span className="text-slate-600"> · {iv.application.job.title}</span>
-                  <p className="text-slate-500">
-                    {formatDateTime(iv.scheduledAt)} · {interviewModeLabel[iv.mode]}
-                    {isHr && ` · ${iv.interviewer.name}`}
-                  </p>
+                <li key={iv.id} className="flex items-center gap-3 py-2.5 text-sm">
+                  <span className="w-12 shrink-0 rounded-lg bg-brand-100 py-1 text-center text-brand-700">
+                    <span className="block text-[17px] font-bold leading-tight">{tileDay.format(iv.scheduledAt)}</span>
+                    <span className="block text-[10.5px] uppercase">{tileMonth.format(iv.scheduledAt)}</span>
+                  </span>
+                  <div className="min-w-0">
+                    <Link href={`/dashboard/kandidat/${iv.applicationId}`} className="font-medium text-brand-800 hover:underline">
+                      {iv.application.candidate.fullName}
+                    </Link>
+                    <span className="text-slate-600"> · {iv.application.job.title}</span>
+                    <p className="text-slate-500">
+                      {formatDateTime(iv.scheduledAt)} · {interviewModeLabel[iv.mode]}
+                      {isHr && ` · ${iv.interviewer.name}`}
+                    </p>
+                  </div>
                 </li>
               ))}
             </ul>
