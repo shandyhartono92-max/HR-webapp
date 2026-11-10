@@ -7,7 +7,8 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { decrypt, encrypt, lastFour } from "@/lib/crypto";
-import { failed, optionalText, type FormState } from "@/lib/forms";
+import { failed, optionalDate, optionalText, type FormState } from "@/lib/forms";
+import { trainingErrors } from "@/lib/training";
 import {
   bpjsKesehatanError,
   bpjsKetenagakerjaanError,
@@ -149,9 +150,13 @@ const IdentitySchema = z.object({
     .transform(normalizePhone),
   employeeNumber: z.string().trim().min(1, { error: "Isi Employee ID." }).max(30),
   joinDate: z.string().transform((v, ctx) => parseDateOnly(v) ?? (ctx.addIssue({ code: "custom", message: "Isi tanggal mulai bekerja." }), z.NEVER)),
+  // With the Employee ID, since a trainee's ID starts with T (src/lib/training.ts)
+  trainingStart: optionalDate,
+  trainingEnd: optionalDate,
 });
 
-// Fixes typos from hiring or import. The login email (if any) follows the employee's email.
+// Fixes typos from hiring or import, and sets the training period.
+// The login email (if any) follows the employee's email.
 export async function updateIdentity(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const user = await requireRole("ADMIN", "HR");
   const before = await db.employee.findUnique({
@@ -164,9 +169,11 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
       joinDate: true,
       endDate: true,
       exitDate: true,
+      trainingStart: true,
+      trainingEnd: true,
       userId: true,
       anonymizedAt: true,
-      contracts: { orderBy: { startDate: "asc" }, take: 1, select: { startDate: true } },
+      contracts:{ orderBy: { startDate: "asc" }, take: 1, select: { startDate: true } },
     },
   });
   if (!before) return notFound;
@@ -186,15 +193,25 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
   if (before.exitDate && d.joinDate > before.exitDate) {
     return failed(formData, { joinDate: [`Tidak boleh setelah tanggal keluar (${formatDate(before.exitDate)}).`] });
   }
+  const tErr = trainingErrors(d, todayDate());
+  if (Object.keys(tErr).length) return failed(formData, tErr);
+
   const [numberTaken, emailTaken, loginTaken] = await Promise.all([
-    db.employee.findFirst({ where: { employeeNumber: equalsIgnoringCase(d.employeeNumber), id: { not: employeeId } }, select: { id: true } }),
+    // A former trainee number (T001) is never handed out again
+    db.employee.findFirst({
+      where: {
+        id: { not: employeeId },
+        OR: [{ employeeNumber: equalsIgnoringCase(d.employeeNumber) }, { traineeNumber: equalsIgnoringCase(d.employeeNumber) }],
+      },
+      select: { id: true },
+    }),
     db.employee.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: employeeId } }, select: { id: true } }),
     before.userId
       ? db.user.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: before.userId } }, select: { id: true } })
       : null,
   ]);
   const errors: Record<string, string[]> = {};
-  if (numberTaken) errors.employeeNumber = ["Employee ID ini sudah dipakai karyawan lain."];
+  if (numberTaken) errors.employeeNumber = ["Employee ID ini sudah dipakai karyawan lain, atau pernah dipakai sebagai ID training."];
   if (emailTaken) errors.email = ["Email ini sudah dipakai karyawan lain."];
   else if (loginTaken) errors.email = ["Email ini sudah dipakai akun login lain."];
   if (Object.keys(errors).length) return failed(formData, errors);
@@ -208,9 +225,14 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
     }
   });
 
-  const plain = { ...before, joinDate: iso(before.joinDate) };
-  const after = { ...d, joinDate: iso(d.joinDate) };
-  const keys = ["fullName", "email", "phone", "employeeNumber", "joinDate"] as const;
+  const dates = (x: { joinDate: Date; trainingStart: Date | null; trainingEnd: Date | null }) => ({
+    joinDate: iso(x.joinDate),
+    trainingStart: iso(x.trainingStart),
+    trainingEnd: iso(x.trainingEnd),
+  });
+  const plain = { ...before, ...dates(before) };
+  const after = { ...d, ...dates(d) };
+  const keys = ["fullName", "email", "phone", "employeeNumber", "joinDate", "trainingStart", "trainingEnd"] as const;
   // The audit log can never be edited, so it must not keep personal data that retention
   // will later wipe: name, email and phone are recorded as "changed" without their values
   const personal = new Set<string>(["fullName", "email", "phone"]);

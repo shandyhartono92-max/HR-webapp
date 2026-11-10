@@ -268,6 +268,17 @@ export function HireForm({
         <Field label="Kontrak berakhir" htmlFor="endDate" hint="Wajib untuk PKWT." errors={e.endDate}>
           <input id="endDate" name="endDate" type="date" defaultValue={v("endDate")} className={inputClass} />
         </Field>
+        <Field label="Mulai training" htmlFor="hireTrainStart" errors={e.trainingStart}>
+          <input id="hireTrainStart" name="trainingStart" type="date" defaultValue={v("trainingStart")} className={inputClass} />
+        </Field>
+        <Field
+          label="Selesai training"
+          htmlFor="hireTrainEnd"
+          hint="Kosongkan jika tidak training. Selama training, Employee ID berawalan T (misal T001)."
+          errors={e.trainingEnd}
+        >
+          <input id="hireTrainEnd" name="trainingEnd" type="date" defaultValue={v("trainingEnd")} className={inputClass} />
+        </Field>
       </div>
       <button type="submit" disabled={pending} className={buttonClass}>
         {pending ? "Menyimpan…" : "Buat data karyawan"}

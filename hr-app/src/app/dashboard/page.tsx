@@ -3,10 +3,14 @@ import Link from "next/link";
 import { db } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 import { markNotificationsRead } from "@/app/actions/bank";
-import { formatDate, formatDateTime, interviewModeLabel } from "@/lib/labels";
+import { formatDate, formatDateTime, interviewModeLabel, todayDate } from "@/lib/labels";
 import { contractAlert, endingContractsWhere } from "@/lib/contracts";
 import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
 import { NavIcon } from "@/app/ui/icons";
+import { TrainingBadge } from "@/app/ui/training-badge";
+import { graduatedNumber } from "@/lib/training";
+
+const TRAINING_ALERT_DAYS = 7;
 import type { NavIconName } from "@/lib/nav";
 
 // Interview date tile: "12" over "NOV", in WIB like every date in the app
@@ -71,6 +75,23 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         })
       : [],
   ]);
+
+  // Trainees whose training ends within a week: the T is dropped the day after (src/lib/training-job.ts)
+  const trainingEnding = isHr
+    ? (
+        await db.employee.findMany({
+          where: {
+            anonymizedAt: null,
+            traineeNumber: null,
+            employeeNumber: { startsWith: "T" },
+            // Past ones are either renamed already or blocked by a clash (that one gets a notification)
+            trainingEnd: { gte: todayDate(), lte: new Date(todayDate().getTime() + TRAINING_ALERT_DAYS * DAY) },
+          },
+          orderBy: { trainingEnd: "asc" },
+          select: { id: true, fullName: true, position: true, employeeNumber: true, trainingEnd: true },
+        })
+      ).filter((e) => graduatedNumber(e.employeeNumber))
+    : [];
 
   const notifications = await db.notification.findMany({
     where: { userId: user.id, readAt: null },
@@ -234,6 +255,29 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           </section>
         )}
       </div>
+
+      {trainingEnding.length > 0 && (
+        <section className="card p-5">
+          <h2 className="font-medium text-slate-900">Training selesai ≤ {TRAINING_ALERT_DAYS} hari</h2>
+          <p className="mt-1 text-xs text-slate-500">Sehari setelah tanggal selesai, huruf T di Employee ID dibuang otomatis. Penanda untuk payroll.</p>
+          <ul className="mt-3 divide-y divide-slate-100">
+            {trainingEnding.map((e) => (
+              <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                <div>
+                  <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-brand-800 hover:underline">
+                    {e.fullName}
+                  </Link>
+                  <span className="text-slate-600"> · {e.position}</span>
+                  <p className="text-xs text-slate-500">
+                    {e.employeeNumber} → {graduatedNumber(e.employeeNumber)}
+                  </p>
+                </div>
+                <TrainingBadge end={e.trainingEnd!} />
+              </li>
+            ))}
+          </ul>
+        </section>
+      )}
     </div>
   );
 }

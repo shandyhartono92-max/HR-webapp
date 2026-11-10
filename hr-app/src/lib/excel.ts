@@ -5,7 +5,8 @@ import ExcelJS from "exceljs";
 // dropdown lists and reading rows back by header text.
 
 // aliases: earlier header texts still accepted when reading an uploaded sheet
-export type Column<K extends string> = { key: K; header: string; width: number; aliases?: readonly string[] };
+// optional: a column added later; files from older templates without it still import (value "")
+export type Column<K extends string> = { key: K; header: string; width: number; aliases?: readonly string[]; optional?: boolean };
 
 export function newTemplate<K extends string>(sheetName: string, columns: readonly Column<K>[]) {
   const wb = new ExcelJS.Workbook();
@@ -78,13 +79,15 @@ export async function readSheet<K extends string>(
     const match = columns.find((c) => [c.header, ...(c.aliases ?? [])].some((h) => h.toLowerCase() === text));
     if (match) index.set(match.key, col);
   });
-  const missing = columns.filter((c) => !index.has(c.key)).map((c) => `"${c.header}"`);
+  const missing = columns.filter((c) => !c.optional && !index.has(c.key)).map((c) => `"${c.header}"`);
   if (missing.length) return { ok: false, message: `Kolom tidak ditemukan: ${missing.join(", ")}. Gunakan template dari halaman ini.` };
 
   const rows: { rowNumber: number; raw: Record<K, string> }[] = [];
   for (let r = 2; r <= sheet.rowCount; r++) {
     const row = sheet.getRow(r);
-    const raw = Object.fromEntries(columns.map((c) => [c.key, cellText(row.getCell(index.get(c.key)!).value)])) as Record<K, string>;
+    const raw = Object.fromEntries(
+      columns.map((c) => [c.key, index.has(c.key) ? cellText(row.getCell(index.get(c.key)!).value) : ""]),
+    ) as Record<K, string>;
     if (Object.values(raw).every((v) => v === "")) continue;
     if (rows.length >= maxRows) return { ok: false, message: `Maksimal ${maxRows} baris per file. Bagi menjadi beberapa file.` };
     rows.push({ rowNumber: r, raw });

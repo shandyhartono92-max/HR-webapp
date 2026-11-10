@@ -6,8 +6,9 @@ import * as z from "zod";
 import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
-import { failed, type FormState } from "@/lib/forms";
-import { parseDateOnly } from "@/lib/labels";
+import { failed, optionalDate, type FormState } from "@/lib/forms";
+import { parseDateOnly, todayDate } from "@/lib/labels";
+import { trainingErrors } from "@/lib/training";
 import { EmploymentType } from "@/generated/prisma/enums";
 import { findOrCreateDepartment } from "@/lib/departments";
 import { MAX_EMPLOYEE_IMPORT_BYTES, parseEmployeeFile } from "@/lib/employee-import";
@@ -27,6 +28,8 @@ const dateField = (error: string) =>
 const HireSchema = z
   .object({
     employeeNumber: z.string().trim().min(1, { error: "Isi Employee ID." }).max(30),
+    trainingStart: optionalDate,
+    trainingEnd: optionalDate,
     departmentId: z.string().min(1, { error: "Pilih departemen." }),
     position: z.string().trim().min(2, { error: "Isi jabatan." }).max(120),
     employmentType: z.enum(EmploymentType),
@@ -65,6 +68,17 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
   });
   const known = new Set(existing.map((e) => lower(e.employeeNumber)));
   const fresh = parsed.rows.filter((r) => !known.has(lower(r.employeeNumber)));
+  // A former trainee number (T001) is never handed out again
+  const usedForTraining = new Set(
+    fresh.length
+      ? (
+          await db.employee.findMany({
+            where: anyEqualsIgnoringCase("traineeNumber", fresh.map((r) => r.employeeNumber)),
+            select: { traineeNumber: true },
+          })
+        ).map((e) => lower(e.traineeNumber!))
+      : [],
+  );
 
   // Emails and contract numbers must not clash with other records already in the portal
   const [emailsTaken, contractsTaken] = await Promise.all([
@@ -82,6 +96,7 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
     const messages = [
       emailOwner.has(lower(r.email)) && `Email: sudah dipakai karyawan ${emailOwner.get(lower(r.email))}.`,
       contractSet.has(lower(r.contractNumber)) && `No. kontrak: ${r.contractNumber} sudah ada.`,
+      usedForTraining.has(lower(r.employeeNumber)) && `Employee ID: ${r.employeeNumber} sudah pernah dipakai sebagai ID training.`,
     ].filter(Boolean) as string[];
     if (messages.length) issues.push({ rowNumber: r.rowNumber, name: r.fullName, messages });
   }
@@ -111,6 +126,8 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
             birthPlace: r.birthPlace,
             birthDate: r.birthDate,
             gender: r.gender,
+            trainingStart: r.trainingStart,
+            trainingEnd: r.trainingEnd,
             contracts: {
               create: {
                 type: r.employmentType,
@@ -151,6 +168,8 @@ export async function hireCandidate(applicationId: string, _state: FormState, fo
   const parsed = HireSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
   const data = parsed.data;
+  const training = trainingErrors(data, todayDate());
+  if (Object.keys(training).length) return failed(formData, training);
 
   const app = await db.application.findUnique({
     where: { id: applicationId },
@@ -165,13 +184,17 @@ export async function hireCandidate(applicationId: string, _state: FormState, fo
   if (app.employee) return failed(formData, undefined, "Kandidat ini sudah dibuatkan data karyawan.");
 
   const [numberTaken, emailTaken, contractTaken, dept] = await Promise.all([
-    db.employee.findFirst({ where: { employeeNumber: equalsIgnoringCase(data.employeeNumber) }, select: { id: true } }),
+    // A former trainee number (T001) is never handed out again
+    db.employee.findFirst({
+      where: { OR: [{ employeeNumber: equalsIgnoringCase(data.employeeNumber) }, { traineeNumber: equalsIgnoringCase(data.employeeNumber) }] },
+      select: { id: true },
+    }),
     db.employee.findFirst({ where: { email: equalsIgnoringCase(app.candidate.email) }, select: { id: true } }),
     db.contract.findFirst({ where: { contractNumber: equalsIgnoringCase(data.contractNumber) }, select: { id: true } }),
     db.department.findUnique({ where: { id: data.departmentId }, select: { id: true } }),
   ]);
   const errors: Record<string, string[]> = {};
-  if (numberTaken) errors.employeeNumber = ["Employee ID ini sudah dipakai."];
+  if (numberTaken) errors.employeeNumber = ["Employee ID ini sudah dipakai, atau pernah dipakai sebagai ID training."];
   if (contractTaken) errors.contractNumber = ["Nomor kontrak ini sudah dipakai."];
   if (!dept) errors.departmentId = ["Departemen tidak ditemukan."];
   if (Object.keys(errors).length) return failed(formData, errors);
@@ -192,6 +215,8 @@ export async function hireCandidate(applicationId: string, _state: FormState, fo
         status: data.employmentType === "PKWTT" ? "PROBATION" : "ACTIVE",
         joinDate: data.joinDate,
         endDate: data.endDate,
+        trainingStart: data.trainingStart,
+        trainingEnd: data.trainingEnd,
       },
       select: { id: true },
     });

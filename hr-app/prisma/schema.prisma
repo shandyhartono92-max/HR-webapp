@@ -407,6 +407,12 @@ model Employee {
   // Last working day; set when the status becomes resigned / terminated / contract
   // ended. Personal data is anonymised EMPLOYEE_RETENTION_YEARS after it.
   exitDate       DateTime?      @db.Date
+  // Training period, a marker for payroll. While training the employee number
+  // starts with T (T001); the day after trainingEnd the app drops the T and keeps
+  // the old number in traineeNumber, which is never handed out again.
+  trainingStart  DateTime?      @db.Date
+  trainingEnd    DateTime?      @db.Date
+  traineeNumber  String?        @unique
   anonymizedAt   DateTime?
 
   // Personal data (UU PDP) — HR/Admin only

@@ -6,6 +6,8 @@ import { employeeStatusLabel, employmentTypeLabel, formatDate } from "@/lib/labe
 import { contractAlert } from "@/lib/contracts";
 import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
 import { initials } from "@/lib/nav";
+import { isInTraining } from "@/lib/training";
+import { TrainingBadge } from "@/app/ui/training-badge";
 
 // Columns hidden on phones; name and contract end stay (details are on the profile)
 const WIDE = "hidden md:table-cell";
@@ -35,6 +37,8 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       status: true,
       joinDate: true,
       endDate: true,
+      trainingEnd: true,
+      traineeNumber: true,
       department: { select: { name: true } },
     },
   });
@@ -127,6 +131,11 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
                           {e.fullName}
                         </Link>
                         <p className="text-xs text-slate-500">{e.position}</p>
+                        {isInTraining(e) && (
+                          <div className="mt-1">
+                            <TrainingBadge end={e.trainingEnd!} />
+                          </div>
+                        )}
                       </div>
                     </div>
                   </td>

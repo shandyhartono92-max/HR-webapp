@@ -1,6 +1,7 @@
 import "server-only";
 import * as z from "zod";
-import { employmentTypeLabel, genderLabel, parseDateOnly } from "@/lib/labels";
+import { employmentTypeLabel, genderLabel, parseDateOnly, todayDate } from "@/lib/labels";
+import { trainingErrors } from "@/lib/training";
 import { importPhone } from "@/lib/candidate-import";
 import { addHelpSheet, addList, dropdown, issueMessages, newTemplate, readSheet, type RowIssue } from "@/lib/excel";
 import type { EmploymentType, Gender } from "@/generated/prisma/enums";
@@ -30,6 +31,9 @@ const columns = [
   { key: "birthPlace", header: "Tempat lahir", width: 18 },
   { key: "birthDate", header: "Tanggal lahir", width: 16 },
   { key: "gender", header: "Jenis kelamin", width: 16 },
+  // Added after the first template, so older files without these columns still import
+  { key: "trainingStart", header: "Mulai training", width: 16, optional: true },
+  { key: "trainingEnd", header: "Selesai training", width: 16, optional: true },
 ] as const;
 
 const COL = Object.fromEntries(columns.map((c, i) => [c.key, i + 1])) as Record<(typeof columns)[number]["key"], number>;
@@ -107,6 +111,8 @@ const RowSchema = z
     birthPlace: optional(80),
     birthDate: optionalDate("Tanggal lahir"),
     gender: optionalEnum<Gender>(genderLabel, "Isi Laki-laki atau Perempuan."),
+    trainingStart: optionalDate("Mulai training"),
+    trainingEnd: optionalDate("Selesai training"),
   })
   .superRefine((d, ctx) => {
     if (d.employmentType === "PKWT" && !d.endDate) {
@@ -118,6 +124,13 @@ const RowSchema = z
     // UU 13/2003 Pasal 58: no probation in a PKWT
     if (d.employmentType === "PKWT" && d.status === "PROBATION") {
       ctx.addIssue({ code: "custom", path: ["status"], message: "Kontrak PKWT tidak boleh ada masa percobaan." });
+    }
+    const training = trainingErrors(
+      { employeeNumber: d.employeeNumber, trainingStart: d.trainingStart ?? null, trainingEnd: d.trainingEnd ?? null },
+      todayDate(),
+    );
+    for (const [path, messages] of Object.entries(training)) {
+      for (const message of messages ?? []) ctx.addIssue({ code: "custom", path: [path], message });
     }
   });
 
@@ -133,7 +146,7 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
   for (let r = 2; r <= MAX_EMPLOYEE_ROWS + 1; r++) {
     // Text format keeps leading zeros of phone, employee and contract numbers. Dates are
     // text too: as date cells, Excel on an English (US) laptop would read 01/02/2026 as 2 Jan.
-    for (const key of ["employeeNumber", "phone", "contractNumber", "joinDate", "endDate", "birthDate"] as const) {
+    for (const key of ["employeeNumber", "phone", "contractNumber", "joinDate", "endDate", "birthDate", "trainingStart", "trainingEnd"] as const) {
       sheet.getCell(r, COL[key]).numFmt = "@";
     }
     sheet.getCell(r, COL.employmentType).dataValidation = dropdown(typeRange, "Pilih jenis karyawan dari daftar.");
@@ -154,6 +167,7 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
     "8. Employee ID yang sudah ada di Portal HR dilewati (tidak dobel), jadi file yang sama aman diunggah ulang.",
     "9. Jika ada baris yang salah, tidak ada data yang disimpan. Perbaiki baris yang disebutkan, lalu unggah lagi.",
     "10. NIK, NPWP, BPJS, gaji dan rekening TIDAK diisi di sini. Lengkapi dari profil karyawan (data itu disimpan terenkripsi).",
+    "11. Training (penanda payroll): isi Mulai dan Selesai training, dan Employee ID harus berawalan T (misal T001). Sehari setelah Selesai training, huruf T dibuang otomatis (T001 menjadi 001). Kosongkan jika tidak training.",
     "",
     "Contoh baris:",
     "K-0012 | Budi Santoso | budi@perusahaan.co.id | 081234567890 | Keuangan | Staf Akuntansi | Kontrak (PKWT) | Aktif | 01/02/2026 | 31/01/2027 | 012/PKWT/II/2026 | Bandung | 15/08/1995 | Laki-laki",

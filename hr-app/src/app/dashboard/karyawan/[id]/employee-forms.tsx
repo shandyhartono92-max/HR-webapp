@@ -110,7 +110,15 @@ export function IdentityForm({
   hasLogin,
 }: {
   employeeId: string;
-  initial: { fullName: string; email: string; phone: string; employeeNumber: string; joinDate: string };
+  initial: {
+    fullName: string;
+    email: string;
+    phone: string;
+    employeeNumber: string;
+    joinDate: string;
+    trainingStart: string;
+    trainingEnd: string;
+  };
   hasLogin: boolean;
 }) {
   const [state, action, pending] = useActionState(updateIdentity.bind(null, employeeId), undefined);
@@ -139,6 +147,21 @@ export function IdentityForm({
           <input id="idJoin" name="joinDate" type="date" required defaultValue={v("joinDate")} className={inputClass} />
         </Field>
       </div>
+      <fieldset className="rounded-lg border border-slate-200 p-3">
+        <legend className="px-1 text-sm font-medium text-slate-700">Training (penanda payroll)</legend>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <Field label="Mulai training" htmlFor="idTrainStart" errors={e.trainingStart}>
+            <input id="idTrainStart" name="trainingStart" type="date" defaultValue={v("trainingStart")} className={inputClass} />
+          </Field>
+          <Field label="Selesai training" htmlFor="idTrainEnd" errors={e.trainingEnd}>
+            <input id="idTrainEnd" name="trainingEnd" type="date" defaultValue={v("trainingEnd")} className={inputClass} />
+          </Field>
+        </div>
+        <p className="mt-2 text-xs text-slate-500">
+          Selama training, Employee ID berawalan T (misal T001). Sehari setelah tanggal selesai, huruf T dibuang otomatis (T001 → 001).
+          Kosongkan keduanya jika tidak training.
+        </p>
+      </fieldset>
       <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
         {pending ? "Menyimpan…" : "Simpan identitas"}
       </button>

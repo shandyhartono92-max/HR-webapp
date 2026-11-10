@@ -14,6 +14,8 @@ import {
   todayIso,
 } from "@/lib/labels";
 import { contractAlert } from "@/lib/contracts";
+import { isInTraining } from "@/lib/training";
+import { TrainingBadge } from "@/app/ui/training-badge";
 import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
 import { activeTemplate } from "@/lib/letters/service";
 import { employeeLetterVars } from "@/lib/letters/vars";
@@ -68,6 +70,9 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         joinDate: true,
         endDate: true,
         exitDate: true,
+        trainingStart: true,
+        trainingEnd: true,
+        traineeNumber: true,
         anonymizedAt: true,
         departmentId: true,
         managerId: true,
@@ -125,6 +130,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
   );
 
   const alert = contractAlert(emp.endDate, emp.status);
+  const inTraining = isInTraining(emp);
   const blockers = await deletionBlockers(emp.id);
   const openBankRequest = emp.bankChangeRequests[0];
   const anonymized = Boolean(emp.anonymizedAt);
@@ -186,6 +192,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
             {employeeStatusLabel[emp.status]}
           </span>
           <ContractAlertBadge {...alert} />
+          {inTraining && <TrainingBadge end={emp.trainingEnd!} />}
         </div>
         <p className="text-sm text-slate-500">
           {emp.employeeNumber} · {emp.position} · {emp.department.name}
@@ -332,6 +339,10 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
               <Row label="Jenis">{employmentTypeLabel[emp.employmentType]}</Row>
               <Row label="Mulai bekerja">{formatDate(emp.joinDate)}</Row>
               <Row label="Kontrak berakhir">{emp.endDate ? formatDate(emp.endDate) : "-"}</Row>
+              {emp.trainingStart && emp.trainingEnd && (
+                <Row label="Training">{`${formatDate(emp.trainingStart)} – ${formatDate(emp.trainingEnd)}`}</Row>
+              )}
+              {emp.traineeNumber && <Row label="ID training">{emp.traineeNumber}</Row>}
               {emp.exitDate && (
                 <Row label="Tanggal keluar">
                   {formatDate(emp.exitDate)}
@@ -423,7 +434,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
               </div>
             </details>
             <details className="mt-4 border-t border-slate-100 pt-4">
-              <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah identitas (nama, email, No. HP, Employee ID)</summary>
+              <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah identitas (nama, email, No. HP, Employee ID, training)</summary>
               <div className="mt-3">
                 <IdentityForm
                   employeeId={emp.id}
@@ -434,6 +445,8 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                     phone: emp.phone,
                     employeeNumber: emp.employeeNumber,
                     joinDate: isoDate(emp.joinDate),
+                    trainingStart: isoDate(emp.trainingStart),
+                    trainingEnd: isoDate(emp.trainingEnd),
                   }}
                 />
               </div>
