@@ -5,6 +5,10 @@ import { requireRole } from "@/lib/dal";
 import { employeeStatusLabel, employmentTypeLabel, formatDate } from "@/lib/labels";
 import { contractAlert } from "@/lib/contracts";
 import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
+import { initials } from "@/lib/nav";
+
+// Columns hidden on phones; name and contract end stay (details are on the profile)
+const WIDE = "hidden md:table-cell";
 
 export const metadata: Metadata = { title: "Karyawan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
@@ -97,29 +101,47 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
           <table className="w-full text-left text-sm">
             <thead className="table-head border-b border-slate-200">
               <tr>
-                <th className="px-4 py-3 font-medium">No. induk</th>
+                <th className={`${WIDE} px-4 py-3 font-medium`}>No. induk</th>
                 <th className="px-4 py-3 font-medium">Nama</th>
-                <th className="px-4 py-3 font-medium">Departemen</th>
-                <th className="px-4 py-3 font-medium">Jenis</th>
-                <th className="px-4 py-3 font-medium">Status</th>
-                <th className="px-4 py-3 font-medium">Mulai</th>
+                <th className={`${WIDE} px-4 py-3 font-medium`}>Departemen</th>
+                <th className={`${WIDE} px-4 py-3 font-medium`}>Jenis</th>
+                <th className={`${WIDE} px-4 py-3 font-medium`}>Status</th>
+                <th className={`${WIDE} px-4 py-3 font-medium`}>Mulai</th>
                 <th className="px-4 py-3 font-medium">Kontrak berakhir</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100">
               {employees.map((e) => (
                 <tr key={e.id} className={e.alert.level === "overdue" ? "bg-red-50/50" : e.alert.level ? "bg-amber-50/50" : undefined}>
-                  <td className="px-4 py-3 font-mono text-xs text-slate-600">{e.employeeNumber}</td>
+                  <td className={`${WIDE} px-4 py-3 font-mono text-xs text-slate-600`}>{e.employeeNumber}</td>
                   <td className="px-4 py-3">
-                    <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-brand-800 hover:underline">
-                      {e.fullName}
-                    </Link>
-                    <p className="text-xs text-slate-500">{e.position}</p>
+                    <div className="flex items-center gap-2.5">
+                      <span
+                        aria-hidden="true"
+                        className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-700 text-[11.5px] font-bold text-white"
+                      >
+                        {initials(e.fullName)}
+                      </span>
+                      <div className="min-w-0">
+                        <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-brand-800 hover:underline">
+                          {e.fullName}
+                        </Link>
+                        <p className="text-xs text-slate-500">{e.position}</p>
+                      </div>
+                    </div>
                   </td>
-                  <td className="px-4 py-3 text-slate-700">{e.department.name}</td>
-                  <td className="px-4 py-3 text-slate-700">{employmentTypeLabel[e.employmentType]}</td>
-                  <td className="px-4 py-3 text-slate-700">{employeeStatusLabel[e.status]}</td>
-                  <td className="px-4 py-3 text-slate-600">{formatDate(e.joinDate)}</td>
+                  <td className={`${WIDE} px-4 py-3 text-slate-700`}>{e.department.name}</td>
+                  <td className={`${WIDE} px-4 py-3 text-slate-700`}>{employmentTypeLabel[e.employmentType]}</td>
+                  <td className={`${WIDE} px-4 py-3`}>
+                    <span
+                      className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${
+                        e.status === "ACTIVE" ? "bg-green-100 text-green-800" : "bg-slate-100 text-slate-600"
+                      }`}
+                    >
+                      {employeeStatusLabel[e.status]}
+                    </span>
+                  </td>
+                  <td className={`${WIDE} px-4 py-3 text-slate-600`}>{formatDate(e.joinDate)}</td>
                   <td className="px-4 py-3">
                     {e.endDate ? (
                       <div className="space-y-1">
