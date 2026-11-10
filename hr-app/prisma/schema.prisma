@@ -420,6 +420,7 @@ model Employee {
   birthDate                DateTime?   @db.Date
   gender                   Gender?
   address                  String?     @db.VarChar(500)
+  motherMaidenName         String?     @db.VarChar(80) // nama ibu kandung, for BPJS registration
   ptkpStatus               PtkpStatus?
   nikKtpEnc                String? // 16-digit NIK, encrypted
   nikKtpLast4              String?

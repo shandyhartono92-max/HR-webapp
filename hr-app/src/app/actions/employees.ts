@@ -128,6 +128,7 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
             gender: r.gender,
             trainingStart: r.trainingStart,
             trainingEnd: r.trainingEnd,
+            motherMaidenName: r.motherMaidenName,
             contracts: {
               create: {
                 type: r.employmentType,

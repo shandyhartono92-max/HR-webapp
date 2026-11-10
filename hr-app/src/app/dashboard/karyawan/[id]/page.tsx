@@ -92,6 +92,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         birthDate: true,
         gender: true,
         address: true,
+        motherMaidenName: true,
         ptkpStatus: true,
         nikKtpLast4: true,
         npwpLast4: true,
@@ -153,6 +154,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
     !emp.bpjsKesehatanLast4 && "BPJS Kesehatan",
     !emp.bpjsKetenagakerjaanLast4 && "BPJS Ketenagakerjaan",
     !emp.ptkpStatus && "status PTKP",
+    !emp.motherMaidenName && "nama ibu kandung",
   ].filter(Boolean) as string[];
 
   // After retention only the employment facts remain; nothing can be edited
@@ -228,6 +230,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
               <Row label="Jenis kelamin">{emp.gender ? genderLabel[emp.gender] : "-"}</Row>
               <Row label="Status PTKP">{emp.ptkpStatus ? ptkpLabel[emp.ptkpStatus] : "-"}</Row>
               <Row label="Alamat">{emp.address ?? "-"}</Row>
+              <Row label="Nama ibu kandung">{emp.motherMaidenName ?? "-"}</Row>
               <Row label="NIK">
                 <SensitiveValue employeeId={emp.id} field="nik" last4={last4.nik} />
               </Row>
@@ -254,6 +257,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                     birthDate: isoDate(emp.birthDate),
                     gender: emp.gender ?? "",
                     address: emp.address ?? "",
+                    motherMaidenName: emp.motherMaidenName ?? "",
                     ptkpStatus: emp.ptkpStatus ?? "",
                   }}
                 />

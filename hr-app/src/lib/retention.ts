@@ -164,6 +164,7 @@ export async function anonymizeFormerEmployees({ dryRun = false, now = new Date(
           birthDate: null,
           gender: null,
           address: null,
+          motherMaidenName: null,
           ptkpStatus: null,
           nikKtpEnc: null,
           nikKtpLast4: null,

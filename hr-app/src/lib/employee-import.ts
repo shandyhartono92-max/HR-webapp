@@ -34,6 +34,7 @@ const columns = [
   // Added after the first template, so older files without these columns still import
   { key: "trainingStart", header: "Mulai training", width: 16, optional: true },
   { key: "trainingEnd", header: "Selesai training", width: 16, optional: true },
+  { key: "motherMaidenName", header: "Nama ibu kandung", width: 24, optional: true },
 ] as const;
 
 const COL = Object.fromEntries(columns.map((c, i) => [c.key, i + 1])) as Record<(typeof columns)[number]["key"], number>;
@@ -89,20 +90,23 @@ const enumField = <T extends string>(labels: Record<T, string>, error: string) =
 const optionalEnum = <T extends string>(labels: Record<T, string>, error: string) =>
   z.preprocess((v) => (v === "" ? undefined : v), enumField(labels, error).optional());
 
+// Without this zod reports length errors in English ("Too big: …")
+const maxLength = (max: number) => ({ error: `Maksimal ${max} karakter.` });
+
 const optional = (max: number) =>
   z
     .string()
-    .max(max)
+    .max(max, maxLength(max))
     .transform((v) => v || undefined);
 
 const RowSchema = z
   .object({
-    employeeNumber: z.string().min(1, { error: "Wajib diisi." }).max(30),
-    fullName: z.string().min(3, { error: "Nama minimal 3 karakter." }).max(120),
+    employeeNumber: z.string().min(1, { error: "Wajib diisi." }).max(30, maxLength(30)),
+    fullName: z.string().min(3, { error: "Nama minimal 3 karakter." }).max(120, maxLength(120)),
     email: z.email({ error: "Email tidak valid." }).toLowerCase(),
     phone: importPhone,
-    department: z.string().min(2, { error: "Wajib diisi." }).max(80),
-    position: z.string().min(2, { error: "Wajib diisi." }).max(120),
+    department: z.string().min(2, { error: "Wajib diisi." }).max(80, maxLength(80)),
+    position: z.string().min(2, { error: "Wajib diisi." }).max(120, maxLength(120)),
     employmentType: enumField<EmploymentType>(employmentTypeLabel, `Pilih: ${Object.values(employmentTypeLabel).join(", ")}.`),
     status: optionalEnum(statusLabels, "Isi Aktif atau Masa percobaan (kosong = Aktif)."),
     joinDate: requiredDate("Tanggal mulai"),
@@ -113,6 +117,7 @@ const RowSchema = z
     gender: optionalEnum<Gender>(genderLabel, "Isi Laki-laki atau Perempuan."),
     trainingStart: optionalDate("Mulai training"),
     trainingEnd: optionalDate("Selesai training"),
+    motherMaidenName: optional(80),
   })
   .superRefine((d, ctx) => {
     if (d.employmentType === "PKWT" && !d.endDate) {
@@ -168,6 +173,7 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
     "9. Jika ada baris yang salah, tidak ada data yang disimpan. Perbaiki baris yang disebutkan, lalu unggah lagi.",
     "10. NIK, NPWP, BPJS, gaji dan rekening TIDAK diisi di sini. Lengkapi dari profil karyawan (data itu disimpan terenkripsi).",
     "11. Training (penanda payroll): isi Mulai dan Selesai training, dan Employee ID harus berawalan T (misal T001). Sehari setelah Selesai training, huruf T dibuang otomatis (T001 menjadi 001). Kosongkan jika tidak training.",
+    "12. Nama ibu kandung: untuk pendaftaran BPJS. Boleh dikosongkan dan dilengkapi nanti dari profil karyawan.",
     "",
     "Contoh baris:",
     "K-0012 | Budi Santoso | budi@perusahaan.co.id | 081234567890 | Keuangan | Staf Akuntansi | Kontrak (PKWT) | Aktif | 01/02/2026 | 31/01/2027 | 012/PKWT/II/2026 | Bandung | 15/08/1995 | Laki-laki",

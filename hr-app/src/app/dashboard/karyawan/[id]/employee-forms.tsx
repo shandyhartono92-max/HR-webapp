@@ -264,7 +264,13 @@ export function PersonalForm({
   last4,
 }: {
   employeeId: string;
-  initial: { birthPlace: string; birthDate: string; gender: Gender | ""; address: string; ptkpStatus: PtkpStatus | "" };
+  initial: {
+    birthPlace: string;
+    birthDate: string;
+    gender: Gender | "";
+    address: string;
+    motherMaidenName: string;
+    ptkpStatus: PtkpStatus | "" };
   last4: Record<SensitiveKey, string | null>;
 }) {
   const [state, action, pending] = useActionState(updatePersonal.bind(null, employeeId), undefined);
@@ -312,6 +318,9 @@ export function PersonalForm({
       </div>
       <Field label="Alamat (sesuai KTP)" htmlFor="address" errors={e.address}>
         <textarea id="address" name="address" rows={2} defaultValue={v("address")} className={inputClass} />
+      </Field>
+      <Field label="Nama ibu kandung" htmlFor="motherMaidenName" hint="Untuk pendaftaran BPJS." errors={e.motherMaidenName}>
+        <input id="motherMaidenName" name="motherMaidenName" maxLength={80} defaultValue={v("motherMaidenName")} className={inputClass} />
       </Field>
 
       <div className="rounded-lg border border-slate-200 bg-slate-50 p-4">

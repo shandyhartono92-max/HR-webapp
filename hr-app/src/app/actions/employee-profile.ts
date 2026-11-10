@@ -452,6 +452,7 @@ const PersonalSchema = z.object({
   ),
   gender: z.preprocess((v) => (v === "" ? undefined : v), z.enum(Gender).optional()),
   address: optionalText(500),
+  motherMaidenName: optionalText(80),
   ptkpStatus: z.preprocess((v) => (v === "" ? undefined : v), z.enum(PtkpStatus).optional()),
   nik: sensitiveInput,
   npwp: sensitiveInput,
@@ -464,7 +465,7 @@ export async function updatePersonal(employeeId: string, _state: FormState, form
 
   const before = await db.employee.findUnique({
     where: { id: employeeId },
-    select: { birthPlace: true, birthDate: true, gender: true, address: true, ptkpStatus: true, nikKtpEnc: true, anonymizedAt: true },
+    select: { birthPlace: true, birthDate: true, gender: true, address: true, motherMaidenName: true, ptkpStatus: true, nikKtpEnc: true, anonymizedAt: true },
   });
   if (!before) return notFound;
   if (before.anonymizedAt) return { message: "Data karyawan ini sudah dianonimkan dan tidak bisa diubah." };
@@ -510,6 +511,7 @@ export async function updatePersonal(employeeId: string, _state: FormState, form
       birthDate: plain.birthDate ?? null,
       gender: plain.gender ?? null,
       address: plain.address ?? null,
+      motherMaidenName: plain.motherMaidenName ?? null,
       ptkpStatus: plain.ptkpStatus ?? null,
       ...(nikE && { nikKtpEnc: nikE.enc, nikKtpLast4: nikE.last4 }),
       ...(npwpE && { npwpEnc: npwpE.enc, npwpLast4: npwpE.last4 }),
