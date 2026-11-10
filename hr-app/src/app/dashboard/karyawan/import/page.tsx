@@ -24,8 +24,8 @@ export default async function ImportEmployeesPage() {
         <h2 className="font-medium text-slate-900">1. Unduh dan isi template</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>Satu baris satu karyawan, maksimal {MAX_EMPLOYEE_ROWS} baris per file. Petunjuk lengkap ada di sheet &quot;Petunjuk&quot;.</li>
-          <li>Wajib: no. induk, nama, email, nomor HP, departemen, jabatan, jenis karyawan, tanggal mulai (dan tanggal berakhir untuk PKWT).</li>
-          <li>Departemen baru dibuat otomatis. No. induk yang sudah ada dilewati, jadi file yang sama aman diunggah ulang.</li>
+          <li>Wajib: Employee ID, nama, email, nomor HP, departemen, jabatan, jenis karyawan, tanggal mulai (dan tanggal berakhir untuk PKWT).</li>
+          <li>Departemen baru dibuat otomatis. Employee ID yang sudah ada dilewati, jadi file yang sama aman diunggah ulang.</li>
           <li>
             NIK, NPWP, BPJS, gaji dan rekening <strong>tidak</strong> di-import. Lengkapi dari profil karyawan, tempat data itu disimpan
             terenkripsi.

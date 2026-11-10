@@ -26,7 +26,7 @@ const dateField = (error: string) =>
 
 const HireSchema = z
   .object({
-    employeeNumber: z.string().trim().min(1, { error: "Isi nomor induk karyawan." }).max(30),
+    employeeNumber: z.string().trim().min(1, { error: "Isi Employee ID." }).max(30),
     departmentId: z.string().min(1, { error: "Pilih departemen." }),
     position: z.string().trim().min(2, { error: "Isi jabatan." }).max(120),
     employmentType: z.enum(EmploymentType),
@@ -171,7 +171,7 @@ export async function hireCandidate(applicationId: string, _state: FormState, fo
     db.department.findUnique({ where: { id: data.departmentId }, select: { id: true } }),
   ]);
   const errors: Record<string, string[]> = {};
-  if (numberTaken) errors.employeeNumber = ["Nomor induk ini sudah dipakai."];
+  if (numberTaken) errors.employeeNumber = ["Employee ID ini sudah dipakai."];
   if (contractTaken) errors.contractNumber = ["Nomor kontrak ini sudah dipakai."];
   if (!dept) errors.departmentId = ["Departemen tidak ditemukan."];
   if (Object.keys(errors).length) return failed(formData, errors);

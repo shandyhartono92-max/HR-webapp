@@ -58,7 +58,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       {imported !== null && (
         <p role="status" className="rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
           {imported} karyawan berhasil di-import
-          {skipped > 0 && `, ${skipped} dilewati karena no. induknya sudah ada`}. Lengkapi NIK, NPWP, BPJS dan rekening dari profil
+          {skipped > 0 && `, ${skipped} dilewati karena Employee ID-nya sudah ada`}. Lengkapi NIK, NPWP, BPJS dan rekening dari profil
           masing-masing.
         </p>
       )}
@@ -101,7 +101,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
           <table className="w-full text-left text-sm">
             <thead className="table-head border-b border-slate-200">
               <tr>
-                <th className={`${WIDE} px-4 py-3 font-medium`}>No. induk</th>
+                <th className={`${WIDE} px-4 py-3 font-medium`}>Employee ID</th>
                 <th className="px-4 py-3 font-medium">Nama</th>
                 <th className={`${WIDE} px-4 py-3 font-medium`}>Departemen</th>
                 <th className={`${WIDE} px-4 py-3 font-medium`}>Jenis</th>

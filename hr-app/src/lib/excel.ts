@@ -4,7 +4,8 @@ import ExcelJS from "exceljs";
 // Shared pieces of the Excel imports (candidates, employees): template styling,
 // dropdown lists and reading rows back by header text.
 
-export type Column<K extends string> = { key: K; header: string; width: number };
+// aliases: earlier header texts still accepted when reading an uploaded sheet
+export type Column<K extends string> = { key: K; header: string; width: number; aliases?: readonly string[] };
 
 export function newTemplate<K extends string>(sheetName: string, columns: readonly Column<K>[]) {
   const wb = new ExcelJS.Workbook();
@@ -13,7 +14,7 @@ export function newTemplate<K extends string>(sheetName: string, columns: readon
   sheet.columns = columns.map((c) => ({ header: c.header, key: c.key, width: c.width }));
   const header = sheet.getRow(1);
   header.font = { bold: true, color: { argb: "FFFFFFFF" } };
-  header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF0F766E" } };
+  header.fill = { type: "pattern", pattern: "solid", fgColor: { argb: "FF1D4ED8" } };
   // Dropdown values live on a hidden sheet, so labels may contain commas
   const lists = wb.addWorksheet("Daftar", { state: "veryHidden" });
   return { wb, sheet, lists };
@@ -74,7 +75,7 @@ export async function readSheet<K extends string>(
   const index = new Map<K, number>();
   sheet.getRow(1).eachCell((cell, col) => {
     const text = cellText(cell.value).toLowerCase();
-    const match = columns.find((c) => c.header.toLowerCase() === text);
+    const match = columns.find((c) => [c.header, ...(c.aliases ?? [])].some((h) => h.toLowerCase() === text));
     if (match) index.set(match.key, col);
   });
   const missing = columns.filter((c) => !index.has(c.key)).map((c) => `"${c.header}"`);

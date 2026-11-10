@@ -163,7 +163,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         </p>
         <section className="card p-5">
           <dl className="divide-y divide-slate-100">
-            <Row label="No. induk">{emp.employeeNumber}</Row>
+            <Row label="Employee ID">{emp.employeeNumber}</Row>
             <Row label="Jabatan terakhir">{`${emp.position} · ${emp.department.name}`}</Row>
             <Row label="Jenis">{employmentTypeLabel[emp.employmentType]}</Row>
             <Row label="Masa kerja">{`${formatDate(emp.joinDate)} – ${emp.exitDate ? formatDate(emp.exitDate) : "-"}`}</Row>
@@ -423,7 +423,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
               </div>
             </details>
             <details className="mt-4 border-t border-slate-100 pt-4">
-              <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah identitas (nama, email, No. HP, No. induk)</summary>
+              <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah identitas (nama, email, No. HP, Employee ID)</summary>
               <div className="mt-3">
                 <IdentityForm
                   employeeId={emp.id}

@@ -126,7 +126,7 @@ export function IdentityForm({
         <Field label="Nama lengkap" htmlFor="idFullName" errors={e.fullName}>
           <input id="idFullName" name="fullName" required defaultValue={v("fullName")} className={inputClass} />
         </Field>
-        <Field label="No. induk" htmlFor="idNumber" errors={e.employeeNumber}>
+        <Field label="Employee ID" htmlFor="idNumber" errors={e.employeeNumber}>
           <input id="idNumber" name="employeeNumber" required defaultValue={v("employeeNumber")} className={inputClass} />
         </Field>
         <Field label="Email" htmlFor="idEmail" hint={hasLogin ? "Email login karyawan ikut berubah." : undefined} errors={e.email}>

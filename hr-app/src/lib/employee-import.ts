@@ -15,7 +15,8 @@ export const MAX_EMPLOYEE_IMPORT_BYTES = 2 * 1024 * 1024;
 const SHEET = "Karyawan";
 
 const columns = [
-  { key: "employeeNumber", header: "No. induk karyawan *", width: 20 },
+  // Old templates said "No. induk karyawan *"; still accepted so saved files keep working
+  { key: "employeeNumber", header: "Employee ID *", width: 20, aliases: ["No. induk karyawan *"] },
   { key: "fullName", header: "Nama lengkap *", width: 28 },
   { key: "email", header: "Email *", width: 30 },
   { key: "phone", header: "No. HP / WhatsApp *", width: 20 },
@@ -120,7 +121,7 @@ const RowSchema = z
     }
   });
 
-// The contract number is filled in (<No. induk>/IMPOR) when the sheet leaves it blank
+// The contract number is filled in (<Employee ID>/IMPOR) when the sheet leaves it blank
 export type EmployeeImportRow = Omit<z.output<typeof RowSchema>, "contractNumber"> & { contractNumber: string; rowNumber: number };
 
 export async function buildEmployeeTemplate(): Promise<Buffer> {
@@ -149,8 +150,8 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
     `4. Jenis karyawan: pilih dari dropdown (${Object.values(employmentTypeLabel).join(", ")}).`,
     "5. Status: Aktif atau Masa percobaan. Kosong = Aktif. Kontrak (PKWT) tidak boleh masa percobaan (UU 13/2003 Pasal 58).",
     "6. Tanggal ditulis DD/MM/YYYY (hari/bulan/tahun), misal 01/02/2026 = 1 Februari 2026. Kolom tanggal berformat teks agar Excel tidak mengubahnya. Tanggal berakhir wajib untuk Kontrak (PKWT).",
-    "7. No. kontrak: kosongkan jika belum ada; akan diisi otomatis <No. induk>/IMPOR.",
-    "8. No. induk yang sudah ada di Portal HR dilewati (tidak dobel), jadi file yang sama aman diunggah ulang.",
+    "7. No. kontrak: kosongkan jika belum ada; akan diisi otomatis <Employee ID>/IMPOR.",
+    "8. Employee ID yang sudah ada di Portal HR dilewati (tidak dobel), jadi file yang sama aman diunggah ulang.",
     "9. Jika ada baris yang salah, tidak ada data yang disimpan. Perbaiki baris yang disebutkan, lalu unggah lagi.",
     "10. NIK, NPWP, BPJS, gaji dan rekening TIDAK diisi di sini. Lengkapi dari profil karyawan (data itu disimpan terenkripsi).",
     "",
@@ -184,7 +185,7 @@ export async function parseEmployeeFile(data: Buffer): Promise<EmployeeParseResu
     const contractNumber = d.contractNumber ?? `${d.employeeNumber}/IMPOR`;
     const dupes: string[] = [];
     for (const [key, value, label] of [
-      ["employeeNumber", d.employeeNumber.toLowerCase(), "No. induk"],
+      ["employeeNumber", d.employeeNumber.toLowerCase(), "Employee ID"],
       ["email", d.email, "Email"],
       ["contractNumber", contractNumber.toLowerCase(), "No. kontrak"],
     ] as const) {

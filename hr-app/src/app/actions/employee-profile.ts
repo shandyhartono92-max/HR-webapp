@@ -147,7 +147,7 @@ const IdentitySchema = z.object({
     .string()
     .refine(isIndonesianMobile, { error: "Masukkan nomor HP Indonesia, misal 0812xxxxxxx." })
     .transform(normalizePhone),
-  employeeNumber: z.string().trim().min(1, { error: "Isi nomor induk." }).max(30),
+  employeeNumber: z.string().trim().min(1, { error: "Isi Employee ID." }).max(30),
   joinDate: z.string().transform((v, ctx) => parseDateOnly(v) ?? (ctx.addIssue({ code: "custom", message: "Isi tanggal mulai bekerja." }), z.NEVER)),
 });
 
@@ -194,7 +194,7 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
       : null,
   ]);
   const errors: Record<string, string[]> = {};
-  if (numberTaken) errors.employeeNumber = ["Nomor induk ini sudah dipakai karyawan lain."];
+  if (numberTaken) errors.employeeNumber = ["Employee ID ini sudah dipakai karyawan lain."];
   if (emailTaken) errors.email = ["Email ini sudah dipakai karyawan lain."];
   else if (loginTaken) errors.email = ["Email ini sudah dipakai akun login lain."];
   if (Object.keys(errors).length) return failed(formData, errors);

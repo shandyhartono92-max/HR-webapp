@@ -230,7 +230,7 @@ export function HireForm({
     <form key={state?.attempt} action={action} className="space-y-3">
       <FormMessage message={state?.message} />
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Nomor induk karyawan" htmlFor="employeeNumber" errors={e.employeeNumber}>
+        <Field label="Employee ID" htmlFor="employeeNumber" errors={e.employeeNumber}>
           <input id="employeeNumber" name="employeeNumber" required defaultValue={v("employeeNumber")} className={inputClass} />
         </Field>
         <Field label="Nomor kontrak" htmlFor="contractNumber" errors={e.contractNumber}>
