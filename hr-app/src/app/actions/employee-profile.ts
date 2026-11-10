@@ -8,7 +8,7 @@ import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { decrypt, encrypt, lastFour } from "@/lib/crypto";
 import { failed, optionalDate, optionalText, type FormState } from "@/lib/forms";
-import { trainingErrors } from "@/lib/training";
+import { isTraineeNumber, trainingErrors } from "@/lib/training";
 import {
   bpjsKesehatanError,
   bpjsKetenagakerjaanError,
@@ -171,9 +171,10 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
       exitDate: true,
       trainingStart: true,
       trainingEnd: true,
+      traineeNumber: true,
       userId: true,
       anonymizedAt: true,
-      contracts:{ orderBy: { startDate: "asc" }, take: 1, select: { startDate: true } },
+      contracts: { orderBy: { startDate: "asc" }, take: 1, select: { startDate: true } },
     },
   });
   if (!before) return notFound;
@@ -195,6 +196,13 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
   }
   const tErr = trainingErrors(d, todayDate());
   if (Object.keys(tErr).length) return failed(formData, tErr);
+  // After graduation the T is gone for good: the job only drops it once (traineeNumber
+  // keeps the old one), so a new T number here would never change back by itself
+  if (before.traineeNumber && isTraineeNumber(d.employeeNumber)) {
+    return failed(formData, {
+      employeeNumber: [`Karyawan ini sudah selesai training (ID training ${before.traineeNumber}). Employee ID tidak bisa berawalan T lagi.`],
+    });
+  }
 
   const [numberTaken, emailTaken, loginTaken] = await Promise.all([
     // A former trainee number (T001) is never handed out again
