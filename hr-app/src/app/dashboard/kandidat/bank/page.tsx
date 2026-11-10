@@ -101,7 +101,7 @@ export default async function CandidateBankPage({ searchParams }: PageProps<"/da
         </p>
       )}
 
-      <form className="flex flex-wrap items-end gap-3 rounded-xl border border-slate-200 bg-white p-4">
+      <form className="flex flex-wrap items-end gap-3 card p-4">
         <label className="min-w-56 flex-1 text-sm">
           <span className="text-slate-600">Cari nama, kota, keahlian, atau posisi</span>
           <input
@@ -134,11 +134,11 @@ export default async function CandidateBankPage({ searchParams }: PageProps<"/da
       <p className="text-sm text-slate-500">{rows.length} kandidat</p>
 
       {rows.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Tidak ada kandidat yang cocok.</p>
+        <p className="card p-5 text-sm text-slate-600">Tidak ada kandidat yang cocok.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto card">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="table-head border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3 font-medium">Kandidat</th>
                 <th className="px-4 py-3 font-medium">Keahlian (dari CV)</th>

@@ -47,7 +47,7 @@ export function JobForm({
     <form key={state?.attempt} action={formAction} className="space-y-6">
       <FormMessage message={state?.message} />
 
-      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+      <section className="space-y-4 card p-5">
         <h2 className="font-medium text-slate-900">Informasi posisi</h2>
         <Field label="Judul posisi" htmlFor="title" errors={e.title}>
           <input id="title" name="title" required defaultValue={v("title")} className={inputClass} />
@@ -123,7 +123,7 @@ export function JobForm({
         </div>
       </section>
 
-      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+      <section className="space-y-4 card p-5">
         <h2 className="font-medium text-slate-900">Deskripsi & kualifikasi</h2>
         <Field label="Deskripsi pekerjaan" htmlFor="description" errors={e.description}>
           <textarea id="description" name="description" rows={6} required defaultValue={v("description")} className={inputClass} />
@@ -153,7 +153,7 @@ export function JobForm({
         </div>
       </section>
 
-      <section className="space-y-4 rounded-xl border border-slate-200 bg-white p-5">
+      <section className="space-y-4 card p-5">
         <h2 className="font-medium text-slate-900">Gaji (Rupiah per bulan)</h2>
         <div className="grid gap-4 sm:grid-cols-2">
           <Field label="Minimum" htmlFor="salaryMin" errors={e.salaryMin}>

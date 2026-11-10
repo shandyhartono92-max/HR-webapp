@@ -93,7 +93,7 @@ export default async function BankAccountPage() {
       <h1 className="text-2xl font-semibold text-slate-900">Rekening gaji</h1>
 
       {isHr && (
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <section className="card p-5">
           <h2 className="font-medium text-slate-900">Menunggu persetujuan ({queue.length})</h2>
           <p className="mt-1 text-xs text-slate-500">
             Sebelum menyetujui, pastikan permintaan memang dari karyawan. Bila ragu, telepon karyawan di nomor yang tercatat
@@ -156,7 +156,7 @@ export default async function BankAccountPage() {
       )}
 
       {mine ? (
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <section className="card p-5">
           <h2 className="font-medium text-slate-900">Rekening saya</h2>
           <p className="mt-2 text-sm text-slate-700">
             {active ? (
@@ -210,7 +210,7 @@ export default async function BankAccountPage() {
         </section>
       ) : (
         !isHr && (
-          <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+          <p className="card p-5 text-sm text-slate-600">
             Akun Anda belum terhubung ke data karyawan. Hubungi HR.
           </p>
         )

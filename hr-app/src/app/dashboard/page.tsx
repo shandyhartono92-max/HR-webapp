@@ -129,11 +129,11 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 
       {user.role === "EMPLOYEE" && (
         <section className="grid gap-4 sm:grid-cols-2">
-          <Link href="/dashboard/rekening" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-600">
+          <Link href="/dashboard/rekening" className="card p-5 hover:border-brand-600">
             <p className="font-medium text-slate-900">Rekening gaji</p>
             <p className="mt-1 text-sm text-slate-600">Lihat atau ajukan perubahan rekening untuk penggajian.</p>
           </Link>
-          <Link href="/dashboard/akun" className="rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-600">
+          <Link href="/dashboard/akun" className="card p-5 hover:border-brand-600">
             <p className="font-medium text-slate-900">Akun saya</p>
             <p className="mt-1 text-sm text-slate-600">Ganti kata sandi.</p>
           </Link>
@@ -143,7 +143,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       {canSeeRecruitment && (
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
           {stats.map((s) => (
-            <div key={s.label} className="rounded-xl border border-slate-200 bg-white p-5">
+            <div key={s.label} className="card p-5">
               <p className="text-sm text-slate-500">{s.label}</p>
               <p className="mt-2 text-3xl font-semibold tabular-nums text-slate-900">{s.value}</p>
             </div>
@@ -168,7 +168,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       )}
 
       <div className="grid gap-6 lg:grid-cols-2">
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <section className="card p-5">
           <h2 className="font-medium text-slate-900">Wawancara 14 hari ke depan</h2>
           {upcoming.length === 0 ? (
             <p className="mt-2 text-sm text-slate-600">Tidak ada jadwal wawancara.</p>
@@ -191,7 +191,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
         </section>
 
         {isHr && (
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="flex items-center gap-2 font-medium text-slate-900">
               {endingContracts.length > 0 && <AlertIcon className="size-4 text-amber-600" />}
               Kontrak berakhir ≤ 6 minggu

@@ -81,7 +81,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/dashbo
           </a>
         ))}
       </nav>
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <section className="card p-5">
         <TemplateEditor key={`${selected}-${template.version}`} type={selected} template={template} sampleVars={sampleVars} />
       </section>
     </div>

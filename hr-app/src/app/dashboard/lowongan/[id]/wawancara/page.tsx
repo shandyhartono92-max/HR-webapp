@@ -58,7 +58,7 @@ export default async function InterviewKitPage({ params }: PageProps<"/dashboard
         </p>
       )}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <section className="card p-5">
         <KitEditor
           key={kit?.updatedAt.toISOString() ?? "new"}
           jobId={job.id}

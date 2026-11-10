@@ -20,7 +20,7 @@ export default async function ImportEmployeesPage() {
         <p className="mt-1 text-sm text-slate-600">Untuk memindahkan data karyawan yang sudah ada, misal dari spreadsheet lama.</p>
       </div>
 
-      <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-700">
+      <section className="space-y-3 card p-5 text-sm text-slate-700">
         <h2 className="font-medium text-slate-900">1. Unduh dan isi template</h2>
         <ul className="list-disc space-y-1 pl-5">
           <li>Satu baris satu karyawan, maksimal {MAX_EMPLOYEE_ROWS} baris per file. Petunjuk lengkap ada di sheet &quot;Petunjuk&quot;.</li>
@@ -40,7 +40,7 @@ export default async function ImportEmployeesPage() {
         </a>
       </section>
 
-      <section className="space-y-3 rounded-xl border border-slate-200 bg-white p-5">
+      <section className="space-y-3 card p-5">
         <h2 className="font-medium text-slate-900">2. Unggah file yang sudah diisi</h2>
         <ImportEmployeesForm />
       </section>

@@ -27,7 +27,7 @@ export default async function CareersPage() {
       <p className="mt-2 text-slate-600">Lowongan yang sedang dibuka.</p>
 
       {jobs.length === 0 ? (
-        <p className="mt-8 rounded-xl border border-slate-200 bg-white p-6 text-slate-600">
+        <p className="mt-8 card p-6 text-slate-600">
           Saat ini belum ada lowongan. Silakan cek kembali nanti.
         </p>
       ) : (
@@ -36,7 +36,7 @@ export default async function CareersPage() {
             <li key={job.id}>
               <Link
                 href={`/karir/${job.slug}`}
-                className="block rounded-xl border border-slate-200 bg-white p-5 hover:border-brand-600"
+                className="block card p-5 hover:border-brand-600"
               >
                 <p className="text-lg font-medium text-slate-900">{job.title}</p>
                 <p className="mt-1 text-sm text-slate-500">

@@ -169,7 +169,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-6">
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <div className="flex flex-wrap items-start justify-between gap-3">
               <h2 className="font-medium text-slate-900">Penilaian AI</h2>
               {canRescreen && isScreeningConfigured() && (
@@ -246,7 +246,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
             )}
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Wawancara</h2>
 
             <details className="mt-3 rounded-lg bg-slate-50 p-3 text-sm">
@@ -389,7 +389,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
           </section>
 
           {profile && (
-            <section className="rounded-xl border border-slate-200 bg-white p-5">
+            <section className="card p-5">
               <h2 className="font-medium text-slate-900">Ringkasan CV</h2>
               <dl className="mt-3 divide-y divide-slate-100">
                 <Row label="Pendidikan">{profile.highestEducation ?? "-"}</Row>
@@ -426,7 +426,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
           )}
 
           {(showOfferForm || (isHr && app.letters.length > 0)) && (
-            <section className="rounded-xl border border-slate-200 bg-white p-5">
+            <section className="card p-5">
               <h2 className="font-medium text-slate-900">Surat penawaran</h2>
               {app.letters.length > 0 && (
                 <ul className="mt-2 space-y-1 text-sm">
@@ -472,7 +472,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
             </section>
           )}
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Tahap rekrutmen</h2>
             <p className="mt-1 text-xs text-slate-500">Diubah terakhir {formatDate(app.stageChangedAt)}</p>
             {app.stage === "REJECTED" && app.rejectionReason && (
@@ -485,7 +485,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
             )}
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Data pelamar</h2>
             <dl className="mt-2 divide-y divide-slate-100">
               <Row label="Email">
@@ -513,7 +513,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
             )}
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+          <section className="card p-5 text-sm text-slate-600">
             <h2 className="font-medium text-slate-900">Persetujuan data (UU PDP)</h2>
             <p className="mt-2">
               Disetujui {formatDate(candidate.consentAt)} (versi {candidate.consentVersion}).

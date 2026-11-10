@@ -20,7 +20,7 @@ export default async function AddCandidatePage() {
         <h1 className="mt-2 text-2xl font-semibold text-slate-900">Tambah kandidat</h1>
         <p className="mt-1 text-sm text-slate-600">Untuk CV yang masuk lewat email, WhatsApp, job fair, atau referensi.</p>
       </div>
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <section className="card p-5">
         <AddCandidateForm jobs={jobs.map((j) => ({ id: j.id, name: j.title }))} />
       </section>
     </div>

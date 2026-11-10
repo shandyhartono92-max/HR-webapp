@@ -28,3 +28,20 @@ body {
   color: var(--foreground);
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
+
+/* Korporat Biru: white card with a light border and shadow */
+@utility card {
+  border-radius: 10px;
+  border: 1px solid var(--color-slate-200);
+  background-color: #fff;
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+}
+
+/* Table header row: small grey capitals on a light background */
+@utility table-head {
+  background-color: var(--color-slate-50);
+  color: var(--color-slate-500);
+  font-size: 11.5px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+}

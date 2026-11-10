@@ -161,7 +161,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
           Data pribadi karyawan ini sudah dianonimkan pada {formatDate(emp.anonymizedAt!)}, {employeeRetentionYears()} tahun setelah
           tanggal keluar ({emp.exitDate ? formatDate(emp.exitDate) : "-"}), sesuai masa simpan data.
         </p>
-        <section className="rounded-xl border border-slate-200 bg-white p-5">
+        <section className="card p-5">
           <dl className="divide-y divide-slate-100">
             <Row label="No. induk">{emp.employeeNumber}</Row>
             <Row label="Jabatan terakhir">{`${emp.position} · ${emp.department.name}`}</Row>
@@ -212,7 +212,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
 
       <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
         <div className="space-y-6">
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Data pribadi</h2>
             <dl className="mt-2 divide-y divide-slate-100">
               <Row label="Tempat, tanggal lahir">
@@ -254,7 +254,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
             </details>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Surat</h2>
             {emp.letters.length > 0 && (
               <ul className="mt-3 divide-y divide-slate-100">
@@ -289,7 +289,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
             </Disclosure>
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Riwayat kontrak</h2>
             {emp.contracts.length === 0 ? (
               <p className="mt-2 text-sm text-slate-600">Belum ada kontrak.</p>
@@ -326,7 +326,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Kepegawaian</h2>
             <dl className="mt-2 divide-y divide-slate-100">
               <Row label="Jenis">{employmentTypeLabel[emp.employmentType]}</Row>

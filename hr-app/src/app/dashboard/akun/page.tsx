@@ -17,13 +17,13 @@ export default async function AccountPage() {
           Anda masuk dengan kata sandi sementara dari HR. Buat kata sandi baru untuk melanjutkan.
         </p>
       )}
-      <section className="rounded-xl border border-slate-200 bg-white p-5 text-sm">
+      <section className="card p-5 text-sm">
         <p className="text-slate-500">Email</p>
         <p className="font-medium text-slate-900">{user.email}</p>
         <p className="mt-2 text-slate-500">Peran</p>
         <p className="font-medium text-slate-900">{roleLabel[user.role]}</p>
       </section>
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <section className="card p-5">
         <h2 className="mb-3 font-medium text-slate-900">Ganti kata sandi</h2>
         <ChangePasswordForm />
       </section>

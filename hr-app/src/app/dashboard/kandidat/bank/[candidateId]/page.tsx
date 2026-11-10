@@ -103,7 +103,7 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
 
       <div className="grid gap-6 lg:grid-cols-[1fr_22rem]">
         <div className="space-y-6">
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Lamaran</h2>
             {c.applications.length === 0 ? (
               <p className="mt-2 text-sm text-slate-600">Belum dimasukkan ke lowongan mana pun.</p>
@@ -132,7 +132,7 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
           </section>
 
           {profile && (
-            <section className="rounded-xl border border-slate-200 bg-white p-5">
+            <section className="card p-5">
               <h2 className="font-medium text-slate-900">Ringkasan CV</h2>
               <dl className="mt-2 divide-y divide-slate-100">
                 <Row label="Pendidikan">{profile.highestEducation ?? "-"}</Row>
@@ -144,7 +144,7 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
         </div>
 
         <div className="space-y-6">
-          <section className="rounded-xl border border-slate-200 bg-white p-5">
+          <section className="card p-5">
             <h2 className="font-medium text-slate-900">Data kandidat</h2>
             <dl className="mt-2 divide-y divide-slate-100">
               <Row label="Email">{c.email}</Row>
@@ -168,7 +168,7 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
             )}
           </section>
 
-          <section className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+          <section className="card p-5 text-sm text-slate-600">
             <h2 className="font-medium text-slate-900">Persetujuan data (UU PDP)</h2>
             <p className="mt-2">
               {c.consentMethod === "HR_ATTESTED"

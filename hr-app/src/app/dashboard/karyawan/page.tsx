@@ -89,13 +89,13 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       )}
 
       {employees.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">
+        <p className="card p-5 text-sm text-slate-600">
           Belum ada data karyawan. Data dibuat dari halaman kandidat setelah kandidat diterima, atau di-import dari Excel.
         </p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto card">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="table-head border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3 font-medium">No. induk</th>
                 <th className="px-4 py-3 font-medium">Nama</th>

@@ -39,12 +39,12 @@ export default async function UsersPage() {
         </p>
       )}
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <section className="card p-5">
         <h2 className="mb-3 font-medium text-slate-900">Tambah pengguna</h2>
         <CreateUserForm />
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5">
+      <section className="card p-5">
         <h2 className="font-medium text-slate-900">Semua pengguna ({users.length})</h2>
         <ul className="mt-3 divide-y divide-slate-100">
           {users.map((u) => {

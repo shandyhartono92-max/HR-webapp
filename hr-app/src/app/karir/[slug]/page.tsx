@@ -64,7 +64,7 @@ export default async function JobDetailPage({ params }: PageProps<"/karir/[slug]
         )}
       </section>
 
-      <section className="rounded-xl border border-slate-200 bg-white p-5 sm:p-6">
+      <section className="card p-5 sm:p-6">
         <h2 className="mb-4 text-lg font-medium text-slate-900">Lamar posisi ini</h2>
         <ApplyForm jobId={job.id} />
       </section>

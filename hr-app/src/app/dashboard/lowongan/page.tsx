@@ -49,11 +49,11 @@ export default async function JobsPage() {
       </div>
 
       {jobs.length === 0 ? (
-        <p className="rounded-xl border border-slate-200 bg-white p-5 text-sm text-slate-600">Belum ada lowongan.</p>
+        <p className="card p-5 text-sm text-slate-600">Belum ada lowongan.</p>
       ) : (
-        <div className="overflow-x-auto rounded-xl border border-slate-200 bg-white">
+        <div className="overflow-x-auto card">
           <table className="w-full text-left text-sm">
-            <thead className="border-b border-slate-200 bg-slate-50 text-slate-600">
+            <thead className="table-head border-b border-slate-200">
               <tr>
                 <th className="px-4 py-3 font-medium">Posisi</th>
                 <th className="px-4 py-3 font-medium">Departemen</th>
