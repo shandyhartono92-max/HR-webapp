@@ -27,12 +27,18 @@ export function NavDrawerProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (!open) return;
     const onKey = (e: KeyboardEvent) => e.key === "Escape" && setOpen(false);
+    // Widening past md (e.g. rotating a phone) shows the static sidebar and hides the
+    // backdrop, so nothing would be left to close the drawer and unlock scrolling
+    const wide = window.matchMedia("(min-width: 768px)");
+    const onWide = () => wide.matches && setOpen(false);
     const overflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
     window.addEventListener("keydown", onKey);
+    wide.addEventListener("change", onWide);
     return () => {
       document.body.style.overflow = overflow;
       window.removeEventListener("keydown", onKey);
+      wide.removeEventListener("change", onWide);
     };
   }, [open]);
 
@@ -67,8 +73,10 @@ export function Sidebar({ children }: { children: ReactNode }) {
           className="fixed inset-0 z-30 bg-slate-900/50 md:hidden"
         />
       )}
+      {/* Any link tap closes it, including the page you are already on (no path change) */}
       <aside
         id="sidebar"
+        onClick={(e) => (e.target as HTMLElement).closest("a") && setOpen(false)}
         className={`fixed inset-y-0 left-0 z-40 flex w-60 shrink-0 flex-col overflow-y-auto bg-[#0f2744] text-[#cbd5e1] transition-transform md:sticky md:top-0 md:h-screen md:translate-x-0 ${
           open ? "translate-x-0" : "-translate-x-full"
         }`}
