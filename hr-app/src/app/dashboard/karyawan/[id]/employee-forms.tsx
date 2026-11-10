@@ -12,7 +12,7 @@ import {
 } from "@/app/actions/employee-profile";
 import { issueEmployeeLogin, type LoginResult } from "@/app/actions/accounts";
 import { uploadContractDocument } from "@/app/actions/contract-documents";
-import { MAX_CONTRACT_PDF_BYTES } from "@/lib/privacy";
+import { MAX_CONTRACT_PDF_BYTES, MAX_CONTRACT_PDF_MB } from "@/lib/privacy";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import type { FormState } from "@/lib/forms";
 import { employeeStatusLabel, employmentTypeLabel, genderLabel, ptkpLabel } from "@/lib/labels";
@@ -462,7 +462,7 @@ export function ContractDocumentForm({ contractId, hasFile }: { contractId: stri
   // Checked here too: a file over the server's body limit would fail before the action can explain why
   const [tooBig, setTooBig] = useState(false);
   const inputId = `contract-file-${contractId}`;
-  const errors = tooBig ? ["Ukuran file maksimal 10 MB."] : state?.errors?.file;
+  const errors = tooBig ? [`Ukuran file maksimal ${MAX_CONTRACT_PDF_MB} MB.`] : state?.errors?.file;
 
   return (
     <details className="mt-1" open={Boolean(state && !state.ok)}>
@@ -475,7 +475,7 @@ export function ContractDocumentForm({ contractId, hasFile }: { contractId: stri
         ) : (
           <FormMessage message={state?.message} />
         )}
-        <Field label="File PDF" htmlFor={inputId} hint="Hasil scan kontrak yang sudah ditandatangani. PDF, maksimal 10 MB." errors={errors}>
+        <Field label="File PDF" htmlFor={inputId} hint={`Hasil scan kontrak yang sudah ditandatangani. PDF, maksimal ${MAX_CONTRACT_PDF_MB} MB.`} errors={errors}>
           <input
             id={inputId}
             name="file"

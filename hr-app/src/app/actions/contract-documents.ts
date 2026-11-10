@@ -5,7 +5,7 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
-import { MAX_CONTRACT_PDF_BYTES } from "@/lib/privacy";
+import { MAX_CONTRACT_PDF_BYTES, MAX_CONTRACT_PDF_MB } from "@/lib/privacy";
 import { deleteFile, isPdf, saveFile } from "@/lib/storage";
 
 class ContractChanged extends Error {}
@@ -30,7 +30,7 @@ export async function uploadContractDocument(contractId: string, _state: FormSta
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return failed(formData, { file: ["Pilih file PDF kontrak."] });
-  if (file.size > MAX_CONTRACT_PDF_BYTES) return failed(formData, { file: ["Ukuran file maksimal 10 MB."] });
+  if (file.size > MAX_CONTRACT_PDF_BYTES) return failed(formData, { file: [`Ukuran file maksimal ${MAX_CONTRACT_PDF_MB} MB.`] });
   const data = Buffer.from(await file.arrayBuffer());
   if (!isPdf(data)) return failed(formData, { file: ["File harus berformat PDF."] });
 

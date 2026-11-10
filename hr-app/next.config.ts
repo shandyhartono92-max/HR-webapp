@@ -12,11 +12,10 @@ const nextConfig: NextConfig = {
   cacheComponents: true,
   allowedDevOrigins: ["127.0.0.1", ...lanAddresses, hostname(), `${hostname()}.local`],
   experimental: {
-    // Signed contract PDFs are up to 10 MB (CVs 5 MB). Both limits sit above that, so a
+    // CVs and signed contract PDFs are up to 5 MB. The limit sits a little above that, so a
     // slightly bigger file reaches the action and gets a clear message instead of a cut-off
-    // body. proxyClientMaxBodySize: proxy.ts buffers request bodies, by default only 10 MB.
-    serverActions: { bodySizeLimit: "12mb" },
-    proxyClientMaxBodySize: "12mb",
+    // body. (proxy.ts also buffers request bodies, up to 10 MB by default: still above this.)
+    serverActions: { bodySizeLimit: "6mb" },
   },
   async redirects() {
     return [{ source: "/", destination: "/karir", permanent: false }];
