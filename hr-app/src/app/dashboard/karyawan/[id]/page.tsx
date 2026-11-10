@@ -41,9 +41,9 @@ const isoDate = (d: Date | null) => (d ? d.toISOString().slice(0, 10) : "");
 
 function Row({ label, children }: { label: string; children: React.ReactNode }) {
   return (
-    <div className="grid grid-cols-[11rem_1fr] gap-2 py-1.5 text-sm">
+    <div className="grid grid-cols-[8.5rem_minmax(0,1fr)] gap-2 py-1.5 text-sm sm:grid-cols-[11rem_minmax(0,1fr)]">
       <dt className="text-slate-500">{label}</dt>
-      <dd className="text-slate-900">{children}</dd>
+      <dd className="text-slate-900 [overflow-wrap:anywhere]">{children}</dd>
     </div>
   );
 }
@@ -210,7 +210,7 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         )}
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-[1fr_24rem]">
+      <div className="grid grid-cols-1 gap-6 lg:grid-cols-[minmax(0,1fr)_24rem]">
         <div className="space-y-6">
           <section className="card p-5">
             <h2 className="font-medium text-slate-900">Data pribadi</h2>
