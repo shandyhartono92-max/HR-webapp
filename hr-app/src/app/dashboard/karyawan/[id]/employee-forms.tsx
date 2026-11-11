@@ -11,7 +11,7 @@ import {
   type RevealField,
 } from "@/app/actions/employee-profile";
 import { issueEmployeeLogin, type LoginResult } from "@/app/actions/accounts";
-import { uploadContractDocument } from "@/app/actions/contract-documents";
+import { deleteContractDocument, uploadContractDocument } from "@/app/actions/contract-documents";
 import { MAX_CONTRACT_PDF_BYTES, MAX_CONTRACT_PDF_MB } from "@/lib/privacy";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import type { FormState } from "@/lib/forms";
@@ -465,35 +465,64 @@ export function ContractDocumentForm({ contractId, hasFile }: { contractId: stri
   const errors = tooBig ? [`Ukuran file maksimal ${MAX_CONTRACT_PDF_MB} MB.`] : state?.errors?.file;
 
   return (
-    <details className="mt-1" open={Boolean(state && !state.ok)}>
-      <summary className="cursor-pointer text-xs font-medium text-brand-800">
-        {hasFile ? "Ganti file" : "Unggah kontrak bertanda tangan"}
-      </summary>
-      <form key={state?.attempt} action={action} className="mt-2 space-y-2">
-        {state?.ok ? (
-          <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">{state.message}</p>
-        ) : (
-          <FormMessage message={state?.message} />
-        )}
-        <Field label="File PDF" htmlFor={inputId} hint={`Hasil scan kontrak yang sudah ditandatangani. PDF, maksimal ${MAX_CONTRACT_PDF_MB} MB.`} errors={errors}>
-          <input
-            id={inputId}
-            name="file"
-            type="file"
-            required
-            accept="application/pdf,.pdf"
-            onChange={(ev) => setTooBig((ev.currentTarget.files?.[0]?.size ?? 0) > MAX_CONTRACT_PDF_BYTES)}
-            className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-800 hover:file:bg-brand-100"
-          />
-        </Field>
-        <button
-          type="submit"
-          disabled={pending || tooBig}
-          className="rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
-        >
-          {pending ? "Mengunggah…" : "Simpan file"}
-        </button>
-      </form>
-    </details>
+    <div className="mt-1">
+      {/* Outside the fold, which closes after a successful upload; gone once the file is deleted */}
+      {state?.ok && hasFile && (
+        <p role="status" className="mb-1 rounded-md bg-brand-50 px-3 py-1.5 text-xs text-brand-800">
+          {state.message}
+        </p>
+      )}
+      <div className="flex flex-wrap items-start gap-x-4">
+        <details className="min-w-0 flex-1" open={Boolean(state && !state.ok)}>
+          <summary className="cursor-pointer text-xs font-medium text-brand-800">
+            {hasFile ? "Ganti file" : "Unggah kontrak bertanda tangan"}
+          </summary>
+          <form key={state?.attempt} action={action} className="mt-2 space-y-2">
+            <FormMessage message={state?.ok ? undefined : state?.message} />
+            <Field label="File PDF" htmlFor={inputId} hint={`Hasil scan kontrak yang sudah ditandatangani. PDF, maksimal ${MAX_CONTRACT_PDF_MB} MB.`} errors={errors}>
+              <input
+                id={inputId}
+                name="file"
+                type="file"
+                required
+                accept="application/pdf,.pdf"
+                onChange={(ev) => setTooBig((ev.currentTarget.files?.[0]?.size ?? 0) > MAX_CONTRACT_PDF_BYTES)}
+                className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-800 hover:file:bg-brand-100"
+              />
+            </Field>
+            <button
+              type="submit"
+              disabled={pending || tooBig}
+              className="rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
+            >
+              {pending ? "Mengunggah…" : "Simpan file"}
+            </button>
+            {hasFile && <p className="text-xs text-slate-500">File lama akan dihapus dan diganti dengan file baru.</p>}
+          </form>
+        </details>
+        {hasFile && <DeleteContractFileButton contractId={contractId} />}
+      </div>
+    </div>
+  );
+}
+
+// Removes a wrongly uploaded file (the employee can then be deleted, if entered by mistake)
+function DeleteContractFileButton({ contractId }: { contractId: string }) {
+  const [pending, startTransition] = useTransition();
+  return (
+    <button
+      type="button"
+      disabled={pending}
+      onClick={() => {
+        if (!confirm("Hapus file kontrak ini? File akan dihapus permanen dari server.")) return;
+        startTransition(async () => {
+          const result = await deleteContractDocument(contractId);
+          if (result.message) alert(result.message);
+        });
+      }}
+      className="text-xs text-red-700 hover:underline disabled:opacity-60"
+    >
+      {pending ? "Menghapus…" : "Hapus file"}
+    </button>
   );
 }
