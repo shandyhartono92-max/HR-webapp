@@ -48,13 +48,13 @@ export function LetterPreview({ template, vars }: { template: TemplateView; vars
   const missing = missingPlaceholders(template.body, { nomor_surat: "x", ...vars });
 
   return (
-    <div className="space-y-2">
+    <div className="min-w-0 space-y-2">
       {missing.length > 0 && (
         <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
           Belum terisi: {missing.map((m) => `[${m}]`).join(", ")}
         </p>
       )}
-      <div className="max-h-[32rem] overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 font-serif text-[13px] leading-relaxed text-slate-900 shadow-inner">
+      <div className="max-h-[32rem] min-w-0 overflow-y-auto rounded-lg border border-slate-200 bg-white p-6 font-serif text-[13px] leading-relaxed text-slate-900 shadow-inner">
         <p className="text-center font-sans text-sm font-bold underline">{template.name}</p>
         <p className="mb-4 text-center font-sans text-xs text-slate-500">Nomor: (dibuat saat terbit)</p>
         {filled.split(/\n\s*\n/).map((para, i) => (
@@ -62,10 +62,10 @@ export function LetterPreview({ template, vars }: { template: TemplateView; vars
             {para.split("\n").map((line, j) => {
               const kv = line.match(/^(.{1,40}?)\s+:\s+(.*)$/);
               return kv ? (
-                <div key={j} className="grid grid-cols-[10rem_auto_1fr] gap-2 pl-4">
-                  <span>{kv[1]}</span>
+                <div key={j} className="grid grid-cols-[minmax(0,10rem)_auto_minmax(0,1fr)] gap-2 pl-4">
+                  <span className="break-words">{kv[1]}</span>
                   <span>:</span>
-                  <span className="whitespace-pre-line">{kv[2]}</span>
+                  <span className="whitespace-pre-line break-words">{kv[2]}</span>
                 </div>
               ) : (
                 <p key={j} className="whitespace-pre-line">
@@ -186,7 +186,7 @@ export function EmployeeLetterForm({
 
   return (
     <div className="grid gap-4 xl:grid-cols-2">
-      <form action={action} onSubmit={submitWithoutReset(action)} className="space-y-3">
+      <form action={action} onSubmit={submitWithoutReset(action)} className="@container min-w-0 space-y-3">
         <FormMessage message={state?.message} />
         <IssuedNotice state={state} />
         <Field label="Jenis surat" htmlFor="type" errors={e.type}>
@@ -206,7 +206,7 @@ export function EmployeeLetterForm({
         )}
         {isChange && (
           <>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 @sm:grid-cols-2">
               <Field label="Jabatan baru" htmlFor="newPosition" hint={`Sekarang: ${vars.jabatan}`} errors={e.newPosition}>
                 <input id="newPosition" name="newPosition" value={change.newPosition} onChange={setC("newPosition")} className={inputClass} />
               </Field>
@@ -300,7 +300,7 @@ export function EmployeeLetterForm({
           ))}
         {type === "PANGGILAN" && (
           <>
-            <div className="grid gap-3 sm:grid-cols-2">
+            <div className="grid gap-3 @sm:grid-cols-2">
               <Field label="Panggilan ke-" htmlFor="summonsRound" hint="Setelah 2 kali dipanggil secara tertulis." errors={e.summonsRound}>
                 <select id="summonsRound" name="summonsRound" value={summons.summonsRound} onChange={setS("summonsRound")} className={inputClass}>
                   {summonsRounds.map((r) => (
@@ -395,10 +395,10 @@ export function OfferLetterForm({
 
   return (
     <div className="space-y-4">
-      <form action={action} onSubmit={submitWithoutReset(action)} className="space-y-3">
+      <form action={action} onSubmit={submitWithoutReset(action)} className="@container min-w-0 space-y-3">
         <FormMessage message={state?.message} />
         <IssuedNotice state={state} />
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 @sm:grid-cols-2">
           <Field label="Gaji pokok (Rp/bulan)" htmlFor="salary" errors={e.salary}>
             <input id="salary" name="salary" type="number" min={0} step={100000} value={f.salary} onChange={set("salary")} className={inputClass} />
           </Field>
