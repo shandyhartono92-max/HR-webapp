@@ -62,7 +62,7 @@ export function LetterPreview({ template, vars }: { template: TemplateView; vars
             {para.split("\n").map((line, j) => {
               const kv = line.match(/^(.{1,40}?)\s+:\s+(.*)$/);
               return kv ? (
-                <div key={j} className="grid grid-cols-[minmax(0,10rem)_auto_minmax(0,1fr)] gap-2 pl-4">
+                <div key={j} className="grid grid-cols-[minmax(0,min(10rem,40%))_auto_minmax(0,1fr)] gap-2 pl-4">
                   <span className="break-words">{kv[1]}</span>
                   <span>:</span>
                   <span className="whitespace-pre-line break-words">{kv[2]}</span>
