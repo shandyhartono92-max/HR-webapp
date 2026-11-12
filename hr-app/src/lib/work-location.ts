@@ -12,23 +12,30 @@ export const workLocationLabel: Record<WorkLocation, string> = {
 
 const REQUIRED = "Pilih lokasi kerja: HO atau OPS.";
 
-// Spread into a z.object(...), then .superRefine(checkWarehouse)
+export const WAREHOUSE_MAX = 100;
+
+// Spread into a z.object(...), then .superRefine(checkWorkLocation({ required })).
+// Empty is let through here so the refinement can decide whether it is allowed.
 export const workLocationFields = {
-  workLocation: z.enum(WorkLocation, { error: REQUIRED }),
-  warehouse: z.preprocess(
-    (v) => (typeof v === "string" ? v.trim() : ""),
-    z.string().max(100, { error: "Nama warehouse maksimal 100 karakter." }),
-  ),
+  workLocation: z.preprocess((v) => (v === "" || v === null ? undefined : v), z.enum(WorkLocation, { error: REQUIRED }).optional()),
+  warehouse: z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string()),
 };
 
-export function checkWarehouse(d: { workLocation?: WorkLocation; warehouse?: string }, ctx: z.RefinementCtx) {
-  if (d.workLocation === "OPS" && !d.warehouse) {
-    ctx.addIssue({ code: "custom", path: ["warehouse"], message: "Isi nama warehouse untuk lokasi OPS." });
-  }
-}
+// required: false for an employee who has left, whose location no longer matters.
+// The warehouse is checked only for OPS: for HO it is ignored, so its length is too.
+export const checkWorkLocation =
+  ({ required }: { required: boolean }) =>
+  (d: { workLocation?: WorkLocation; warehouse: string }, ctx: z.RefinementCtx) => {
+    if (!d.workLocation && required) ctx.addIssue({ code: "custom", path: ["workLocation"], message: REQUIRED });
+    if (d.workLocation !== "OPS") return;
+    if (!d.warehouse) ctx.addIssue({ code: "custom", path: ["warehouse"], message: "Isi nama warehouse untuk lokasi OPS." });
+    else if (d.warehouse.length > WAREHOUSE_MAX) {
+      ctx.addIssue({ code: "custom", path: ["warehouse"], message: `Nama warehouse maksimal ${WAREHOUSE_MAX} karakter.` });
+    }
+  };
 
 // What is stored: a warehouse only for OPS, so moving to HO leaves no stale name behind
-export const warehouseFor = (location: WorkLocation, warehouse: string | null | undefined) =>
+export const warehouseFor = (location: WorkLocation | null | undefined, warehouse: string | null | undefined) =>
   location === "OPS" ? warehouse?.trim() || null : null;
 
 // "HO", "OPS · Gudang Cikarang"; null = not filled in yet (employees from before this field)

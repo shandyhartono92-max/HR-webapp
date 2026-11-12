@@ -2,7 +2,7 @@ import "server-only";
 import * as z from "zod";
 import { employmentTypeLabel, genderLabel, parseDateOnly, todayDate } from "@/lib/labels";
 import { trainingErrors } from "@/lib/training";
-import { parseWorkLocation, warehouseFor } from "@/lib/work-location";
+import { parseWorkLocation, WAREHOUSE_MAX, warehouseFor } from "@/lib/work-location";
 import { importPhone } from "@/lib/candidate-import";
 import { addHelpSheet, addList, dropdown, issueMessages, newTemplate, readSheet, type RowIssue } from "@/lib/excel";
 import type { EmploymentType, Gender } from "@/generated/prisma/enums";
@@ -119,7 +119,7 @@ const RowSchema = z
       }
       return found;
     }),
-    warehouse: z.string().max(100, maxLength(100)),
+    warehouse: z.string().trim(),
     employmentType: enumField<EmploymentType>(employmentTypeLabel, `Pilih: ${Object.values(employmentTypeLabel).join(", ")}.`),
     status: optionalEnum(statusLabels, "Isi Aktif atau Masa percobaan (kosong = Aktif)."),
     joinDate: requiredDate("Tanggal mulai"),
@@ -133,8 +133,11 @@ const RowSchema = z
     motherMaidenName: optional(80),
   })
   .superRefine((d, ctx) => {
-    if (d.workLocation === "OPS" && !d.warehouse.trim()) {
+    // Checked only for OPS: for HO the column is ignored, so its length is too
+    if (d.workLocation === "OPS" && !d.warehouse) {
       ctx.addIssue({ code: "custom", path: ["warehouse"], message: "Wajib diisi untuk lokasi OPS." });
+    } else if (d.workLocation === "OPS" && d.warehouse.length > WAREHOUSE_MAX) {
+      ctx.addIssue({ code: "custom", path: ["warehouse"], message: maxLength(WAREHOUSE_MAX).error });
     }
     if (d.employmentType === "PKWT" && !d.endDate) {
       ctx.addIssue({ code: "custom", path: ["endDate"], message: "Kontrak PKWT wajib punya tanggal berakhir." });

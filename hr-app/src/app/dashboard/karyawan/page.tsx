@@ -50,11 +50,13 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       department: { select: { name: true } },
     },
   });
-  const inPlace = location ? all.filter((e) => e.workLocation === location) : all;
-  const withAlert = inPlace.map((e) => ({ ...e, alert: contractAlert(e.endDate, e.status) }));
-  const ending = withAlert.filter((e) => e.alert.level);
+  const withAlert = all.map((e) => ({ ...e, alert: contractAlert(e.endDate, e.status) }));
+  // The banner counts every ending contract, whatever location is picked: a contract
+  // must not drop out of sight because its employee has another (or no) location
+  const ending = withAlert.filter((e) => e.alert.level).sort((a, b) => a.alert.daysLeft! - b.alert.daysLeft!);
   const overdue = ending.filter((e) => e.alert.level === "overdue").length;
-  const shown = onlyEnding ? ending.sort((a, b) => a.alert.daysLeft! - b.alert.daysLeft!) : withAlert;
+  const rows = onlyEnding ? ending : withAlert;
+  const shown = location ? rows.filter((e) => e.workLocation === location) : rows;
   const employees = sort ? sortEmployees(shown, sort) : shown;
   const header = (key: SortKey, label: string, className = "") => (
     <SortHeader key={key} column={key} label={label} view={view} className={className} />
@@ -101,7 +103,8 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
             </span>
           </p>
           <Link
-            href={listHref({ ...view, onlyEnding: !onlyEnding })}
+            // "Lihat daftarnya" shows all of them, so it drops the location filter
+            href={listHref({ ...view, onlyEnding: !onlyEnding, location: onlyEnding ? view.location : null })}
             className="text-sm font-medium text-amber-900 underline"
           >
             {onlyEnding ? "Tampilkan semua karyawan" : "Lihat daftarnya"}

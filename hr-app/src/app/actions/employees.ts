@@ -9,7 +9,7 @@ import { writeAudit } from "@/lib/audit";
 import { failed, optionalDate, type FormState } from "@/lib/forms";
 import { parseDateOnly, todayDate } from "@/lib/labels";
 import { trainingErrors } from "@/lib/training";
-import { checkWarehouse, warehouseFor, workLocationFields } from "@/lib/work-location";
+import { checkWorkLocation, warehouseFor, workLocationFields } from "@/lib/work-location";
 import { EmploymentType } from "@/generated/prisma/enums";
 import { findOrCreateDepartment } from "@/lib/departments";
 import { MAX_EMPLOYEE_IMPORT_BYTES, parseEmployeeFile } from "@/lib/employee-import";
@@ -47,7 +47,7 @@ const HireSchema = z
     path: ["endDate"],
     error: "Tanggal berakhir harus setelah tanggal mulai.",
   })
-  .superRefine(checkWarehouse);
+  .superRefine(checkWorkLocation({ required: true }));
 
 // Bulk-adds existing employees with their current contract from the Excel template.
 // All rows must be valid or nothing is saved; employee numbers already in the

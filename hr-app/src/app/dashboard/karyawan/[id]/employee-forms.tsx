@@ -79,7 +79,12 @@ export function EmploymentForm({
         <Field label="Jabatan" htmlFor="position" errors={e.position}>
           <input id="position" name="position" required defaultValue={v("position")} className={inputClass} />
         </Field>
-        <WorkLocationFields location={v("workLocation")} warehouse={v("warehouse")} errors={e} />
+        <WorkLocationFields
+          location={v("workLocation")}
+          warehouse={v("warehouse")}
+          errors={e}
+          hint="Wajib untuk karyawan aktif; boleh kosong bila status keluar."
+        />
         <Field label="Status" htmlFor="status" errors={e.status}>
           <select id="status" name="status" defaultValue={v("status")} className={inputClass}>
             {Object.entries(employeeStatusLabel).map(([value, label]) => (

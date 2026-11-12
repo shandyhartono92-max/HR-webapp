@@ -39,6 +39,8 @@ const good = await parseEmployeeFile(
     base(2, { "Lokasi *": "OPS", Warehouse: "  Gudang Cikarang " }),
     base(3, { "Lokasi *": "operational", Warehouse: "Gudang Surabaya" }),
     base(4, { "Lokasi *": "HO", Warehouse: "sisa ketikan" }),
+    // Ignored for HO, so its length does not matter either
+    base(9, { "Lokasi *": "HO", Warehouse: "x".repeat(150) }),
   ]),
 );
 assert.equal(good.ok, true, JSON.stringify(good));
@@ -50,6 +52,7 @@ if (good.ok) {
       ["OPS", "Gudang Cikarang"],
       ["OPS", "Gudang Surabaya"],
       ["HO", null],
+      ["HO", null],
     ],
     "HO never keeps a warehouse",
   );
@@ -57,7 +60,12 @@ if (good.ok) {
 
 // Wrong rows: location missing or unknown, OPS without a warehouse
 const bad = await parseEmployeeFile(
-  await fileWith([base(5), base(6, { "Lokasi *": "Gudang" }), base(7, { "Lokasi *": "OPS" })]),
+  await fileWith([
+    base(5),
+    base(6, { "Lokasi *": "Gudang" }),
+    base(7, { "Lokasi *": "OPS" }),
+    base(10, { "Lokasi *": "OPS", Warehouse: "x".repeat(101) }),
+  ]),
 );
 assert.equal(bad.ok, false);
 if (!bad.ok) {
@@ -65,6 +73,7 @@ if (!bad.ok) {
   assert.deepEqual(byRow[2], ["Lokasi: Isi HO atau OPS."]);
   assert.deepEqual(byRow[3], ["Lokasi: Isi HO atau OPS."]);
   assert.deepEqual(byRow[4], ["Warehouse: Wajib diisi untuk lokasi OPS."]);
+  assert.deepEqual(byRow[5], ["Warehouse: Maksimal 100 karakter."]);
 }
 
 // A file from the old template (no Lokasi column) is refused with a clear message

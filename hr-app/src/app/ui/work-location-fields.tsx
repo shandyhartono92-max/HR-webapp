@@ -11,16 +11,18 @@ export function WorkLocationFields({
   location,
   warehouse,
   errors = {},
+  hint,
 }: {
   idPrefix?: string;
   location: string;
   warehouse: string;
   errors?: { workLocation?: string[]; warehouse?: string[] };
+  hint?: string;
 }) {
   const [chosen, setChosen] = useState(location);
   return (
     <>
-      <Field label="Lokasi kerja" htmlFor={`${idPrefix}workLocation`} errors={errors.workLocation}>
+      <Field label="Lokasi kerja" htmlFor={`${idPrefix}workLocation`} hint={hint} errors={errors.workLocation}>
         <select
           id={`${idPrefix}workLocation`}
           name="workLocation"

@@ -1,13 +1,25 @@
 import assert from "node:assert/strict";
 import * as z from "zod";
-import { checkWarehouse, locationText, parseLocationFilter, parseWorkLocation, warehouseFor, workLocationFields } from "@/lib/work-location";
+import { checkWorkLocation, locationText, parseLocationFilter, parseWorkLocation, warehouseFor, workLocationFields } from "@/lib/work-location";
 
-const Schema = z.object(workLocationFields).superRefine(checkWarehouse);
+const Schema = z.object(workLocationFields).superRefine(checkWorkLocation({ required: true }));
 const ok = (input: Record<string, unknown>) => Schema.safeParse(input);
 const errors = (input: Record<string, unknown>) => {
   const r = Schema.safeParse(input);
   return r.success ? {} : z.flattenError(r.error).fieldErrors;
 };
+
+// Not required (an employee who has left): empty is fine, but what is filled must still be valid
+const Optional = z.object(workLocationFields).superRefine(checkWorkLocation({ required: false }));
+const left = Optional.safeParse({ workLocation: "", warehouse: "" });
+assert.equal(left.success, true);
+assert.equal(left.data?.workLocation, undefined);
+assert.equal(Optional.safeParse({}).success, true);
+assert.equal(Optional.safeParse({ workLocation: "GUDANG" }).success, false);
+assert.equal(Optional.safeParse({ workLocation: "OPS", warehouse: "" }).success, false, "OPS still needs a warehouse");
+
+// The warehouse limit only applies where a warehouse is kept (OPS)
+assert.equal(ok({ workLocation: "HO", warehouse: "x".repeat(150) }).success, true);
 
 // Required, and only HO or OPS
 assert.deepEqual(errors({}).workLocation, ["Pilih lokasi kerja: HO atau OPS."]);
@@ -28,6 +40,8 @@ assert.deepEqual(errors({ workLocation: "OPS", warehouse: "x".repeat(101) }).war
 // What is stored: HO never keeps a warehouse
 assert.equal(warehouseFor("HO", "Gudang Cikarang"), null);
 assert.equal(warehouseFor("OPS", " Gudang Cikarang "), "Gudang Cikarang");
+assert.equal(warehouseFor(null, "Gudang Cikarang"), null, "no location, no warehouse");
+assert.equal(warehouseFor(undefined, "Gudang Cikarang"), null);
 
 // How it reads in the list and profile
 assert.equal(locationText("HO", null), "HO");

@@ -9,7 +9,7 @@ import { writeAudit } from "@/lib/audit";
 import { decrypt, encrypt, lastFour } from "@/lib/crypto";
 import { failed, optionalDate, optionalText, type FormState } from "@/lib/forms";
 import { isTraineeNumber, trainingErrors } from "@/lib/training";
-import { checkWarehouse, warehouseFor, workLocationFields } from "@/lib/work-location";
+import { checkWorkLocation, warehouseFor, workLocationFields } from "@/lib/work-location";
 import {
   bpjsKesehatanError,
   bpjsKetenagakerjaanError,
@@ -50,7 +50,8 @@ const EmploymentSchema = z
         .optional(),
     ),
   })
-  .superRefine(checkWarehouse);
+  // Someone who has left may stay without a location (e.g. employees from before the field)
+  .superRefine((d, ctx) => checkWorkLocation({ required: !LEFT.includes(d.status) })(d, ctx));
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -80,7 +81,8 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
   const parsed = EmploymentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
   const { exitDate: typedExit, warehouse: typedWarehouse, ...rest } = parsed.data;
-  const data = { ...rest, warehouse: warehouseFor(rest.workLocation, typedWarehouse) };
+  // null, not undefined, so an untouched empty location does not show up as a change in the audit log
+  const data = { ...rest, workLocation: rest.workLocation ?? null, warehouse: warehouseFor(rest.workLocation, typedWarehouse) };
 
   if (data.managerId === employeeId) return failed(formData, { managerId: ["Atasan tidak boleh diri sendiri."] });
   const [dept, manager] = await Promise.all([
