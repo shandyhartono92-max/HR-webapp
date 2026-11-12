@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 import ExcelJS from "exceljs";
-import { buildEmployeeTemplate, parseEmployeeFile } from "@/lib/employee-import";
+import { buildEmployeeTemplate, endedContractIssues, parseEmployeeFile } from "@/lib/employee-import";
 
 // Fills the real template's "Karyawan" sheet by header text, the way HR would
 async function fileWith(rows: Record<string, string>[], dropHeader?: string): Promise<Buffer> {
@@ -76,19 +76,25 @@ if (!bad.ok) {
   assert.deepEqual(byRow[5], ["Warehouse: Maksimal 100 karakter."]);
 }
 
-// A contract that already ended cannot be imported as Aktif; one ending today still can
+// A contract that already ended cannot be imported as Aktif; one ending today still can.
+// The file itself parses: rows already in the portal are skipped, so an older file stays
+// uploadable. Only the rows that will be created are checked (endedContractIssues).
 const ended = await parseEmployeeFile(
   await fileWith([
     base(11, { "Lokasi *": "HO", "Jenis karyawan *": "Kontrak (PKWT)", "Tanggal mulai *": "01/01/2024", "Tanggal berakhir": "31/12/2024" }),
     base(12, { "Lokasi *": "HO", "Jenis karyawan *": "Kontrak (PKWT)", "Tanggal mulai *": "01/01/2024", "Tanggal berakhir": "31/12/2099" }),
   ]),
 );
-assert.equal(ended.ok, false);
-if (!ended.ok) {
-  const byRow = Object.fromEntries((ended.issues ?? []).map((i) => [i.rowNumber, i.messages]));
-  assert.equal(byRow[2]?.length, 1);
-  assert.match(byRow[2][0], /Tanggal berakhir: Kontrak ini sudah berakhir/);
-  assert.equal(byRow[3], undefined, "a running contract is fine");
+assert.equal(ended.ok, true, JSON.stringify(ended));
+if (ended.ok) {
+  const today = new Date("2026-11-12T00:00:00Z");
+  const issues = endedContractIssues(ended.rows, today);
+  assert.deepEqual(issues.map((i) => i.rowNumber), [2], "only the ended row; a running contract is fine");
+  assert.match(issues[0].messages[0], /^Tanggal berakhir: Kontrak ini sudah berakhir/);
+  // Skipped rows never reach the check: nothing to report without them
+  assert.deepEqual(endedContractIssues(ended.rows.slice(1), today), []);
+  // Ending today still runs
+  assert.deepEqual(endedContractIssues([{ ...ended.rows[0], endDate: today }], today), []);
 }
 
 // A file from the old template (no Lokasi column) is refused with a clear message

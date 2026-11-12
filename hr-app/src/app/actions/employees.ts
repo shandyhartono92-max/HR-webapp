@@ -10,12 +10,12 @@ import { failed, optionalDate, type FormState } from "@/lib/forms";
 import { encrypt, lastFour } from "@/lib/crypto";
 import { parseNewEmployee, SENSITIVE_FIELDS } from "@/lib/new-employee";
 import { parseDateOnly, todayDate } from "@/lib/labels";
-import { ENDED_CONTRACT_MESSAGE, endedContractError } from "@/lib/contract-end";
+import { ENDED_FIRST_CONTRACT_MESSAGE, endedContractError } from "@/lib/contract-end";
 import { trainingErrors } from "@/lib/training";
 import { checkWorkLocation, warehouseFor, workLocationFields } from "@/lib/work-location";
 import { EmploymentType } from "@/generated/prisma/enums";
 import { findOrCreateDepartment } from "@/lib/departments";
-import { MAX_EMPLOYEE_IMPORT_BYTES, parseEmployeeFile } from "@/lib/employee-import";
+import { endedContractIssues, MAX_EMPLOYEE_IMPORT_BYTES, parseEmployeeFile } from "@/lib/employee-import";
 import type { ImportState, RowIssue } from "@/lib/excel";
 import { anyEqualsIgnoringCase, equalsIgnoringCase } from "@/lib/match";
 
@@ -50,7 +50,8 @@ const HireSchema = z
     path: ["endDate"],
     error: "Tanggal berakhir harus setelah tanggal mulai.",
   })
-  .refine((d) => !endedContractError(d.endDate, todayDate()), { path: ["endDate"], error: ENDED_CONTRACT_MESSAGE })
+  // A first contract: there is no extension to point to, so the shorter message
+  .refine((d) => !endedContractError(d.endDate, todayDate()), { path: ["endDate"], error: ENDED_FIRST_CONTRACT_MESSAGE })
   .superRefine(checkWorkLocation({ required: true }));
 
 // Bulk-adds existing employees with their current contract from the Excel template.
@@ -98,17 +99,24 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
   ]);
   const emailOwner = new Map(emailsTaken.map((e) => [lower(e.email), e.employeeNumber]));
   const contractSet = new Set(contractsTaken.map((c) => lower(c.contractNumber)));
+  // Checked only for rows that will be created, never for skipped ones (see endedContractIssues)
+  const ended = new Map(endedContractIssues(fresh, todayDate()).map((i) => [i.rowNumber, i.messages]));
   const issues: RowIssue[] = [];
+  let clashes = 0;
   for (const r of fresh) {
-    const messages = [
+    const clash = [
       emailOwner.has(lower(r.email)) && `Email: sudah dipakai karyawan ${emailOwner.get(lower(r.email))}.`,
       contractSet.has(lower(r.contractNumber)) && `No. kontrak: ${r.contractNumber} sudah ada.`,
       usedForTraining.has(lower(r.employeeNumber)) && `Employee ID: ${r.employeeNumber} sudah pernah dipakai sebagai ID training.`,
     ].filter(Boolean) as string[];
+    if (clash.length) clashes++;
+    const messages = [...(ended.get(r.rowNumber) ?? []), ...clash];
     if (messages.length) issues.push({ rowNumber: r.rowNumber, name: r.fullName, messages });
   }
   if (issues.length) {
-    return { message: `${issues.length} baris bentrok dengan data yang sudah ada. Belum ada data yang disimpan.`, issues, attempt };
+    // "bentrok" only when every listed row clashes with saved data; an ended contract is a fix in the file
+    const summary = clashes === issues.length ? "bentrok dengan data yang sudah ada" : "perlu diperbaiki";
+    return { message: `${issues.length} baris ${summary}. Belum ada data yang disimpan.`, issues, attempt };
   }
 
   const created = await db.$transaction(

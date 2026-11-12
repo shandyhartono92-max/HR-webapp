@@ -145,9 +145,6 @@ const RowSchema = z
     }
     if (d.endDate && d.joinDate && d.endDate <= d.joinDate) {
       ctx.addIssue({ code: "custom", path: ["endDate"], message: "Harus setelah tanggal mulai." });
-    } else {
-      const ended = endedContractError(d.endDate, todayDate());
-      if (ended) ctx.addIssue({ code: "custom", path: ["endDate"], message: ended });
     }
     // UU 13/2003 Pasal 58: no probation in a PKWT
     if (d.employmentType === "PKWT" && d.status === "PROBATION") {
@@ -211,6 +208,16 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
   ]);
 
   return Buffer.from(await wb.xlsx.writeBuffer());
+}
+
+// Rows that will be created must not carry a contract that already ended. Checked only
+// for those rows (not in parseEmployeeFile): rows already in the portal are skipped, so
+// an older file whose contracts have since ended can still be uploaded again.
+export function endedContractIssues(rows: EmployeeImportRow[], today: Date): RowIssue[] {
+  return rows.flatMap((r) => {
+    const ended = endedContractError(r.endDate, today);
+    return ended ? [{ rowNumber: r.rowNumber, name: r.fullName, messages: [`Tanggal berakhir: ${ended}`] }] : [];
+  });
 }
 
 export type EmployeeParseResult =

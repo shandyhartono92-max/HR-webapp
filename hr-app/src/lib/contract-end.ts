@@ -6,6 +6,9 @@
 export const ENDED_CONTRACT_MESSAGE =
   "Kontrak ini sudah berakhir. Isi tanggal berakhir kontrak yang berlaku sekarang (kontrak perpanjangan terakhir).";
 
+// The hire form: a candidate's first contract has no extension to point to
+export const ENDED_FIRST_CONTRACT_MESSAGE = "Kontrak ini sudah berakhir. Isi tanggal berakhir yang masih berlaku.";
+
 // A contract ending today is still valid today
 export const endedContractError = (endDate: Date | null | undefined, today: Date) =>
   endDate && endDate < today ? ENDED_CONTRACT_MESSAGE : null;
