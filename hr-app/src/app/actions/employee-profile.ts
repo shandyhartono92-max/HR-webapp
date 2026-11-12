@@ -9,6 +9,7 @@ import { writeAudit } from "@/lib/audit";
 import { decrypt, encrypt, lastFour } from "@/lib/crypto";
 import { failed, optionalDate, optionalText, type FormState } from "@/lib/forms";
 import { isTraineeNumber, trainingErrors } from "@/lib/training";
+import { checkWarehouse, warehouseFor, workLocationFields } from "@/lib/work-location";
 import {
   bpjsKesehatanError,
   bpjsKetenagakerjaanError,
@@ -34,19 +35,22 @@ const LOGIN_CLOSED = "Akun login karyawan ini otomatis dinonaktifkan.";
 // by their leaving or on purpose. HR turns it back on with a password reset.
 const LOGIN_STILL_OFF = "Akun login karyawan ini masih nonaktif. Klik Reset kata sandi di bagian Akun login untuk mengaktifkannya lagi.";
 
-const EmploymentSchema = z.object({
-  departmentId: z.string().min(1, { error: "Pilih departemen." }),
-  position: z.string().trim().min(2, { error: "Isi jabatan." }).max(120),
-  status: z.enum(EmployeeStatus),
-  managerId: z.preprocess((v) => (v === "" ? null : v), z.string().nullable()),
-  exitDate: z.preprocess(
-    (v) => (v === "" || v === undefined ? undefined : v),
-    z
-      .string()
-      .transform((v, ctx) => parseDateOnly(v) ?? (ctx.addIssue({ code: "custom", message: "Tanggal tidak valid." }), z.NEVER))
-      .optional(),
-  ),
-});
+const EmploymentSchema = z
+  .object({
+    departmentId: z.string().min(1, { error: "Pilih departemen." }),
+    position: z.string().trim().min(2, { error: "Isi jabatan." }).max(120),
+    ...workLocationFields,
+    status: z.enum(EmployeeStatus),
+    managerId: z.preprocess((v) => (v === "" ? null : v), z.string().nullable()),
+    exitDate: z.preprocess(
+      (v) => (v === "" || v === undefined ? undefined : v),
+      z
+        .string()
+        .transform((v, ctx) => parseDateOnly(v) ?? (ctx.addIssue({ code: "custom", message: "Tanggal tidak valid." }), z.NEVER))
+        .optional(),
+    ),
+  })
+  .superRefine(checkWarehouse);
 
 const iso = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 
@@ -58,6 +62,8 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
     select: {
       departmentId: true,
       position: true,
+      workLocation: true,
+      warehouse: true,
       status: true,
       managerId: true,
       exitDate: true,
@@ -73,7 +79,8 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
 
   const parsed = EmploymentSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
-  const { exitDate: typedExit, ...data } = parsed.data;
+  const { exitDate: typedExit, warehouse: typedWarehouse, ...rest } = parsed.data;
+  const data = { ...rest, warehouse: warehouseFor(rest.workLocation, typedWarehouse) };
 
   if (data.managerId === employeeId) return failed(formData, { managerId: ["Atasan tidak boleh diri sendiri."] });
   const [dept, manager] = await Promise.all([

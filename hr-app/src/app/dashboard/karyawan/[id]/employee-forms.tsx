@@ -14,6 +14,7 @@ import { issueEmployeeLogin, type LoginResult } from "@/app/actions/accounts";
 import { deleteContractDocument, uploadContractDocument } from "@/app/actions/contract-documents";
 import { MAX_CONTRACT_PDF_BYTES, MAX_CONTRACT_PDF_MB } from "@/lib/privacy";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
+import { WorkLocationFields } from "@/app/ui/work-location-fields";
 import type { FormState } from "@/lib/forms";
 import { employeeStatusLabel, employmentTypeLabel, genderLabel, ptkpLabel } from "@/lib/labels";
 import type { EmployeeStatus, EmploymentType, Gender, PtkpStatus } from "@/generated/prisma/enums";
@@ -47,7 +48,15 @@ export function EmploymentForm({
   employeeId: string;
   departments: Option[];
   managers: Option[];
-  initial: { departmentId: string; position: string; status: EmployeeStatus; managerId: string; exitDate: string };
+  initial: {
+    departmentId: string;
+    position: string;
+    workLocation: string;
+    warehouse: string;
+    status: EmployeeStatus;
+    managerId: string;
+    exitDate: string;
+  };
 }) {
   const [state, action, pending] = useActionState(updateEmployment.bind(null, employeeId), undefined);
   const hydrated = useHydrated();
@@ -70,6 +79,7 @@ export function EmploymentForm({
         <Field label="Jabatan" htmlFor="position" errors={e.position}>
           <input id="position" name="position" required defaultValue={v("position")} className={inputClass} />
         </Field>
+        <WorkLocationFields location={v("workLocation")} warehouse={v("warehouse")} errors={e} />
         <Field label="Status" htmlFor="status" errors={e.status}>
           <select id="status" name="status" defaultValue={v("status")} className={inputClass}>
             {Object.entries(employeeStatusLabel).map(([value, label]) => (

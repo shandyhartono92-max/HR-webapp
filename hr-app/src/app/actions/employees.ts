@@ -9,6 +9,7 @@ import { writeAudit } from "@/lib/audit";
 import { failed, optionalDate, type FormState } from "@/lib/forms";
 import { parseDateOnly, todayDate } from "@/lib/labels";
 import { trainingErrors } from "@/lib/training";
+import { checkWarehouse, warehouseFor, workLocationFields } from "@/lib/work-location";
 import { EmploymentType } from "@/generated/prisma/enums";
 import { findOrCreateDepartment } from "@/lib/departments";
 import { MAX_EMPLOYEE_IMPORT_BYTES, parseEmployeeFile } from "@/lib/employee-import";
@@ -32,6 +33,7 @@ const HireSchema = z
     trainingEnd: optionalDate,
     departmentId: z.string().min(1, { error: "Pilih departemen." }),
     position: z.string().trim().min(2, { error: "Isi jabatan." }).max(120),
+    ...workLocationFields,
     employmentType: z.enum(EmploymentType),
     joinDate: dateField("Isi tanggal mulai bekerja."),
     endDate: z.preprocess((v) => (v === "" ? undefined : v), dateField("Tanggal tidak valid.").optional()),
@@ -44,7 +46,8 @@ const HireSchema = z
   .refine((d) => !d.endDate || d.endDate > d.joinDate, {
     path: ["endDate"],
     error: "Tanggal berakhir harus setelah tanggal mulai.",
-  });
+  })
+  .superRefine(checkWarehouse);
 
 // Bulk-adds existing employees with their current contract from the Excel template.
 // All rows must be valid or nothing is saved; employee numbers already in the
@@ -119,6 +122,8 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
             phone: r.phone,
             departmentId: deptIds.get(deptKey)!,
             position: r.position,
+            workLocation: r.workLocation,
+            warehouse: r.warehouse,
             employmentType: r.employmentType,
             status: r.status ?? "ACTIVE",
             joinDate: r.joinDate,
@@ -211,6 +216,8 @@ export async function hireCandidate(applicationId: string, _state: FormState, fo
         phone: app.candidate.phone,
         departmentId: data.departmentId,
         position: data.position,
+        workLocation: data.workLocation,
+        warehouse: warehouseFor(data.workLocation, data.warehouse),
         employmentType: data.employmentType,
         // PKWT may not include a probation period (UU 13/2003 Pasal 58), so only PKWTT starts on probation
         status: data.employmentType === "PKWTT" ? "PROBATION" : "ACTIVE",

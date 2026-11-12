@@ -10,6 +10,8 @@ const emp = (employeeNumber: string, fullName: string, more: Partial<SortableEmp
   status: "ACTIVE",
   joinDate: d("2026-01-01"),
   endDate: null,
+  workLocation: null,
+  warehouse: null,
   ...more,
 });
 const names = (rows: SortableEmployee[]) => rows.map((e) => e.fullName);
@@ -56,5 +58,16 @@ assert.deepEqual(names(sortEmployees(joins, { key: "mulai", dir: "za" })), ["A",
 const ends = [emp("1", "Tetap"), emp("2", "Lama", { endDate: d("2026-12-01") }), emp("3", "Baru", { endDate: d("2027-06-01") }), emp("4", "Abadi")];
 assert.deepEqual(names(sortEmployees(ends, { key: "berakhir", dir: "az" })), ["Lama", "Baru", "Abadi", "Tetap"]);
 assert.deepEqual(names(sortEmployees(ends, { key: "berakhir", dir: "za" })), ["Baru", "Lama", "Abadi", "Tetap"]);
+
+// Location: "HO" < "OPS · Gudang A" < "OPS · Gudang B"; not filled in yet stays last either way
+const places = [
+  emp("1", "Belum"),
+  emp("2", "Opsb", { workLocation: "OPS", warehouse: "Gudang B" }),
+  emp("3", "Kantor", { workLocation: "HO" }),
+  emp("4", "Opsa", { workLocation: "OPS", warehouse: "gudang a" }),
+];
+assert.deepEqual(names(sortEmployees(places, { key: "lokasi", dir: "az" })), ["Kantor", "Opsa", "Opsb", "Belum"]);
+assert.deepEqual(names(sortEmployees(places, { key: "lokasi", dir: "za" })), ["Opsb", "Opsa", "Kantor", "Belum"]);
+assert.deepEqual(parseSort("lokasi", "az"), { key: "lokasi", dir: "az" });
 
 console.log("check-employee-sort: ok");

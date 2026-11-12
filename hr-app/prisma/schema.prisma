@@ -34,6 +34,11 @@ enum JobStatus {
   CLOSED
 }
 
+enum WorkLocation {
+  HO // Head Office
+  OPS // Operational (a warehouse)
+}
+
 enum EmploymentType {
   PKWT // kontrak / fixed-term
   PKWTT // tetap / permanent
@@ -403,6 +408,10 @@ model Employee {
   manager        Employee?      @relation("EmployeeManager", fields: [managerId], references: [id])
   reports        Employee[]     @relation("EmployeeManager")
   employmentType EmploymentType
+  // Where the employee works. Empty only for employees created before this field
+  // existed; every form requires it. warehouse is set only for OPS (free text).
+  workLocation   WorkLocation?
+  warehouse      String?        @db.VarChar(100)
   status         EmployeeStatus @default(PROBATION)
   joinDate       DateTime       @db.Date
   endDate        DateTime?      @db.Date

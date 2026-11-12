@@ -9,6 +9,8 @@ import { initials } from "@/lib/nav";
 import { isInTraining } from "@/lib/training";
 import { TrainingBadge } from "@/app/ui/training-badge";
 import { nextSort, parseSort, sortEmployees, type Sort, type SortKey } from "@/lib/employee-sort";
+import { locationText, parseLocationFilter } from "@/lib/work-location";
+import type { WorkLocation } from "@/generated/prisma/enums";
 
 // Columns hidden on phones; name and contract end stay (details are on the profile)
 const WIDE = "hidden md:table-cell";
@@ -21,6 +23,8 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
   const sp = await searchParams;
   const onlyEnding = sp.kontrak === "berakhir";
   const sort = parseSort(sp.urut, sp.arah);
+  const location = parseLocationFilter(sp.lokasi);
+  const view: ListView = { onlyEnding, sort, location };
   // Result of an import (set by importEmployees' redirect)
   const imported = typeof sp.impor === "string" && /^\d+$/.test(sp.impor) ? Number(sp.impor) : null;
   const skipped = typeof sp.lewati === "string" && /^\d+$/.test(sp.lewati) ? Number(sp.lewati) : 0;
@@ -35,6 +39,8 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       employeeNumber: true,
       fullName: true,
       position: true,
+      workLocation: true,
+      warehouse: true,
       employmentType: true,
       status: true,
       joinDate: true,
@@ -44,13 +50,14 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       department: { select: { name: true } },
     },
   });
-  const withAlert = all.map((e) => ({ ...e, alert: contractAlert(e.endDate, e.status) }));
+  const inPlace = location ? all.filter((e) => e.workLocation === location) : all;
+  const withAlert = inPlace.map((e) => ({ ...e, alert: contractAlert(e.endDate, e.status) }));
   const ending = withAlert.filter((e) => e.alert.level);
   const overdue = ending.filter((e) => e.alert.level === "overdue").length;
   const shown = onlyEnding ? ending.sort((a, b) => a.alert.daysLeft! - b.alert.daysLeft!) : withAlert;
   const employees = sort ? sortEmployees(shown, sort) : shown;
   const header = (key: SortKey, label: string, className = "") => (
-    <SortHeader key={key} column={key} label={label} sort={sort} onlyEnding={onlyEnding} className={className} />
+    <SortHeader key={key} column={key} label={label} view={view} className={className} />
   );
 
   return (
@@ -94,7 +101,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
             </span>
           </p>
           <Link
-            href={listHref(!onlyEnding, sort)}
+            href={listHref({ ...view, onlyEnding: !onlyEnding })}
             className="text-sm font-medium text-amber-900 underline"
           >
             {onlyEnding ? "Tampilkan semua karyawan" : "Lihat daftarnya"}
@@ -102,9 +109,20 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
         </div>
       )}
 
+      {all.length > 0 && <LocationFilter view={view} />}
+
       {employees.length === 0 ? (
         <p className="card p-5 text-sm text-slate-600">
-          Belum ada data karyawan. Data dibuat dari halaman kandidat setelah kandidat diterima, atau di-import dari Excel.
+          {all.length === 0 ? (
+            "Belum ada data karyawan. Data dibuat dari halaman kandidat setelah kandidat diterima, atau di-import dari Excel."
+          ) : (
+            <>
+              Tidak ada karyawan yang cocok dengan filter ini{location ? ` (lokasi ${location}${onlyEnding ? ", kontrak berakhir" : ""})` : ""}.{" "}
+              <Link href="/dashboard/karyawan" className="font-medium text-brand-700 underline">
+                Hapus filter
+              </Link>
+            </>
+          )}
         </p>
       ) : (
         <div className="overflow-x-auto card">
@@ -115,6 +133,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
                 {header("nama", "Nama")}
                 {header("departemen", "Departemen", WIDE)}
                 {header("jenis", "Jenis", WIDE)}
+                {header("lokasi", "Lokasi", WIDE)}
                 {header("status", "Status", WIDE)}
                 {header("mulai", "Mulai", WIDE)}
                 {header("berakhir", "Kontrak berakhir")}
@@ -147,6 +166,9 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
                   </td>
                   <td className={`${WIDE} px-4 py-3 text-slate-700`}>{e.department.name}</td>
                   <td className={`${WIDE} px-4 py-3 text-slate-700`}>{employmentTypeLabel[e.employmentType]}</td>
+                  <td className={`${WIDE} px-4 py-3 text-slate-700`}>
+                    {locationText(e.workLocation, e.warehouse) ?? <span className="text-xs text-amber-700">Belum diisi</span>}
+                  </td>
                   <td className={`${WIDE} px-4 py-3`}>
                     <span
                       className={`whitespace-nowrap rounded-full px-2.5 py-0.5 text-xs font-semibold ${
@@ -177,10 +199,14 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
   );
 }
 
-// The list's URL with the contract filter and the column order; both survive each other's links
-function listHref(onlyEnding: boolean, sort: Sort | null) {
+// What the list shows: contract filter, location filter and column order
+type ListView = { onlyEnding: boolean; sort: Sort | null; location: WorkLocation | null };
+
+// The list's URL; each control keeps the other two, so they survive each other's links
+function listHref({ onlyEnding, sort, location }: ListView) {
   const params = new URLSearchParams();
   if (onlyEnding) params.set("kontrak", "berakhir");
+  if (location) params.set("lokasi", location.toLowerCase());
   if (sort) {
     params.set("urut", sort.key);
     params.set("arah", sort.dir);
@@ -189,25 +215,43 @@ function listHref(onlyEnding: boolean, sort: Sort | null) {
   return query ? `/dashboard/karyawan?${query}` : "/dashboard/karyawan";
 }
 
+const locationChoices: { value: WorkLocation | null; label: string }[] = [
+  { value: null, label: "Semua lokasi" },
+  { value: "HO", label: "HO" },
+  { value: "OPS", label: "OPS" },
+];
+
+function LocationFilter({ view }: { view: ListView }) {
+  return (
+    <nav aria-label="Filter lokasi" className="flex flex-wrap items-center gap-2 text-sm">
+      {locationChoices.map((c) => {
+        const active = view.location === c.value;
+        return (
+          <Link
+            key={c.label}
+            href={listHref({ ...view, location: c.value })}
+            scroll={false}
+            aria-current={active ? "page" : undefined}
+            className={`rounded-full border px-3 py-1 ${
+              active ? "border-brand-700 bg-brand-700 text-white" : "border-slate-300 bg-white text-slate-700 hover:bg-slate-50"
+            }`}
+          >
+            {c.label}
+          </Link>
+        );
+      })}
+    </nav>
+  );
+}
+
 // A column header that sorts the list: first click A-Z, the next Z-A
-function SortHeader({
-  column,
-  label,
-  sort,
-  onlyEnding,
-  className,
-}: {
-  column: SortKey;
-  label: string;
-  sort: Sort | null;
-  onlyEnding: boolean;
-  className: string;
-}) {
+function SortHeader({ column, label, view, className }: { column: SortKey; label: string; view: ListView; className: string }) {
+  const { sort } = view;
   const active = sort?.key === column ? sort.dir : null;
   return (
     <th className={`${className} px-4 py-3 font-medium`} aria-sort={active ? (active === "az" ? "ascending" : "descending") : undefined}>
       <Link
-        href={listHref(onlyEnding, nextSort(sort, column))}
+        href={listHref({ ...view, sort: nextSort(sort, column) })}
         scroll={false}
         title={`Urutkan ${label} ${active === "az" ? "Z-A" : "A-Z"}`}
         className="group inline-flex items-center gap-1 whitespace-nowrap hover:text-brand-800"

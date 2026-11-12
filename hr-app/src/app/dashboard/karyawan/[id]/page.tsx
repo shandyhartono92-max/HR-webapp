@@ -34,6 +34,7 @@ import {
 import { HrBankForm } from "../../rekening/bank-forms";
 import { deletionBlockers } from "@/app/actions/employee-profile";
 import { employeeRetentionYears } from "@/lib/retention";
+import { locationText } from "@/lib/work-location";
 
 const employeeLetterTypes: LetterType[] = [
   "SP1",
@@ -81,6 +82,8 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         email: true,
         phone: true,
         position: true,
+        workLocation: true,
+        warehouse: true,
         employmentType: true,
         status: true,
         joinDate: true,
@@ -386,6 +389,9 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
             <h2 className="font-medium text-slate-900">Kepegawaian</h2>
             <dl className="mt-2 divide-y divide-slate-100">
               <Row label="Jenis">{employmentTypeLabel[emp.employmentType]}</Row>
+              <Row label="Lokasi kerja">
+                {locationText(emp.workLocation, emp.warehouse) ?? <span className="text-amber-700">Belum diisi</span>}
+              </Row>
               <Row label="Mulai bekerja">{formatDate(emp.joinDate)}</Row>
               <Row label="Kontrak berakhir">{emp.endDate ? formatDate(emp.endDate) : "-"}</Row>
               {emp.trainingStart && emp.trainingEnd && (
@@ -475,6 +481,8 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
                   initial={{
                     departmentId: emp.departmentId,
                     position: emp.position,
+                    workLocation: emp.workLocation ?? "",
+                    warehouse: emp.warehouse ?? "",
                     status: emp.status,
                     managerId: emp.managerId ?? "",
                     exitDate: isoDate(emp.exitDate),

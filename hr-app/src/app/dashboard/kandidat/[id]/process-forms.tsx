@@ -5,6 +5,7 @@ import { generateCandidateQuestions } from "@/app/actions/interview-kits";
 import { hireCandidate } from "@/app/actions/employees";
 import { cancelInterview, rescheduleInterview, scheduleInterview, setNoShow, submitFeedback } from "@/app/actions/interviews";
 import { Field, FormMessage, inputClass } from "@/app/ui/field";
+import { WorkLocationFields } from "@/app/ui/work-location-fields";
 import { decisionLabel, employmentTypeLabel, interviewModeLabel } from "@/lib/labels";
 import type { EmploymentType } from "@/generated/prisma/enums";
 
@@ -248,6 +249,7 @@ export function HireForm({
         <Field label="Jabatan" htmlFor="position" errors={e.position}>
           <input id="position" name="position" required defaultValue={v("position", defaults.position)} className={inputClass} />
         </Field>
+        <WorkLocationFields idPrefix="hire-" location={v("workLocation")} warehouse={v("warehouse")} errors={e} />
         <Field label="Jenis hubungan kerja" htmlFor="hireEmploymentType" errors={e.employmentType}>
           <select
             id="hireEmploymentType"

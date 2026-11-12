@@ -2,6 +2,7 @@ import "server-only";
 import * as z from "zod";
 import { employmentTypeLabel, genderLabel, parseDateOnly, todayDate } from "@/lib/labels";
 import { trainingErrors } from "@/lib/training";
+import { parseWorkLocation, warehouseFor } from "@/lib/work-location";
 import { importPhone } from "@/lib/candidate-import";
 import { addHelpSheet, addList, dropdown, issueMessages, newTemplate, readSheet, type RowIssue } from "@/lib/excel";
 import type { EmploymentType, Gender } from "@/generated/prisma/enums";
@@ -23,6 +24,9 @@ const columns = [
   { key: "phone", header: "No. HP / WhatsApp *", width: 20 },
   { key: "department", header: "Departemen *", width: 22 },
   { key: "position", header: "Jabatan *", width: 24 },
+  // Added later and required: a file from an older template is refused with "Kolom tidak ditemukan"
+  { key: "workLocation", header: "Lokasi *", width: 12 },
+  { key: "warehouse", header: "Warehouse", width: 22 },
   { key: "employmentType", header: "Jenis karyawan *", width: 18 },
   { key: "status", header: "Status", width: 18 },
   { key: "joinDate", header: "Tanggal mulai *", width: 16 },
@@ -107,6 +111,15 @@ const RowSchema = z
     phone: importPhone,
     department: z.string().min(2, { error: "Wajib diisi." }).max(80, maxLength(80)),
     position: z.string().min(2, { error: "Wajib diisi." }).max(120, maxLength(120)),
+    workLocation: z.string().transform((v, ctx) => {
+      const found = parseWorkLocation(v);
+      if (!found) {
+        ctx.addIssue({ code: "custom", message: "Isi HO atau OPS." });
+        return z.NEVER;
+      }
+      return found;
+    }),
+    warehouse: z.string().max(100, maxLength(100)),
     employmentType: enumField<EmploymentType>(employmentTypeLabel, `Pilih: ${Object.values(employmentTypeLabel).join(", ")}.`),
     status: optionalEnum(statusLabels, "Isi Aktif atau Masa percobaan (kosong = Aktif)."),
     joinDate: requiredDate("Tanggal mulai"),
@@ -120,6 +133,9 @@ const RowSchema = z
     motherMaidenName: optional(80),
   })
   .superRefine((d, ctx) => {
+    if (d.workLocation === "OPS" && !d.warehouse.trim()) {
+      ctx.addIssue({ code: "custom", path: ["warehouse"], message: "Wajib diisi untuk lokasi OPS." });
+    }
     if (d.employmentType === "PKWT" && !d.endDate) {
       ctx.addIssue({ code: "custom", path: ["endDate"], message: "Kontrak PKWT wajib punya tanggal berakhir." });
     }
@@ -140,13 +156,18 @@ const RowSchema = z
   });
 
 // The contract number is filled in (<Employee ID>/IMPOR) when the sheet leaves it blank
-export type EmployeeImportRow = Omit<z.output<typeof RowSchema>, "contractNumber"> & { contractNumber: string; rowNumber: number };
+export type EmployeeImportRow = Omit<z.output<typeof RowSchema>, "contractNumber" | "warehouse"> & {
+  contractNumber: string;
+  warehouse: string | null;
+  rowNumber: number;
+};
 
 export async function buildEmployeeTemplate(): Promise<Buffer> {
   const { wb, sheet, lists } = newTemplate(SHEET, columns);
   const typeRange = addList(lists, 1, Object.values(employmentTypeLabel));
   const statusRange = addList(lists, 2, Object.values(statusLabels));
   const genderRange = addList(lists, 3, Object.values(genderLabel));
+  const locationRange = addList(lists, 4, ["HO", "OPS"]);
 
   for (let r = 2; r <= MAX_EMPLOYEE_ROWS + 1; r++) {
     // Text format keeps leading zeros of phone, employee and contract numbers. Dates are
@@ -157,6 +178,7 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
     sheet.getCell(r, COL.employmentType).dataValidation = dropdown(typeRange, "Pilih jenis karyawan dari daftar.");
     sheet.getCell(r, COL.status).dataValidation = dropdown(statusRange, "Pilih status dari daftar.");
     sheet.getCell(r, COL.gender).dataValidation = dropdown(genderRange, "Pilih jenis kelamin dari daftar.");
+    sheet.getCell(r, COL.workLocation).dataValidation = dropdown(locationRange, "Pilih HO atau OPS.");
   }
 
   addHelpSheet(wb, [
@@ -174,9 +196,11 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
     "10. NIK, NPWP, BPJS, gaji dan rekening TIDAK diisi di sini. Lengkapi dari profil karyawan (data itu disimpan terenkripsi).",
     "11. Training (penanda payroll): isi Mulai dan Selesai training, dan Employee ID harus berawalan T (misal T001). Sehari setelah Selesai training, huruf T dibuang otomatis (T001 menjadi 001). Kosongkan jika tidak training.",
     "12. Nama ibu kandung: untuk pendaftaran BPJS. Boleh dikosongkan dan dilengkapi nanti dari profil karyawan.",
+    "13. Lokasi: HO (Head Office) atau OPS (Operational). Bila OPS, isi juga Warehouse (nama gudang, ketik bebas). Untuk HO, kolom Warehouse diabaikan.",
     "",
     "Contoh baris:",
-    "K-0012 | Budi Santoso | budi@perusahaan.co.id | 081234567890 | Keuangan | Staf Akuntansi | Kontrak (PKWT) | Aktif | 01/02/2026 | 31/01/2027 | 012/PKWT/II/2026 | Bandung | 15/08/1995 | Laki-laki",
+    "K-0012 | Budi Santoso | budi@perusahaan.co.id | 081234567890 | Keuangan | Staf Akuntansi | HO | (kosong) | Kontrak (PKWT) | Aktif | 01/02/2026 | 31/01/2027 | 012/PKWT/II/2026 | Bandung | 15/08/1995 | Laki-laki",
+    "K-0013 | Sari Dewi | sari@perusahaan.co.id | 081298765432 | Gudang | Admin Gudang | OPS | Gudang Cikarang | Tetap (PKWTT) | Aktif | 01/03/2026 | | | Bekasi | 02/05/1998 | Perempuan",
   ]);
 
   return Buffer.from(await wb.xlsx.writeBuffer());
@@ -217,7 +241,7 @@ export async function parseEmployeeFile(data: Buffer): Promise<EmployeeParseResu
       issues.push({ rowNumber, name: d.fullName, messages: dupes });
       continue;
     }
-    rows.push({ ...d, contractNumber, rowNumber });
+    rows.push({ ...d, contractNumber, warehouse: warehouseFor(d.workLocation, d.warehouse), rowNumber });
   }
 
   if (issues.length) return { ok: false, message: `${issues.length} baris perlu diperbaiki. Belum ada data yang disimpan.`, issues };
