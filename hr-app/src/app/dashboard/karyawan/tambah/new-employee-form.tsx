@@ -31,7 +31,7 @@ export function NewEmployeeForm({ departments }: { departments: Option[] }) {
       <section className={sectionClass}>
         <h2 className="font-medium text-slate-900">Kepegawaian</h2>
         <div className={gridClass}>
-          <Field label="Employee ID" htmlFor="employeeNumber" hint="Berawalan T bila sedang training (misal T001)." errors={e.employeeNumber}>
+          <Field label="Employee ID" htmlFor="employeeNumber" hint="Bila sedang training: huruf T lalu angka (misal T001)." errors={e.employeeNumber}>
             <input id="employeeNumber" name="employeeNumber" required maxLength={30} defaultValue={v("employeeNumber")} className={inputClass} />
           </Field>
           <Field label="Nomor kontrak" htmlFor="contractNumber" hint="Kosongkan bila belum ada; diisi <Employee ID>/MANUAL." errors={e.contractNumber}>

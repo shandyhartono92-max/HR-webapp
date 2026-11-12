@@ -175,7 +175,7 @@ export function IdentityForm({
           </Field>
         </div>
         <p className="mt-2 text-xs text-slate-500">
-          Selama training, Employee ID berawalan T (misal T001). Sehari setelah tanggal selesai, huruf T dibuang otomatis (T001 → 001).
+          Selama training, Employee ID berawalan huruf T lalu angka (misal T001). Sehari setelah tanggal selesai, huruf T dibuang otomatis (T001 → 001).
           Kosongkan keduanya jika tidak training.
         </p>
       </fieldset>

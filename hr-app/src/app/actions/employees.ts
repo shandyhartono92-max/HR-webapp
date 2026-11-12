@@ -10,6 +10,7 @@ import { failed, optionalDate, type FormState } from "@/lib/forms";
 import { encrypt, lastFour } from "@/lib/crypto";
 import { parseNewEmployee, SENSITIVE_FIELDS } from "@/lib/new-employee";
 import { parseDateOnly, todayDate } from "@/lib/labels";
+import { ENDED_CONTRACT_MESSAGE, endedContractError } from "@/lib/contract-end";
 import { trainingErrors } from "@/lib/training";
 import { checkWorkLocation, warehouseFor, workLocationFields } from "@/lib/work-location";
 import { EmploymentType } from "@/generated/prisma/enums";
@@ -49,6 +50,7 @@ const HireSchema = z
     path: ["endDate"],
     error: "Tanggal berakhir harus setelah tanggal mulai.",
   })
+  .refine((d) => !endedContractError(d.endDate, todayDate()), { path: ["endDate"], error: ENDED_CONTRACT_MESSAGE })
   .superRefine(checkWorkLocation({ required: true }));
 
 // Bulk-adds existing employees with their current contract from the Excel template.
@@ -286,7 +288,12 @@ export async function createEmployee(_state: FormState, formData: FormData): Pro
   const errors: Record<string, string[]> = {};
   if (numberTaken) errors.employeeNumber = ["Employee ID ini sudah dipakai, atau pernah dipakai sebagai ID training."];
   if (emailTaken) errors.email = [`Email ini sudah dipakai karyawan ${emailTaken.employeeNumber}.`];
-  if (contractTaken) errors.contractNumber = ["Nomor kontrak ini sudah dipakai."];
+  // A blank contract number becomes <Employee ID>/MANUAL: when the ID itself is taken,
+  // that number is too, and the error belongs on the ID only, not on the empty field
+  if (contractTaken && !data.contractNumberAuto) errors.contractNumber = ["Nomor kontrak ini sudah dipakai."];
+  if (contractTaken && data.contractNumberAuto && !numberTaken) {
+    errors.contractNumber = [`Nomor kontrak otomatis ${data.contractNumber} sudah dipakai. Isi nomor kontrak lain.`];
+  }
   if (!dept) errors.departmentId = ["Departemen tidak ditemukan."];
   if (Object.keys(errors).length) return failed(safeValues, errors, `Periksa kembali isian yang ditandai.${retype}`);
 
@@ -347,7 +354,7 @@ export async function createEmployee(_state: FormState, formData: FormData): Pro
 
   // Which fields were filled in, never their values
   const filled = Object.entries(data)
-    .filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .filter(([k, v]) => k !== "contractNumberAuto" && v !== null && v !== undefined && v !== "")
     .map(([k]) => k);
   await writeAudit({
     actorId: user.id,

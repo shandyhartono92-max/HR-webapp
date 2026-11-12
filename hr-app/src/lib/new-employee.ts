@@ -2,6 +2,7 @@ import * as z from "zod";
 import { optionalDate, optionalText } from "@/lib/forms";
 import { parseDateOnly } from "@/lib/labels";
 import { trainingErrors } from "@/lib/training";
+import { endedContractError } from "@/lib/contract-end";
 import { warehouseError, warehouseFor, workLocationFields } from "@/lib/work-location";
 import {
   bpjsKesehatanError,
@@ -61,6 +62,8 @@ type Errors = Record<string, string[]>;
 
 export type NewEmployee = Omit<z.output<typeof Form>, "contractNumber" | "warehouse" | "birthPlace" | "gender" | "address" | "motherMaidenName" | "ptkpStatus"> & {
   contractNumber: string;
+  // True when the form left it blank and it was filled in as <Employee ID>/MANUAL
+  contractNumberAuto: boolean;
   warehouse: string | null;
   birthPlace: string | null;
   gender: Gender | null;
@@ -81,6 +84,10 @@ export function parseNewEmployee(input: Record<string, unknown>, today: Date): {
 
   if (d.employmentType === "PKWT" && !d.endDate) add("endDate", "Kontrak PKWT wajib punya tanggal berakhir.");
   if (d.endDate && d.endDate <= d.joinDate) add("endDate", "Tanggal berakhir harus setelah tanggal mulai.");
+  else {
+    const ended = endedContractError(d.endDate, today);
+    if (ended) add("endDate", ended);
+  }
   // UU 13/2003 Pasal 58: no probation in a PKWT
   if (d.employmentType === "PKWT" && d.status === "PROBATION") add("status", "Kontrak PKWT tidak boleh ada masa percobaan.");
 
@@ -103,6 +110,7 @@ export function parseNewEmployee(input: Record<string, unknown>, today: Date): {
     data: {
       ...d,
       contractNumber: d.contractNumber ?? `${d.employeeNumber}/MANUAL`,
+      contractNumberAuto: !d.contractNumber,
       warehouse: warehouseFor(d.workLocation, d.warehouse),
       birthPlace: d.birthPlace ?? null,
       gender: d.gender ?? null,

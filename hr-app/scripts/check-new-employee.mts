@@ -72,6 +72,25 @@ assert.deepEqual(errorsOf({ employmentType: "PKWT", endDate: "2026-11-30" }).end
 assert.deepEqual(errorsOf({ employmentType: "PKWT", endDate: "2027-11-30", status: "PROBATION" }).status, ["Kontrak PKWT tidak boleh ada masa percobaan."]);
 assert.equal(parse({ employmentType: "PKWT", endDate: "2027-11-30" }).ok, true);
 
+// A contract that already ended cannot be added as Aktif; one ending today still runs
+const endedMsg = errorsOf({ employmentType: "PKWT", joinDate: "2025-11-12", endDate: "2026-11-11" }).endDate;
+assert.equal(endedMsg?.length, 1);
+assert.match(endedMsg![0], /^Kontrak ini sudah berakhir/);
+assert.equal(parse({ employmentType: "PKWT", joinDate: "2025-11-12", endDate: "2026-11-12" }).ok, true, "ends today");
+// Only one endDate message when the end is also before the start
+assert.deepEqual(errorsOf({ employmentType: "PKWT", joinDate: "2026-01-01", endDate: "2025-01-01" }).endDate, ["Tanggal berakhir harus setelah tanggal mulai."]);
+
+// Whether the contract number was filled in by the app (decides where a clash is shown)
+const auto = parse();
+const typed = parse({ contractNumber: "012/PKWTT/XII/2026" });
+assert.ok(auto.ok && auto.data.contractNumberAuto === true);
+assert.ok(typed.ok && typed.data.contractNumberAuto === false && typed.data.contractNumber === "012/PKWTT/XII/2026");
+
+// A training ID is T followed by a number; "TUJI01" is not one, and the message says so
+assert.deepEqual(errorsOf({ employeeNumber: "TUJI01", trainingStart: "2026-12-01", trainingEnd: "2026-12-20" }).employeeNumber, [
+  "Selama training, Employee ID harus berawalan huruf T lalu angka (misal T001 atau T-001).",
+]);
+
 // ── Location (shared rules) ─────────────────────────────────
 assert.deepEqual(errorsOf({ workLocation: "OPS" }).warehouse, ["Isi nama warehouse untuk lokasi OPS."]);
 const ops = parse({ workLocation: "OPS", warehouse: " Gudang Cikarang " });

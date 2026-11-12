@@ -2,6 +2,7 @@ import "server-only";
 import * as z from "zod";
 import { employmentTypeLabel, genderLabel, parseDateOnly, todayDate } from "@/lib/labels";
 import { trainingErrors } from "@/lib/training";
+import { endedContractError } from "@/lib/contract-end";
 import { parseWorkLocation, WAREHOUSE_MAX, warehouseFor } from "@/lib/work-location";
 import { importPhone } from "@/lib/candidate-import";
 import { addHelpSheet, addList, dropdown, issueMessages, newTemplate, readSheet, type RowIssue } from "@/lib/excel";
@@ -144,6 +145,9 @@ const RowSchema = z
     }
     if (d.endDate && d.joinDate && d.endDate <= d.joinDate) {
       ctx.addIssue({ code: "custom", path: ["endDate"], message: "Harus setelah tanggal mulai." });
+    } else {
+      const ended = endedContractError(d.endDate, todayDate());
+      if (ended) ctx.addIssue({ code: "custom", path: ["endDate"], message: ended });
     }
     // UU 13/2003 Pasal 58: no probation in a PKWT
     if (d.employmentType === "PKWT" && d.status === "PROBATION") {
@@ -192,12 +196,12 @@ export async function buildEmployeeTemplate(): Promise<Buffer> {
     "3. Departemen: ketik bebas. Departemen yang belum ada akan dibuat otomatis.",
     `4. Jenis karyawan: pilih dari dropdown (${Object.values(employmentTypeLabel).join(", ")}).`,
     "5. Status: Aktif atau Masa percobaan. Kosong = Aktif. Kontrak (PKWT) tidak boleh masa percobaan (UU 13/2003 Pasal 58).",
-    "6. Tanggal ditulis DD/MM/YYYY (hari/bulan/tahun), misal 01/02/2026 = 1 Februari 2026. Kolom tanggal berformat teks agar Excel tidak mengubahnya. Tanggal berakhir wajib untuk Kontrak (PKWT).",
+    "6. Tanggal ditulis DD/MM/YYYY (hari/bulan/tahun), misal 01/02/2026 = 1 Februari 2026. Kolom tanggal berformat teks agar Excel tidak mengubahnya. Tanggal berakhir wajib untuk Kontrak (PKWT), dan harus kontrak yang masih berlaku (belum lewat).",
     "7. No. kontrak: kosongkan jika belum ada; akan diisi otomatis <Employee ID>/IMPOR.",
     "8. Employee ID yang sudah ada di Portal HR dilewati (tidak dobel), jadi file yang sama aman diunggah ulang.",
     "9. Jika ada baris yang salah, tidak ada data yang disimpan. Perbaiki baris yang disebutkan, lalu unggah lagi.",
     "10. NIK, NPWP, BPJS, gaji dan rekening TIDAK diisi di sini. Lengkapi dari profil karyawan (data itu disimpan terenkripsi).",
-    "11. Training (penanda payroll): isi Mulai dan Selesai training, dan Employee ID harus berawalan T (misal T001). Sehari setelah Selesai training, huruf T dibuang otomatis (T001 menjadi 001). Kosongkan jika tidak training.",
+    "11. Training (penanda payroll): isi Mulai dan Selesai training, dan Employee ID harus berawalan huruf T lalu angka (misal T001 atau T-001). Sehari setelah Selesai training, huruf T dibuang otomatis (T001 menjadi 001). Kosongkan jika tidak training.",
     "12. Nama ibu kandung: untuk pendaftaran BPJS. Boleh dikosongkan dan dilengkapi nanti dari profil karyawan.",
     "13. Lokasi: HO (Head Office) atau OPS (Operational). Bila OPS, isi juga Warehouse (nama gudang, ketik bebas). Untuk HO, kolom Warehouse diabaikan.",
     "",

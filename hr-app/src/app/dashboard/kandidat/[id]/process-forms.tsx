@@ -276,7 +276,7 @@ export function HireForm({
         <Field
           label="Selesai training"
           htmlFor="hireTrainEnd"
-          hint="Kosongkan jika tidak training. Selama training, Employee ID berawalan T (misal T001)."
+          hint="Kosongkan jika tidak training. Selama training, Employee ID berawalan huruf T lalu angka (misal T001)."
           errors={e.trainingEnd}
         >
           <input id="hireTrainEnd" name="trainingEnd" type="date" defaultValue={v("trainingEnd")} className={inputClass} />

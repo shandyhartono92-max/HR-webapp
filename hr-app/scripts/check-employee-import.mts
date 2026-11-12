@@ -76,6 +76,21 @@ if (!bad.ok) {
   assert.deepEqual(byRow[5], ["Warehouse: Maksimal 100 karakter."]);
 }
 
+// A contract that already ended cannot be imported as Aktif; one ending today still can
+const ended = await parseEmployeeFile(
+  await fileWith([
+    base(11, { "Lokasi *": "HO", "Jenis karyawan *": "Kontrak (PKWT)", "Tanggal mulai *": "01/01/2024", "Tanggal berakhir": "31/12/2024" }),
+    base(12, { "Lokasi *": "HO", "Jenis karyawan *": "Kontrak (PKWT)", "Tanggal mulai *": "01/01/2024", "Tanggal berakhir": "31/12/2099" }),
+  ]),
+);
+assert.equal(ended.ok, false);
+if (!ended.ok) {
+  const byRow = Object.fromEntries((ended.issues ?? []).map((i) => [i.rowNumber, i.messages]));
+  assert.equal(byRow[2]?.length, 1);
+  assert.match(byRow[2][0], /Tanggal berakhir: Kontrak ini sudah berakhir/);
+  assert.equal(byRow[3], undefined, "a running contract is fine");
+}
+
 // A file from the old template (no Lokasi column) is refused with a clear message
 const old = await parseEmployeeFile(await fileWith([base(8)], "Lokasi *"));
 assert.equal(old.ok, false);

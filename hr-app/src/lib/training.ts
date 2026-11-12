@@ -34,7 +34,7 @@ export function trainingErrors({ employeeNumber, trainingStart, trainingEnd }: T
     errors.trainingStart = ["Employee ID berawalan T menandakan training: isi tanggal mulai dan selesai training."];
   }
   if (!trainee && trainingEnd && !trainingOver(trainingEnd, today)) {
-    errors.employeeNumber = ["Selama training, Employee ID harus berawalan T (misal T001)."];
+    errors.employeeNumber = ["Selama training, Employee ID harus berawalan huruf T lalu angka (misal T001 atau T-001)."];
   }
   return errors;
 }
