@@ -7,6 +7,8 @@ import { db } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, optionalDate, type FormState } from "@/lib/forms";
+import { encrypt, lastFour } from "@/lib/crypto";
+import { parseNewEmployee, SENSITIVE_FIELDS } from "@/lib/new-employee";
 import { parseDateOnly, todayDate } from "@/lib/labels";
 import { trainingErrors } from "@/lib/training";
 import { checkWorkLocation, warehouseFor, workLocationFields } from "@/lib/work-location";
@@ -250,4 +252,111 @@ export async function hireCandidate(applicationId: string, _state: FormState, fo
   });
   revalidatePath("/dashboard", "layout");
   redirect("/dashboard/karyawan");
+}
+
+// The database's "unique constraint failed" error (Prisma code P2002)
+const isUniqueClash = (error: unknown) => typeof error === "object" && error !== null && "code" in error && error.code === "P2002";
+
+// One employee who did not come through recruitment (moved in, hired outside the
+// portal). Same rules as the import and the profile forms; the bank account is left
+// out on purpose: it needs a second HR/Admin's approval, from the profile.
+export async function createEmployee(_state: FormState, formData: FormData): Promise<FormState> {
+  const user = await requireRole("ADMIN", "HR");
+
+  // Identity numbers are never sent back to refill the form, even after an error
+  const safeValues = new FormData();
+  for (const [k, v] of formData) if (!(SENSITIVE_FIELDS as readonly string[]).includes(k)) safeValues.append(k, v);
+  const typedSensitive = SENSITIVE_FIELDS.some((k) => String(formData.get(k) ?? "").trim());
+  const retype = typedSensitive ? " NIK, NPWP dan BPJS perlu diketik ulang." : "";
+
+  const parsed = parseNewEmployee(Object.fromEntries(formData), todayDate());
+  if (!parsed.ok) return failed(safeValues, parsed.errors, `Periksa kembali isian yang ditandai.${retype}`);
+  const data = parsed.data;
+
+  const [numberTaken, emailTaken, contractTaken, dept] = await Promise.all([
+    // A former trainee number (T001) is never handed out again
+    db.employee.findFirst({
+      where: { OR: [{ employeeNumber: equalsIgnoringCase(data.employeeNumber) }, { traineeNumber: equalsIgnoringCase(data.employeeNumber) }] },
+      select: { id: true },
+    }),
+    db.employee.findFirst({ where: { email: equalsIgnoringCase(data.email) }, select: { employeeNumber: true } }),
+    db.contract.findFirst({ where: { contractNumber: equalsIgnoringCase(data.contractNumber) }, select: { id: true } }),
+    db.department.findUnique({ where: { id: data.departmentId }, select: { id: true } }),
+  ]);
+  const errors: Record<string, string[]> = {};
+  if (numberTaken) errors.employeeNumber = ["Employee ID ini sudah dipakai, atau pernah dipakai sebagai ID training."];
+  if (emailTaken) errors.email = [`Email ini sudah dipakai karyawan ${emailTaken.employeeNumber}.`];
+  if (contractTaken) errors.contractNumber = ["Nomor kontrak ini sudah dipakai."];
+  if (!dept) errors.departmentId = ["Departemen tidak ditemukan."];
+  if (Object.keys(errors).length) return failed(safeValues, errors, `Periksa kembali isian yang ditandai.${retype}`);
+
+  const enc = (v: string | undefined) => (v ? { enc: encrypt(v), last4: lastFour(v) } : null);
+  const [nik, npwp, kes, tk] = [enc(data.nik), enc(data.npwp), enc(data.bpjsKesehatan), enc(data.bpjsKetenagakerjaan)];
+
+  let employee: { id: string };
+  try {
+    employee = await db.employee.create({
+      data: {
+        employeeNumber: data.employeeNumber,
+        fullName: data.fullName,
+        email: data.email,
+        phone: data.phone,
+        departmentId: data.departmentId,
+        position: data.position,
+        workLocation: data.workLocation,
+        warehouse: data.warehouse,
+        employmentType: data.employmentType,
+        status: data.status,
+        joinDate: data.joinDate,
+        endDate: data.endDate,
+        trainingStart: data.trainingStart,
+        trainingEnd: data.trainingEnd,
+        birthPlace: data.birthPlace,
+        birthDate: data.birthDate,
+        gender: data.gender,
+        address: data.address,
+        motherMaidenName: data.motherMaidenName,
+        ptkpStatus: data.ptkpStatus,
+        nikKtpEnc: nik?.enc,
+        nikKtpLast4: nik?.last4,
+        npwpEnc: npwp?.enc,
+        npwpLast4: npwp?.last4,
+        bpjsKesehatanEnc: kes?.enc,
+        bpjsKesehatanLast4: kes?.last4,
+        bpjsKetenagakerjaanEnc: tk?.enc,
+        bpjsKetenagakerjaanLast4: tk?.last4,
+        contracts: {
+          create: {
+            type: data.employmentType,
+            contractNumber: data.contractNumber,
+            position: data.position,
+            startDate: data.joinDate,
+            endDate: data.endDate,
+          },
+        },
+      },
+      select: { id: true },
+    });
+  } catch (error) {
+    // Someone saved the same Employee ID, email or contract number a moment ago
+    if (isUniqueClash(error)) {
+      return failed(safeValues, undefined, `Employee ID, email atau nomor kontrak baru saja dipakai data lain. Periksa lagi.${retype}`);
+    }
+    throw error;
+  }
+
+  // Which fields were filled in, never their values
+  const filled = Object.entries(data)
+    .filter(([, v]) => v !== null && v !== undefined && v !== "")
+    .map(([k]) => k);
+  await writeAudit({
+    actorId: user.id,
+    action: "employee.created_manual",
+    entityType: "Employee",
+    entityId: employee.id,
+    changes: { employeeNumber: data.employeeNumber, employmentType: data.employmentType, fields: filled },
+  });
+  // The menu badge for ending contracts lives in the dashboard layout
+  revalidatePath("/dashboard", "layout");
+  redirect(`/dashboard/karyawan/${employee.id}?ditambah=1`);
 }

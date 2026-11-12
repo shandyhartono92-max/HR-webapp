@@ -21,17 +21,20 @@ export const workLocationFields = {
   warehouse: z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string()),
 };
 
-// required: false for an employee who has left, whose location no longer matters.
-// The warehouse is checked only for OPS: for HO it is ignored, so its length is too.
+// The warehouse is checked only for OPS: for HO it is ignored, so its length is too
+export function warehouseError(location: WorkLocation | null | undefined, warehouse: string): string | null {
+  if (location !== "OPS") return null;
+  if (!warehouse) return "Isi nama warehouse untuk lokasi OPS.";
+  return warehouse.length > WAREHOUSE_MAX ? `Nama warehouse maksimal ${WAREHOUSE_MAX} karakter.` : null;
+}
+
+// required: false for an employee who has left, whose location no longer matters
 export const checkWorkLocation =
   ({ required }: { required: boolean }) =>
   (d: { workLocation?: WorkLocation; warehouse: string }, ctx: z.RefinementCtx) => {
     if (!d.workLocation && required) ctx.addIssue({ code: "custom", path: ["workLocation"], message: REQUIRED });
-    if (d.workLocation !== "OPS") return;
-    if (!d.warehouse) ctx.addIssue({ code: "custom", path: ["warehouse"], message: "Isi nama warehouse untuk lokasi OPS." });
-    else if (d.warehouse.length > WAREHOUSE_MAX) {
-      ctx.addIssue({ code: "custom", path: ["warehouse"], message: `Nama warehouse maksimal ${WAREHOUSE_MAX} karakter.` });
-    }
+    const warehouse = warehouseError(d.workLocation, d.warehouse);
+    if (warehouse) ctx.addIssue({ code: "custom", path: ["warehouse"], message: warehouse });
   };
 
 // What is stored: a warehouse only for OPS, so moving to HO leaves no stale name behind

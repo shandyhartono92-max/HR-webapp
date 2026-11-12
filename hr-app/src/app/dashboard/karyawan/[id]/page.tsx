@@ -67,9 +67,11 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
   );
 }
 
-export default async function EmployeeDetailPage({ params }: PageProps<"/dashboard/karyawan/[id]">) {
+export default async function EmployeeDetailPage({ params, searchParams }: PageProps<"/dashboard/karyawan/[id]">) {
   await requireRole("ADMIN", "HR");
   const { id } = await params;
+  // Set by createEmployee's redirect
+  const justAdded = (await searchParams).ditambah === "1";
 
   // Select explicitly: the *Enc columns never leave the server
   const [emp, departments, managers] = await Promise.all([
@@ -229,6 +231,11 @@ export default async function EmployeeDetailPage({ params }: PageProps<"/dashboa
         <p className="text-sm text-slate-500">
           {emp.employeeNumber} · {emp.position} · {emp.department.name}
         </p>
+        {justAdded && (
+          <p role="status" className="mt-3 rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
+            Karyawan ditambahkan. Bila perlu, buat akun login dan input rekening gaji dari bagian di bawah.
+          </p>
+        )}
         {alert.level && (
           <p
             role="alert"

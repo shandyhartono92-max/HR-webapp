@@ -66,12 +66,17 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <h1 className="text-2xl font-semibold text-slate-900">Karyawan</h1>
-        <Link
-          href="/dashboard/karyawan/import"
-          className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
-        >
-          Import dari Excel
-        </Link>
+        <div className="flex flex-wrap gap-2">
+          <Link
+            href="/dashboard/karyawan/import"
+            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+          >
+            Import dari Excel
+          </Link>
+          <Link href="/dashboard/karyawan/tambah" className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
+            Tambah karyawan
+          </Link>
+        </div>
       </div>
 
       {imported !== null && (
