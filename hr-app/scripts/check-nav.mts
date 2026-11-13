@@ -17,6 +17,14 @@ assert.equal(activeHref("/dashboard/karyawan/abc", hrefs), "/dashboard/karyawan"
 assert.equal(activeHref("/dashboard/karyawanx", hrefs), null);
 assert.equal(activeHref("/dashboard/lowongan/baru", hrefs), "/dashboard/lowongan");
 
+// Tenaga Kerja Asing: HR and Admin, in the Karyawan group right after Karyawan
+const karyawanGroup = (r: Role) => navGroupsFor(r).find((g) => g.title === "Karyawan")?.items.map((i) => i.label) ?? [];
+assert.deepEqual(karyawanGroup("HR").slice(0, 2), ["Karyawan", "Tenaga Kerja Asing"]);
+assert.deepEqual(karyawanGroup("ADMIN").slice(0, 2), ["Karyawan", "Tenaga Kerja Asing"]);
+assert.ok(!karyawanGroup("EMPLOYEE").includes("Tenaga Kerja Asing"));
+assert.ok(!labels("HIRING_MANAGER").flat(2).includes("Tenaga Kerja Asing"));
+assert.equal(activeHref("/dashboard/tka/abc", hrefs), "/dashboard/tka");
+
 assert.equal(initials("Dewi Anggraini"), "DA");
 assert.equal(initials("Administrator"), "AD");
 assert.equal(initials("  budi  santoso tri "), "BS");

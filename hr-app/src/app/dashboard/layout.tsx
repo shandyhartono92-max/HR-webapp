@@ -3,6 +3,7 @@ import Link from "next/link";
 import { logout } from "@/app/actions/auth";
 import { requireUser } from "@/lib/dal";
 import { countEndingContracts } from "@/lib/contracts";
+import { countKitasAlerts } from "@/lib/foreign-workers-db";
 import { initials, navGroupsFor } from "@/lib/nav";
 import { MenuButton, NavDrawerProvider, NavLinks, Sidebar } from "@/app/ui/nav-drawer";
 import { roleLabel } from "@/lib/labels";
@@ -73,7 +74,11 @@ async function SideNav() {
   }));
   // Alert badge on "Karyawan" for contracts ending within 6 weeks
   const badges: Record<string, number> = {};
-  if (user.role === "ADMIN" || user.role === "HR") badges["/dashboard/karyawan"] = await countEndingContracts();
+  if (user.role === "ADMIN" || user.role === "HR") {
+    badges["/dashboard/karyawan"] = await countEndingContracts();
+    // KITAS of foreign workers expiring within 30 days or expired
+    badges["/dashboard/tka"] = await countKitasAlerts();
+  }
 
   return <NavLinks groups={groups} badges={badges} />;
 }

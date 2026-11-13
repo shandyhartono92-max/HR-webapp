@@ -3,7 +3,7 @@ import type { Role } from "@/generated/prisma/enums";
 // Sidebar navigation. Plain data and pure functions so the role rules can be
 // checked without a browser (scripts/check-nav.mts).
 
-export type NavIconName = "home" | "brief" | "users" | "db" | "badge" | "doc" | "bank" | "key" | "user" | "audit" | "cal";
+export type NavIconName = "home" | "brief" | "users" | "globe" | "db" | "badge" | "doc" | "bank" | "key" | "user" | "audit" | "cal";
 export type NavItem = { href?: string; label: string; icon: NavIconName; roles: Role[] };
 export type NavGroup = { title: string; items: NavItem[] };
 
@@ -26,6 +26,7 @@ const NAV: NavGroup[] = [
     title: "Karyawan",
     items: [
       { href: "/dashboard/karyawan", label: "Karyawan", icon: "badge", roles: HR_ONLY },
+      { href: "/dashboard/tka", label: "Tenaga Kerja Asing", icon: "globe", roles: HR_ONLY },
       { href: "/dashboard/surat", label: "Surat", icon: "doc", roles: HR_ONLY },
       { href: "/dashboard/rekening", label: "Rekening Gaji", icon: "bank", roles: ALL },
     ],
