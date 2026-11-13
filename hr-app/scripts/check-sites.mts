@@ -1,5 +1,12 @@
 import assert from "node:assert/strict";
-import { parseSites, siteByCode, sites, defaultSite } from "@/lib/sites";
+import { companyConfigured, parseSites, siteByCode, sites, defaultSite, type Site } from "@/lib/sites";
+import { companyInfo, dateLine } from "@/lib/letters/service";
+
+const parseSitesOk = (env: Record<string, string | undefined>): Site[] => {
+  const r = parseSites(env);
+  assert.ok(r.ok);
+  return r.sites;
+};
 
 const full = {
   SITES: "batam,jakarta",
@@ -59,6 +66,16 @@ assert.equal(siteByCode("medan"), null);
 assert.equal(siteByCode(undefined), null);
 assert.equal(siteByCode(42), null);
 assert.equal(defaultSite().code, "batam");
+// ── Letters print the company of the location ─────────────
+const jakarta = siteByCode("jakarta")!;
+const batam = siteByCode("batam")!;
+assert.equal(companyInfo(jakarta).name, "PT Jakarta Raya");
+assert.equal(companyInfo(batam).name, "PT Batam Jaya");
+assert.equal(dateLine(new Date("2026-11-13T00:00:00Z"), jakarta), "Jakarta, 13 November 2026");
+assert.equal(dateLine(new Date("2026-11-13T00:00:00Z"), batam), "Batam, 13 November 2026");
+assert.equal(companyConfigured(jakarta), true);
+assert.equal(companyConfigured(parseSitesOk({ ...full, COMPANY_NAME_JAKARTA: "" })[1]), false);
+
 delete process.env.DATABASE_URL_BATAM;
 assert.throws(() => sites(), /DATABASE_URL_BATAM/);
 

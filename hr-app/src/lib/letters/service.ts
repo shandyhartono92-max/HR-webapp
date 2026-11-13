@@ -4,17 +4,11 @@ import { formatDateLong } from "@/lib/labels";
 import { Prisma } from "@/generated/prisma/client";
 import type { LetterType } from "@/generated/prisma/enums";
 import { defaultTemplates } from "./defaults";
+import type { Site } from "@/lib/sites";
 
-// Company details printed on every letter. Set these in .env.
-export function companyInfo() {
-  return {
-    name: process.env.COMPANY_NAME || "[Nama Perusahaan]",
-    address: process.env.COMPANY_ADDRESS || "[Alamat perusahaan, kota, kode pos · telepon · email]",
-    city: process.env.COMPANY_CITY || "[Kota]",
-    signatoryName: process.env.LETTER_SIGNATORY_NAME || "[Nama Penandatangan]",
-    signatoryTitle: process.env.LETTER_SIGNATORY_TITLE || "[Jabatan Penandatangan]",
-  };
-}
+// Company details printed on every letter: each location is its own PT, set in .env
+// (COMPANY_NAME_<CODE>, …; see src/lib/sites.ts). Callers pass await currentSite().
+export const companyInfo = (site: Site) => site.company;
 
 // The active template for a type; creates version 1 from the defaults on first use
 export async function activeTemplate(type: LetterType) {
@@ -76,4 +70,4 @@ export async function nextSequence(type: LetterType, date: Date) {
   return count + 1;
 }
 
-export const dateLine = (date: Date) => `${companyInfo().city}, ${formatDateLong(date)}`;
+export const dateLine = (date: Date, site: Site) => `${companyInfo(site).city}, ${formatDateLong(date)}`;

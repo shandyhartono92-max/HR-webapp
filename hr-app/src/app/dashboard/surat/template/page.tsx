@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import { requireRole } from "@/lib/dal";
 import { letterTypeLabel } from "@/lib/labels";
 import { activeTemplate, companyInfo } from "@/lib/letters/service";
+import { currentSite } from "@/lib/db";
 import type { LetterType } from "@/generated/prisma/enums";
 import { LettersNav, TemplateEditor } from "../letter-forms";
 
@@ -37,7 +38,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/dashbo
 
   // Sequential on purpose: the local dev database handles one connection at a time
   const template = await activeTemplate(selected);
-  const c = companyInfo();
+  const c = companyInfo(await currentSite());
   const sampleVars = {
     nama: "Budi Santoso",
     nomor_induk: "EMP-2026-000",

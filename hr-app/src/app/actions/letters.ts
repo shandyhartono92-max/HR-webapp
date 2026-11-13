@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { siteDb } from "@/lib/db";
+import { currentSite, siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
@@ -61,7 +61,8 @@ type IssueInput = {
 async function issue(input: IssueInput) {
   const db = await siteDb();
   const template = await activeTemplate(input.type);
-  const company = companyInfo();
+  const site = await currentSite();
+  const company = companyInfo(site);
   const issuedAt = new Date();
 
   for (let attempt = 0; attempt < 5; attempt++) {
@@ -74,7 +75,7 @@ async function issue(input: IssueInput) {
       title: template.name,
       letterNumber,
       body: fillTemplate(template.body, vars),
-      dateLine: dateLine(issuedAt),
+      dateLine: dateLine(issuedAt, site),
       signatory: { name: company.signatoryName, title: company.signatoryTitle },
       acknowledgementName: needsAcknowledgement(input.type) ? input.recipientName : undefined,
     });

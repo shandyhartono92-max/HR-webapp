@@ -1,10 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LetterPdfLink } from "@/app/ui/letter-pdf-link";
-import { siteDb } from "@/lib/db";
+import { currentSite, siteDb } from "@/lib/db";
+import { companyConfigured } from "@/lib/sites";
 import { requireRole } from "@/lib/dal";
 import { formatDate, letterTypeLabel } from "@/lib/labels";
-import { companyInfo } from "@/lib/letters/service";
 import { LettersNav } from "./letter-forms";
 
 export const metadata: Metadata = { title: "Surat" };
@@ -30,8 +30,9 @@ export default async function LettersPage() {
       issuedBy: { select: { name: true } },
     },
   });
-  const company = companyInfo();
-  const companyUnset = company.name.startsWith("[");
+  const site = await currentSite();
+  const companyUnset = !companyConfigured(site);
+  const key = site.code.toUpperCase();
 
   return (
     <div className="space-y-4">
@@ -41,8 +42,8 @@ export default async function LettersPage() {
       </div>
       {companyUnset && (
         <p className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
-          Nama perusahaan, alamat, dan penandatangan belum diatur. Isi COMPANY_NAME, COMPANY_ADDRESS, COMPANY_CITY,
-          LETTER_SIGNATORY_NAME dan LETTER_SIGNATORY_TITLE di file .env.
+          Nama perusahaan, alamat, dan penandatangan untuk {site.label} belum diatur. Isi COMPANY_NAME_{key}, COMPANY_ADDRESS_{key},
+          COMPANY_CITY_{key}, LETTER_SIGNATORY_NAME_{key} dan LETTER_SIGNATORY_TITLE_{key} di file .env.
         </p>
       )}
       <p className="text-sm text-slate-600">

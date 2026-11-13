@@ -1,5 +1,5 @@
 import "server-only";
-import { siteDb } from "@/lib/db";
+import { currentSite, siteDb } from "@/lib/db";
 import { employmentTypeLabel, formatDateLong } from "@/lib/labels";
 import type { LetterVars } from "./fill";
 import { companyInfo } from "./service";
@@ -25,7 +25,7 @@ export async function employeeLetterVars(employeeId: string): Promise<(LetterVar
   });
   if (!e) return null;
   const contract = e.contracts[0];
-  const c = companyInfo();
+  const c = companyInfo(await currentSite());
   return {
     _name: e.fullName,
     nama: e.fullName,
@@ -53,7 +53,7 @@ export async function offerLetterVars(applicationId: string): Promise<(LetterVar
     },
   });
   if (!a || a.candidate.anonymizedAt) return null;
-  const c = companyInfo();
+  const c = companyInfo(await currentSite());
   return {
     _name: a.candidate.fullName,
     nama: a.candidate.fullName,
