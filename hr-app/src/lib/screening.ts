@@ -4,6 +4,8 @@ import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import mammoth from "mammoth";
 import * as z from "zod";
 import { siteDb } from "@/lib/db";
+import { withSite } from "@/lib/site-context";
+import type { SiteCode } from "@/lib/sites";
 import { readFile } from "@/lib/storage";
 import { AI_MODEL, anthropic, isAiConfigured } from "@/lib/ai";
 
@@ -55,6 +57,10 @@ export const isScreeningConfigured = isAiConfigured;
 const getClient = anthropic;
 
 export type ScreeningResult = { ok: true; score: number } | { ok: false; error: string };
+
+// For work that runs outside a request's location scope (after the careers page has
+// answered the applicant): the location is passed in instead of read from the session
+export const screenApplicationIn = (site: SiteCode, applicationId: string) => withSite(site, () => screenApplication(applicationId));
 
 export async function screenApplication(applicationId: string): Promise<ScreeningResult> {
   const db = await siteDb();

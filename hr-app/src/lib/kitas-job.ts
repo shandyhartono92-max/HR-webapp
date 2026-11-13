@@ -24,6 +24,8 @@ export async function notifyKitasExpiry(today = todayDate()): Promise<{ soon: nu
   });
   if (workers.length === 0) return result;
   const staff = await db.user.findMany({ where: { role: { in: ["ADMIN", "HR"] }, isActive: true }, select: { id: true } });
+  // Nobody to tell yet: leave the notices unsent, so the first HR/Admin added gets them
+  if (staff.length === 0) return result;
 
   for (const w of workers) {
     const due = kitasNoticeDue(w, today);

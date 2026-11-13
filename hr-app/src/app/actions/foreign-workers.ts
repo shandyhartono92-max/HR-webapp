@@ -6,6 +6,7 @@ import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
+import { todayDate } from "@/lib/labels";
 import { formSiteRefusal } from "@/lib/form-site";
 import { kitasRenewalData, parseForeignWorker, type ForeignWorkerInput, type ForeignWorkerStatus } from "@/lib/foreign-workers";
 import { Prisma } from "@/generated/prisma/client";
@@ -38,7 +39,7 @@ export async function createForeignWorker(_state: FormState, formData: FormData)
   const moved = await formSiteRefusal(formData);
   if (moved) return { message: moved, attempt: Date.now() };
 
-  const parsed = parseForeignWorker(Object.fromEntries(formData));
+  const parsed = parseForeignWorker(Object.fromEntries(formData), todayDate());
   if (!parsed.ok) return failed(formData, parsed.errors, "Periksa kembali isian yang ditandai.");
   const clash = await clashErrors(parsed.data);
   if (Object.keys(clash).length) return failed(formData, clash, "Periksa kembali isian yang ditandai.");
@@ -61,7 +62,7 @@ export async function updateForeignWorker(id: string, _state: FormState, formDat
   const before = await db.foreignWorker.findUnique({ where: { id } });
   if (!before) return { message: "Data TKA tidak ditemukan.", attempt: Date.now() };
 
-  const parsed = parseForeignWorker(Object.fromEntries(formData));
+  const parsed = parseForeignWorker(Object.fromEntries(formData), todayDate());
   if (!parsed.ok) return failed(formData, parsed.errors, "Periksa kembali isian yang ditandai.");
   const clash = await clashErrors(parsed.data, id);
   if (Object.keys(clash).length) return failed(formData, clash, "Periksa kembali isian yang ditandai.");

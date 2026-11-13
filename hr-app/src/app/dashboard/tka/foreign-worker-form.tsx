@@ -36,13 +36,13 @@ export function ForeignWorkerForm({ id, initial = empty }: { id?: string; initia
         <input id="fullName" name="fullName" required maxLength={120} defaultValue={v("fullName")} className={inputClass} />
       </Field>
       <div className="grid gap-3 sm:grid-cols-2">
-        <Field label="Nomor paspor" htmlFor="passportNumber" errors={e.passportNumber}>
+        <Field label="Nomor paspor" htmlFor="passportNumber" hint="Spasi dan tanda hubung tidak ikut disimpan." errors={e.passportNumber}>
           <input id="passportNumber" name="passportNumber" required maxLength={30} defaultValue={v("passportNumber")} className={`${inputClass} font-mono uppercase`} />
         </Field>
         <Field label="Berlaku paspor sampai" htmlFor="passportExpiry" errors={e.passportExpiry}>
           <input id="passportExpiry" name="passportExpiry" type="date" required defaultValue={v("passportExpiry")} className={inputClass} />
         </Field>
-        <Field label="Nomor KITAS" htmlFor="kitasNumber" errors={e.kitasNumber}>
+        <Field label="Nomor KITAS" htmlFor="kitasNumber" hint="Spasi dan tanda hubung tidak ikut disimpan." errors={e.kitasNumber}>
           <input id="kitasNumber" name="kitasNumber" required maxLength={30} defaultValue={v("kitasNumber")} className={`${inputClass} font-mono uppercase`} />
         </Field>
         <Field label="Berlaku KITAS sampai" htmlFor="kitasExpiry" hint="Peringatan muncul 30 hari sebelumnya." errors={e.kitasExpiry}>

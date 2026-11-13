@@ -9,7 +9,7 @@ import { sites, type SiteCode } from "@/lib/sites";
 import { lastAdminError } from "@/lib/access-rules";
 import { accountsDb } from "@/lib/accounts-db";
 import { setAccess, syncMirrorEverywhere } from "@/lib/site-access";
-import { Prisma as AccountsPrisma } from "@/generated/accounts/client";
+import { createAccountWithAccess } from "@/lib/account-create";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
@@ -80,20 +80,13 @@ export async function createUser(_state: UserFormState, formData: FormData): Pro
 
   const tempPassword = temporaryPassword();
   const passwordHash = await bcrypt.hash(tempPassword, 12);
-  let account: { id: string };
-  try {
-    account = await accountsDb.account.create({
-      data: { name: d.name, email: d.email, passwordHash, mustChangePassword: true },
-      select: { id: true },
-    });
-  } catch (e) {
-    if (e instanceof AccountsPrisma.PrismaClientKnownRequestError && e.code === "P2002") {
-      return failed(formData, { email: ["Email ini sudah dipakai akun lain."] });
-    }
-    throw e;
-  }
-  // Access to this location; the mirror user is created here before linking to it
-  await setAccess(account.id, (await currentSite()).code, d.role);
+  // The account and its access to this location (the mirror user is created here before
+  // linking to it); undone if the location cannot be reached, so a retry works
+  const site = await currentSite();
+  const created = await createAccountWithAccess({ name: d.name, email: d.email, passwordHash }, site.code, d.role);
+  if (!created.ok && created.reason === "taken") return failed(formData, { email: ["Email ini sudah dipakai akun lain."] });
+  if (!created.ok) return failed(formData, undefined, `Lokasi ${site.label} sedang tidak bisa diakses, akun belum dibuat. Coba lagi nanti.`);
+  const account = { id: created.id };
   const result = await db.$transaction(async (tx) => ({
     id: account.id,
     linkedEmployee: await linkEmployeeByEmail(tx, account.id, d.email),

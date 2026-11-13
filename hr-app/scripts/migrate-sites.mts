@@ -7,27 +7,25 @@ import { execSync } from "node:child_process";
 import { dbFor } from "@/lib/db";
 import { accountsDb } from "@/lib/accounts-db";
 import { sites } from "@/lib/sites";
+import { mirrorMigrationGuard } from "@/lib/migration-guard";
 
-const MIRROR_MIGRATION = "20261113100000_user_mirror";
 let failed = false;
+const knownAccounts = async (ids: string[]) =>
+  (await accountsDb.account.findMany({ where: { id: { in: ids } }, select: { id: true } })).map((a) => a.id);
 
 for (const site of sites()) {
-  const db = dbFor(site.code);
-  const applied = await db
-    .$queryRawUnsafe<{ n: bigint }[]>("SELECT COUNT(*) AS n FROM `_prisma_migrations` WHERE migration_name = ? AND finished_at IS NOT NULL", MIRROR_MIGRATION)
-    .then((r) => Number(r[0].n) > 0)
-    .catch(() => false); // a brand-new database has no migrations table yet
-
-  if (!applied) {
-    const users = await db.$queryRawUnsafe<{ id: string }[]>("SELECT id FROM `user`").catch(() => []);
-    const known = new Set((await accountsDb.account.findMany({ where: { id: { in: users.map((u) => u.id) } }, select: { id: true } })).map((a) => a.id));
-    const missing = users.filter((u) => !known.has(u.id)).map((u) => u.id);
-    if (missing.length) {
-      console.error(`[${site.label}] DITOLAK: ${missing.length} pengguna belum punya akun di database akun (${missing.join(", ")}).`);
-      console.error(`Jalankan dulu: npx tsx --conditions=react-server --env-file=.env scripts/split-accounts.mts ${site.code}`);
-      failed = true;
-      continue;
-    }
+  const guard = await mirrorMigrationGuard(dbFor(site.code), knownAccounts);
+  if (!guard.ok && "missing" in guard) {
+    console.error(`[${site.label}] DITOLAK: ${guard.missing.length} pengguna belum punya akun di database akun (${guard.missing.join(", ")}).`);
+    console.error(`Jalankan dulu: npx tsx --conditions=react-server --env-file=.env scripts/split-accounts.mts ${site.code}`);
+    failed = true;
+    continue;
+  }
+  if (!guard.ok) {
+    // Could not check: never assume the passwords are safe
+    console.error(`[${site.label}] DITOLAK: pengecekan sebelum migrasi gagal (${guard.error}). Tidak ada yang diubah.`);
+    failed = true;
+    continue;
   }
 
   console.log(`[${site.label}] migrasi…`);

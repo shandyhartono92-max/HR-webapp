@@ -3,13 +3,13 @@
 import { after } from "next/server";
 import * as z from "zod";
 import { siteDb } from "@/lib/db";
-import { siteByCode } from "@/lib/sites";
+import { siteByCode, type SiteCode } from "@/lib/sites";
 import { withSite } from "@/lib/site-context";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
 import { applicationSources, educationLevels } from "@/lib/labels";
 import { MAX_CV_BYTES, PRIVACY_NOTICE_VERSION, retainUntil } from "@/lib/privacy";
-import { screenApplication, isScreeningConfigured } from "@/lib/screening";
+import { screenApplicationIn, isScreeningConfigured } from "@/lib/screening";
 import { deleteFile, detectCvType, saveFile } from "@/lib/storage";
 
 const ApplySchema = z.object({
@@ -34,10 +34,10 @@ const ApplySchema = z.object({
 export async function applyForJob(state: FormState, formData: FormData): Promise<FormState> {
   const site = siteByCode(formData.get("site"));
   if (!site) return { message: "Lowongan ini tidak ditemukan. Buka lagi dari halaman Karir.", attempt: Date.now() };
-  return withSite(site.code, () => applyAt(state, formData));
+  return withSite(site.code, () => applyAt(site.code, state, formData));
 }
 
-async function applyAt(_state: FormState, formData: FormData): Promise<FormState> {
+async function applyAt(site: SiteCode, _state: FormState, formData: FormData): Promise<FormState> {
   const db = await siteDb();
   // Honeypot: real people never fill this hidden field
   if (formData.get("website")) return { ok: true };
@@ -128,7 +128,8 @@ async function applyAt(_state: FormState, formData: FormData): Promise<FormState
     // Failures are logged; HR can re-run it from the candidate page.
     if (isScreeningConfigured()) {
       after(async () => {
-        const result = await screenApplication(application.id);
+        // after() may run outside the location scope: the location travels with the call
+        const result = await screenApplicationIn(site, application.id);
         if (!result.ok) console.error("Auto-screening failed", application.id, result.error);
       });
     }

@@ -44,7 +44,17 @@ export const kitasRenewalData = (before: Date, after: Date) =>
 
 const requiredText = (empty: string, max: number) =>
   z.preprocess((v) => (typeof v === "string" ? v.trim() : ""), z.string().min(1, { error: empty }).max(max, { error: `Maksimal ${max} karakter.` }));
-const documentNumber = (empty: string) => requiredText(empty, 30).transform((v) => v.toUpperCase());
+// Spaces, dashes, dots and slashes are dropped and letters upper-cased, so "a-123 4567"
+// and "A1234567" are one number (and one duplicate check)
+const documentNumber = (empty: string, label: string) =>
+  z.preprocess(
+    (v) => (typeof v === "string" ? v.replace(/[\s\-./]/g, "").toUpperCase() : ""),
+    z
+      .string()
+      .min(1, { error: empty })
+      .max(30, { error: "Maksimal 30 karakter." })
+      .regex(/^[A-Z0-9]*$/, { error: `Nomor ${label} hanya boleh berisi huruf dan angka.` }),
+  );
 const requiredDate = (empty: string) =>
   z.preprocess(
     (v) => (typeof v === "string" ? v.trim() : ""),
@@ -53,8 +63,8 @@ const requiredDate = (empty: string) =>
 
 const Schema = z.object({
   fullName: requiredText("Isi nama lengkap.", 120).refine((v) => v.length === 0 || v.length >= 3, { error: "Nama minimal 3 karakter." }),
-  passportNumber: documentNumber("Isi nomor paspor."),
-  kitasNumber: documentNumber("Isi nomor KITAS."),
+  passportNumber: documentNumber("Isi nomor paspor.", "paspor"),
+  kitasNumber: documentNumber("Isi nomor KITAS.", "KITAS"),
   passportExpiry: requiredDate("Isi tanggal berlaku paspor."),
   kitasExpiry: requiredDate("Isi tanggal berlaku KITAS."),
   location: requiredText("Isi lokasi.", 120),
@@ -62,8 +72,20 @@ const Schema = z.object({
 
 export type ForeignWorkerInput = z.output<typeof Schema>;
 
-export function parseForeignWorker(input: Record<string, unknown>): { ok: true; data: ForeignWorkerInput } | { ok: false; errors: Record<string, string[]> } {
+// A KITAS runs a few years at most and a passport about ten: a date further than this
+// from today, either way, is a mistyped year (2207 for 2027), which would never alert
+const PLAUSIBLE_YEARS = { kitasExpiry: 10, passportExpiry: 20 } as const;
+const FAR_DATE = "Tanggal ini terlalu jauh dari hari ini. Periksa tahunnya.";
+
+export function parseForeignWorker(
+  input: Record<string, unknown>,
+  today: Date,
+): { ok: true; data: ForeignWorkerInput } | { ok: false; errors: Record<string, string[]> } {
   const parsed = Schema.safeParse(input);
-  if (parsed.success) return { ok: true, data: parsed.data };
-  return { ok: false, errors: z.flattenError(parsed.error).fieldErrors as Record<string, string[]> };
+  if (!parsed.success) return { ok: false, errors: z.flattenError(parsed.error).fieldErrors as Record<string, string[]> };
+  const errors: Record<string, string[]> = {};
+  for (const [field, years] of Object.entries(PLAUSIBLE_YEARS) as [keyof typeof PLAUSIBLE_YEARS, number][]) {
+    if (Math.abs(parsed.data[field].getTime() - today.getTime()) > years * 366 * DAY_MS) errors[field] = [FAR_DATE];
+  }
+  return Object.keys(errors).length ? { ok: false, errors } : { ok: true, data: parsed.data };
 }

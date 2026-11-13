@@ -69,6 +69,20 @@ try {
   assert.equal(after.kitasExpiry.toISOString().slice(0, 10), "2027-12-02");
   assert.equal(after.kitasSoonNoticeAt, null, "the renewed KITAS keeps its next soon notice");
 
+  // Nobody to tell (no active HR/Admin in the location yet): the notice is not used up
+  const lonely = await make(7, "2026-12-04");
+  const staffIds = (await db.user.findMany({ where: { role: { in: ["ADMIN", "HR"] }, isActive: true }, select: { id: true } })).map((u) => u.id);
+  await db.user.updateMany({ where: { id: { in: staffIds } }, data: { isActive: false } });
+  try {
+    await run();
+    const marker = await db.foreignWorker.findUniqueOrThrow({ where: { id: lonely.id }, select: { kitasSoonNoticeAt: true } });
+    assert.equal(marker.kitasSoonNoticeAt, null, "no recipient, so the notice waits");
+  } finally {
+    await db.user.updateMany({ where: { id: { in: staffIds } }, data: { isActive: true } });
+  }
+  await run();
+  assert.deepEqual(await notices(lonely.id), { kitas_soon: staff }, "sent once someone can receive it");
+
   // The notification names the worker first (retention looks for "<name> · ")
   const n = await db.notification.findFirstOrThrow({ where: { link: `/dashboard/tka/${expired.id}` }, select: { title: true, body: true } });
   assert.equal(n.title, "KITAS sudah habis");
