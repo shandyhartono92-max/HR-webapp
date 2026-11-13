@@ -1,10 +1,11 @@
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { readFile } from "@/lib/storage";
 
 // Latest CV of a bank-data candidate (stored on the candidate or on any application). Admin/HR, audited.
 export async function GET(_req: Request, { params }: RouteContext<"/dashboard/kandidat/bank/[candidateId]/cv">) {
+  const db = await siteDb();
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   if (user.role !== "ADMIN" && user.role !== "HR") return new Response("Forbidden", { status: 403 });

@@ -3,7 +3,7 @@
 import { headers } from "next/headers";
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole, requireUser, type CurrentUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { encrypt, lastFour } from "@/lib/crypto";
@@ -25,6 +25,7 @@ export type BankFormState =
   | undefined;
 
 async function myEmployee(user: CurrentUser) {
+  const db = await siteDb();
   if (!user.employee) return null;
   return db.employee.findUnique({
     where: { id: user.employee.id },
@@ -41,6 +42,7 @@ const RequestSchema = z.object({
 });
 
 export async function submitBankChange(_state: BankFormState, formData: FormData): Promise<BankFormState> {
+  const db = await siteDb();
   const user = await requireUser();
   const emp = await myEmployee(user);
   if (!emp) return { message: "Akun Anda belum terhubung ke data karyawan. Hubungi HR." };
@@ -112,6 +114,7 @@ export async function submitBankChange(_state: BankFormState, formData: FormData
 // ── Employee: confirm with the one-time code ────────────────
 
 async function ownRequest(user: CurrentUser, requestId: string) {
+  const db = await siteDb();
   if (!user.employee) return null;
   return db.bankChangeRequest.findFirst({
     where: { id: requestId, employeeId: user.employee.id },
@@ -129,6 +132,7 @@ async function ownRequest(user: CurrentUser, requestId: string) {
 }
 
 export async function confirmBankOtp(requestId: string, _state: BankFormState, formData: FormData): Promise<BankFormState> {
+  const db = await siteDb();
   const user = await requireUser();
   const req = await ownRequest(user, requestId);
   if (!req || req.status !== "DRAFT" || !req.otpHash || !req.otpExpiresAt) return { message: "Permintaan tidak ditemukan atau sudah diproses." };
@@ -181,6 +185,7 @@ export async function confirmBankOtp(requestId: string, _state: BankFormState, f
 }
 
 export async function resendBankOtp(requestId: string): Promise<BankFormState> {
+  const db = await siteDb();
   const user = await requireUser();
   const req = await ownRequest(user, requestId);
   if (!req || req.status !== "DRAFT") return { message: "Permintaan tidak ditemukan atau sudah diproses." };
@@ -196,6 +201,7 @@ export async function resendBankOtp(requestId: string): Promise<BankFormState> {
 }
 
 export async function cancelBankRequest(requestId: string): Promise<BankFormState> {
+  const db = await siteDb();
   const user = await requireUser();
   const req = await ownRequest(user, requestId);
   if (!req || (req.status !== "DRAFT" && req.status !== "PENDING_APPROVAL")) return { message: "Permintaan tidak bisa dibatalkan." };
@@ -224,6 +230,7 @@ const HrRequestSchema = RequestSchema.extend({
 // request goes straight to approval, which another HR/Admin must give. The basis
 // (e.g. a signed paper form) is kept in the audit log.
 export async function submitBankChangeByHr(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const emp = await db.employee.findUnique({
     where: { id: employeeId },
@@ -320,6 +327,7 @@ export async function submitBankChangeByHr(employeeId: string, _state: FormState
 
 // The HR maker can withdraw their own request before it is reviewed
 export async function cancelBankRequestByHr(requestId: string): Promise<void> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const req = await db.bankChangeRequest.findFirst({
     where: { id: requestId, requestedById: user.id, status: "PENDING_APPROVAL" },
@@ -334,6 +342,7 @@ export async function cancelBankRequestByHr(requestId: string): Promise<void> {
 // ── HR: approve or reject (maker-checker) ───────────────────
 
 async function reviewable(user: CurrentUser, requestId: string) {
+  const db = await siteDb();
   const req = await db.bankChangeRequest.findUnique({
     where: { id: requestId },
     select: {
@@ -362,6 +371,7 @@ const ApproveSchema = z.object({
 });
 
 export async function approveBankRequest(requestId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const r = await reviewable(user, requestId);
   if ("error" in r) return { message: r.error };
@@ -421,6 +431,7 @@ const RejectSchema = z.object({
 });
 
 export async function rejectBankRequest(requestId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const r = await reviewable(user, requestId);
   if ("error" in r) return { message: r.error };
@@ -448,6 +459,7 @@ export async function rejectBankRequest(requestId: string, _state: FormState, fo
 // ── Notifications ───────────────────────────────────────────
 
 export async function markNotificationsRead(): Promise<void> {
+  const db = await siteDb();
   const user = await requireUser({ allowPasswordChange: true });
   await db.notification.updateMany({ where: { userId: user.id, readAt: null }, data: { readAt: new Date() } });
   refresh();

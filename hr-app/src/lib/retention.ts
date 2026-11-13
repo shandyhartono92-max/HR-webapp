@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { deleteFile } from "@/lib/storage";
 import type { ApplicationStage } from "@/generated/prisma/enums";
 
@@ -62,6 +62,7 @@ const notificationsNaming = (fullName: string) => ({ body: { startsWith: `${full
 
 // Wipes one candidate in a transaction; returns the CV and letter files to delete afterwards
 async function anonymizeCandidate(candidate: CandidateToWipe, now: Date, reason: string) {
+  const db = await siteDb();
   const applicationIds = candidate.applications.map((a) => a.id);
   // Several resume rows can share one stored file (attachToJob reuses it), so de-duplicate
   const fileKeys = [
@@ -108,6 +109,7 @@ async function anonymizeCandidate(candidate: CandidateToWipe, now: Date, reason:
 }
 
 export async function anonymizeExpiredCandidates({ dryRun = false, now = new Date() } = {}): Promise<RetentionResult> {
+  const db = await siteDb();
   const candidates = await db.candidate.findMany({
     where: {
       anonymizedAt: null,
@@ -127,6 +129,7 @@ export async function anonymizeExpiredCandidates({ dryRun = false, now = new Dat
 }
 
 export async function anonymizeFormerEmployees({ dryRun = false, now = new Date() } = {}): Promise<EmployeeRetentionResult> {
+  const db = await siteDb();
   const cutoff = new Date(now);
   cutoff.setUTCFullYear(cutoff.getUTCFullYear() - employeeRetentionYears());
 

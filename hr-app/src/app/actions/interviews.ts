@@ -2,12 +2,13 @@
 
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { canManageApplication, requireUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
 import { formatDateTime, parseLocalDateTime } from "@/lib/labels";
 import { InterviewMode, ScreeningDecision } from "@/generated/prisma/enums";
+import type { PrismaClient } from "@/generated/prisma/client";
 
 const denied: FormState = { message: "Anda tidak memiliki akses untuk tindakan ini." };
 const notHeld = "Wawancara ini berstatus Reschedule/No show, jadi tidak bisa dinilai.";
@@ -31,7 +32,7 @@ const ScheduleSchema = z.object({
   locationOrLink: z.string().trim().min(3, { error: "Isi lokasi atau tautan meeting." }).max(300),
 });
 
-type Tx = Parameters<Parameters<typeof db.$transaction>[0]>[0];
+type Tx = Parameters<Parameters<PrismaClient["$transaction"]>[0]>[0];
 type Slot = z.infer<typeof ScheduleSchema>;
 
 // Creates the interview and tells the interviewer (unless they scheduled it themselves)
@@ -59,6 +60,7 @@ async function createInterview(
 }
 
 export async function scheduleInterview(applicationId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireUser();
   if (!(await canManageApplication(user, applicationId))) return denied;
 
@@ -115,6 +117,7 @@ const FeedbackSchema = z.object({
 });
 
 export async function submitFeedback(interviewId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireUser();
   const interview = await db.interview.findUnique({ where: { id: interviewId }, select: { interviewerId: true, status: true } });
   // The interviewer writes their own feedback; HR/Admin may fill it in on their behalf
@@ -137,6 +140,7 @@ export async function submitFeedback(interviewId: string, _state: FormState, for
 }
 
 export async function cancelInterview(interviewId: string): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireUser();
   const interview = await db.interview.findUnique({
     where: { id: interviewId },
@@ -161,6 +165,7 @@ export async function cancelInterview(interviewId: string): Promise<FormState> {
 
 // Moves an interview to a new slot. The old one stays in the history as RESCHEDULED.
 export async function rescheduleInterview(interviewId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireUser();
   const old = await db.interview.findUnique({
     where: { id: interviewId },
@@ -216,6 +221,7 @@ export async function rescheduleInterview(interviewId: string, _state: FormState
 // Marks a candidate as not attending, or undoes a mistaken mark. Only after the
 // interview time; the application stage is left for HR to decide.
 export async function setNoShow(interviewId: string, noShow: boolean): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireUser();
   const interview = await db.interview.findUnique({
     where: { id: interviewId },

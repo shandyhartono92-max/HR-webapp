@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { employeeStatusLabel, formatDate, roleLabel } from "@/lib/labels";
 import { CreateUserForm, EditUserForm, UserActions } from "./user-forms";
@@ -9,6 +9,7 @@ export const metadata: Metadata = { title: "Kelola pengguna" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 export default async function UsersPage() {
+  const db = await siteDb();
   const me = await requireRole("ADMIN");
 
   const users = await db.user.findMany({

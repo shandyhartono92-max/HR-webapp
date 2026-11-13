@@ -3,7 +3,7 @@
 import { revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, optionalDate, type FormState } from "@/lib/forms";
@@ -58,6 +58,7 @@ const HireSchema = z
 // All rows must be valid or nothing is saved; employee numbers already in the
 // portal are skipped so the same file can be uploaded again.
 export async function importEmployees(_state: ImportState, formData: FormData): Promise<ImportState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const attempt = Date.now();
 
@@ -181,6 +182,7 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
 }
 
 export async function hireCandidate(applicationId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const parsed = HireSchema.safeParse(Object.fromEntries(formData));
@@ -271,6 +273,7 @@ const isUniqueClash = (error: unknown) => typeof error === "object" && error !==
 // portal). Same rules as the import and the profile forms; the bank account is left
 // out on purpose: it needs a second HR/Admin's approval, from the profile.
 export async function createEmployee(_state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   // Identity numbers are never sent back to refill the form, even after an error

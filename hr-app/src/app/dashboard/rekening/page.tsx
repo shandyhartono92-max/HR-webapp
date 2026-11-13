@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 import { peekDevOtp } from "@/lib/banking";
 import { formatDate, formatDateTime } from "@/lib/labels";
@@ -28,6 +28,7 @@ function NameCheck({ matches, inquiryName }: { matches: boolean | null; inquiryN
 }
 
 export default async function BankAccountPage() {
+  const db = await siteDb();
   const user = await requireUser();
   const isHr = user.role === "ADMIN" || user.role === "HR";
 

@@ -1,8 +1,9 @@
 import "server-only";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 
 // Name suggestions for the free-text department and hiring manager fields
 export async function getJobFormOptions() {
+  const db = await siteDb();
   const [departments, managers, typedManagers] = await Promise.all([
     db.department.findMany({ orderBy: { name: "asc" }, select: { name: true } }),
     db.user.findMany({

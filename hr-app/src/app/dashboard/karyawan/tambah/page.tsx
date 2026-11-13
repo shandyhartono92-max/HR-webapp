@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { NewEmployeeForm } from "./new-employee-form";
 
@@ -8,6 +8,7 @@ export const metadata: Metadata = { title: "Tambah karyawan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 export default async function NewEmployeePage() {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
   const departments = await db.department.findMany({ orderBy: { name: "asc" }, select: { id: true, name: true } });
 

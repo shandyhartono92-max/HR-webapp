@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { canManageApplication, requireRole, requireUser, type CurrentUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { draftCandidateQuestions, draftJobKit, KIT_PROMPT_VERSION } from "@/lib/interview-kit";
@@ -11,6 +11,7 @@ import type { Prisma } from "@/generated/prisma/client";
 export type KitActionResult = { ok?: boolean; error?: string; issues?: string[] };
 
 async function canEditJobKit(user: CurrentUser, jobId: string) {
+  const db = await siteDb();
   if (user.role === "ADMIN" || user.role === "HR") return true;
   if (user.role !== "HIRING_MANAGER") return false;
   const job = await db.job.findFirst({ where: { id: jobId, hiringManagerId: user.id }, select: { id: true } });
@@ -19,6 +20,7 @@ async function canEditJobKit(user: CurrentUser, jobId: string) {
 
 // One kit per job (applicationId null); any change puts it back to DRAFT until HR approves again
 async function upsertJobKit(jobId: string, userId: string, content: Prisma.InputJsonValue, ai?: { model: string }) {
+  const db = await siteDb();
   const existing = await db.interviewKit.findFirst({ where: { jobId, applicationId: null }, select: { id: true } });
   const data = {
     content,
@@ -91,6 +93,7 @@ export async function saveJobKit(jobId: string, json: string): Promise<KitAction
 
 // HR approves so a hiring manager's draft gets a fairness check before interviewers use it
 export async function approveJobKit(jobId: string): Promise<KitActionResult> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const kit = await db.interviewKit.findFirst({ where: { jobId, applicationId: null }, select: { id: true, status: true } });
   if (!kit) return { error: "Belum ada panduan untuk disetujui." };
@@ -104,6 +107,7 @@ export async function approveJobKit(jobId: string): Promise<KitActionResult> {
 }
 
 export async function generateCandidateQuestions(applicationId: string): Promise<KitActionResult> {
+  const db = await siteDb();
   const user = await requireUser();
   if (!(await canManageApplication(user, applicationId))) return { error: "Anda tidak memiliki akses ke lamaran ini." };
 

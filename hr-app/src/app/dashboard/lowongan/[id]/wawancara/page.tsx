@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound, redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 import { isAiConfigured } from "@/lib/ai";
 import { formatDateTime } from "@/lib/labels";
@@ -12,6 +12,7 @@ export const metadata: Metadata = { title: "Panduan wawancara" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 export default async function InterviewKitPage({ params }: PageProps<"/dashboard/lowongan/[id]/wawancara">) {
+  const db = await siteDb();
   const user = await requireUser();
   const { id } = await params;
 

@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { notFound } from "next/navigation";
 import { updateJob } from "@/app/actions/jobs";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { JobForm } from "../../job-form";
 import { getJobFormOptions } from "../../form-options";
@@ -12,6 +12,7 @@ export const instant = false; // waits for the session check, see dashboard/layo
 const str = (n: number | null) => (n === null ? "" : String(n));
 
 export default async function EditJobPage({ params }: PageProps<"/dashboard/lowongan/[id]/ubah">) {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
   const { id } = await params;
 

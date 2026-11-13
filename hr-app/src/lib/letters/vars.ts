@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { employmentTypeLabel, formatDateLong } from "@/lib/labels";
 import type { LetterVars } from "./fill";
 import { companyInfo } from "./service";
@@ -7,6 +7,7 @@ import { companyInfo } from "./service";
 // Variables known before HR fills in the form. The form adds alasan, keperluan, gaji, etc.
 
 export async function employeeLetterVars(employeeId: string): Promise<(LetterVars & { _name: string }) | null> {
+  const db = await siteDb();
   const e = await db.employee.findUnique({
     where: { id: employeeId },
     select: {
@@ -43,6 +44,7 @@ export async function employeeLetterVars(employeeId: string): Promise<(LetterVar
 }
 
 export async function offerLetterVars(applicationId: string): Promise<(LetterVars & { _name: string }) | null> {
+  const db = await siteDb();
   const a = await db.application.findUnique({
     where: { id: applicationId },
     select: {

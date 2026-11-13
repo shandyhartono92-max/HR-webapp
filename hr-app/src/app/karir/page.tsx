@@ -1,12 +1,14 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { connection } from "next/server";
-import { db } from "@/lib/db";
+import { dbFor } from "@/lib/db";
+import { defaultSite } from "@/lib/sites";
 import { employmentTypeLabel } from "@/lib/labels";
 
 export const metadata: Metadata = { title: "Karir" };
 
 export default async function CareersPage() {
+  const db = dbFor(defaultSite().code); // Task 9 picks the location from the URL
   await connection(); // render per request so new jobs show immediately
   const jobs = await db.job.findMany({
     where: { status: "OPEN" },

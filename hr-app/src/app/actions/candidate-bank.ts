@@ -4,7 +4,7 @@ import { after } from "next/server";
 import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalText, type FormState } from "@/lib/forms";
@@ -45,6 +45,7 @@ function scheduleScreening(applicationId: string) {
 // HR adds a candidate whose CV came in outside the careers page (email, WhatsApp, job fair…).
 // Consent is attested by HR with evidence, as the candidate did not tick the form themselves.
 export async function addCandidate(_state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const parsed = AddSchema.safeParse(Object.fromEntries(formData));
@@ -129,6 +130,7 @@ export async function addCandidate(_state: FormState, formData: FormData): Promi
 // Bulk-adds candidates from the Excel template. All rows must be valid or nothing is
 // saved; emails already in the bank are skipped. Consent is HR-attested per row.
 export async function importCandidates(_state: ImportState, formData: FormData): Promise<ImportState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const attempt = Date.now();
 
@@ -195,6 +197,7 @@ export async function importCandidates(_state: ImportState, formData: FormData):
 
 // Adds or replaces the CV kept on a bank candidate (e.g. after an import without CVs)
 export async function uploadCandidateCv(candidateId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const candidate = await db.candidate.findUnique({ where: { id: candidateId }, select: { anonymizedAt: true } });
   if (!candidate || candidate.anonymizedAt) return { message: "Kandidat tidak ditemukan." };
@@ -223,6 +226,7 @@ export async function uploadCandidateCv(candidateId: string, _state: FormState, 
 
 // Puts a bank-data candidate into an open job, reusing their latest CV
 export async function attachToJob(candidateId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const jobId = String(formData.get("jobId") ?? "");
 

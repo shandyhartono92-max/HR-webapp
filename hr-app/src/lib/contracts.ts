@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { daysUntil, todayDate } from "@/lib/labels";
 
 // Contracts ending within 6 weeks get an alert: in the menu, the dashboard,
@@ -27,4 +27,4 @@ export function endingContractsWhere() {
   };
 }
 
-export const countEndingContracts = () => db.employee.count({ where: endingContractsWhere() });
+export const countEndingContracts = async () => (await siteDb()).employee.count({ where: endingContractsWhere() });

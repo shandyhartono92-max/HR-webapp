@@ -3,7 +3,7 @@
 import bcrypt from "bcryptjs";
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
@@ -59,6 +59,7 @@ async function linkJobsByName(tx: Tx, userId: string, name: string, role: Role) 
 }
 
 export async function createUser(_state: UserFormState, formData: FormData): Promise<UserFormState> {
+  const db = await siteDb();
   const admin = await requireRole("ADMIN");
 
   const parsed = CreateSchema.safeParse(Object.fromEntries(formData));
@@ -108,8 +109,8 @@ export async function createUser(_state: UserFormState, formData: FormData): Pro
   };
 }
 
-const manageable = (id: string) =>
-  db.user.findUnique({
+const manageable = async (id: string) =>
+  (await siteDb()).user.findUnique({
     where: { id },
     select: {
       id: true,
@@ -124,6 +125,7 @@ const manageable = (id: string) =>
 const UpdateSchema = z.object({ ...NameEmail, role: z.enum(Role, { error: "Pilih peran." }) });
 
 export async function updateUser(userId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const admin = await requireRole("ADMIN");
   const before = await manageable(userId);
   if (!before) return { message: "Akun tidak ditemukan." };
@@ -177,6 +179,7 @@ export type PasswordResult = { error?: string; tempPassword?: string; email?: st
 
 // Your own password is changed under Akun Saya, which asks for the current one
 export async function resetUserPassword(userId: string): Promise<PasswordResult> {
+  const db = await siteDb();
   const admin = await requireRole("ADMIN");
   if (userId === admin.id) return { error: "Ganti kata sandi Anda sendiri lewat menu Akun Saya." };
   const user = await manageable(userId);
@@ -190,6 +193,7 @@ export async function resetUserPassword(userId: string): Promise<PasswordResult>
 }
 
 export async function setUserActive(userId: string, active: boolean): Promise<{ error?: string }> {
+  const db = await siteDb();
   const admin = await requireRole("ADMIN");
   if (userId === admin.id) return { error: "Anda tidak bisa menonaktifkan akun Anda sendiri." };
   const user = await manageable(userId);

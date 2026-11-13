@@ -1,10 +1,11 @@
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { getCurrentUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { readFile } from "@/lib/storage";
 
 // Letters can contain salary (offers) and disciplinary details (SP): Admin/HR only, every download audited
 export async function GET(_req: Request, { params }: RouteContext<"/dashboard/surat/[id]/pdf">) {
+  const db = await siteDb();
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
   if (user.role !== "ADMIN" && user.role !== "HR") return new Response("Forbidden", { status: 403 });

@@ -3,10 +3,12 @@
 import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { createSession, deleteSession } from "@/lib/session";
 import { getCurrentUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
+import { defaultSite, type SiteCode } from "@/lib/sites";
+import { withSite } from "@/lib/site-context";
 
 const LoginSchema = z.object({
   email: z.email({ error: "Masukkan email yang valid." }).trim().toLowerCase(),
@@ -15,7 +17,14 @@ const LoginSchema = z.object({
 
 export type LoginState = { error?: string; email?: string } | undefined;
 
-export async function login(_state: LoginState, formData: FormData): Promise<LoginState> {
+// Until the login page offers a choice, everyone signs in to the first location
+export async function login(state: LoginState, formData: FormData): Promise<LoginState> {
+  const site = defaultSite().code;
+  return withSite(site, () => loginAt(site, state, formData));
+}
+
+async function loginAt(site: SiteCode, _state: LoginState, formData: FormData): Promise<LoginState> {
+  const db = await siteDb();
   const parsed = LoginSchema.safeParse({
     email: formData.get("email"),
     password: formData.get("password"),
@@ -39,7 +48,7 @@ export async function login(_state: LoginState, formData: FormData): Promise<Log
 
   await db.user.update({ where: { id: user.id }, data: { lastLoginAt: new Date() } });
   await writeAudit({ actorId: user.id, action: "auth.login", entityType: "User", entityId: user.id });
-  await createSession({ userId: user.id, role: user.role });
+  await createSession({ userId: user.id, role: user.role, site });
   redirect("/dashboard");
 }
 

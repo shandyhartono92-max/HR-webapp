@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
@@ -59,6 +59,7 @@ type IssueInput = {
 // Numbers the letter, renders the PDF, stores it and records the Letter row.
 // The running number is unique; if two letters race for it, the loser retries.
 async function issue(input: IssueInput) {
+  const db = await siteDb();
   const template = await activeTemplate(input.type);
   const company = companyInfo();
   const issuedAt = new Date();
@@ -179,6 +180,7 @@ const SP_VALID_MONTHS = 6;
 
 // Contract-end notices and summons only make sense while someone still works here
 async function notWorking(employeeId: string): Promise<string | null> {
+  const db = await siteDb();
   const emp = await db.employee.findUnique({ where: { id: employeeId }, select: { status: true } });
   if (!emp) return "Data karyawan tidak ditemukan.";
   return emp.status === "ACTIVE" || emp.status === "PROBATION"
@@ -187,6 +189,7 @@ async function notWorking(employeeId: string): Promise<string | null> {
 }
 
 export async function issueEmployeeLetter(employeeId: string, _state: IssueState, formData: FormData): Promise<IssueState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const raw = Object.fromEntries(formData);
@@ -315,6 +318,7 @@ const OfferSchema = z
   .refine((d) => d.confirmBy < d.startDate, { path: ["confirmBy"], error: "Batas konfirmasi harus sebelum tanggal mulai." });
 
 export async function issueOfferLetter(applicationId: string, _state: IssueState, formData: FormData): Promise<IssueState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const app = await db.application.findUnique({ where: { id: applicationId }, select: { stage: true } });
@@ -355,6 +359,7 @@ const TemplateSchema = z.object({
 });
 
 export async function saveTemplate(type: LetterType, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   if (!Object.values(LetterType).includes(type)) return { message: "Jenis surat tidak dikenal." };
 

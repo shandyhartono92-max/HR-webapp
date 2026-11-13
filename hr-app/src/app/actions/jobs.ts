@@ -2,7 +2,7 @@
 
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { findOrCreateDepartment } from "@/lib/departments";
@@ -44,6 +44,7 @@ type Linked = { id: string | null; name: string };
 // person access to the job's candidates) when the text matches the account's email, or
 // its name if exactly one account has that name. Any other text is kept as a name only.
 async function resolveManager(typed: string, current?: Linked): Promise<{ manager: Linked } | { error: string }> {
+  const db = await siteDb();
   // Unchanged on edit: keep the link even if the account was renamed since
   if (current?.id && typed.toLowerCase() === current.name.toLowerCase()) {
     const user = await db.user.findFirst({ where: { id: current.id, ...staff }, select: { id: true, name: true } });
@@ -83,6 +84,7 @@ function slugify(title: string) {
 }
 
 async function uniqueSlug(title: string) {
+  const db = await siteDb();
   const base = slugify(title);
   for (let i = 1; ; i++) {
     const slug = i === 1 ? base : `${base}-${i}`;
@@ -92,6 +94,7 @@ async function uniqueSlug(title: string) {
 }
 
 export async function createJob(_state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const parsed = parse(formData);
@@ -122,6 +125,7 @@ export async function createJob(_state: FormState, formData: FormData): Promise<
 }
 
 export async function updateJob(jobId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const existing = await db.job.findUnique({

@@ -2,7 +2,7 @@ import "server-only";
 import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
-import { db } from "@/lib/db";
+import { dbFor, siteDb } from "@/lib/db";
 import { readSession, SESSION_COOKIE, SESSION_REJECTED_PARAM } from "@/lib/session-token";
 import type { Role } from "@/generated/prisma/enums";
 
@@ -14,6 +14,7 @@ export const getCurrentUser = cache(async () => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const session = await readSession(token);
   if (!session) return null;
+  const db = dbFor(session.site);
 
   const user = await db.user.findUnique({
     where: { id: session.userId },
@@ -47,6 +48,7 @@ export async function requireUser(opts: { allowPasswordChange?: boolean } = {}):
 // Admin/HR see every application. A hiring manager sees applications for their
 // own jobs, and anyone assigned as an interviewer sees that one application.
 export async function canAccessApplication(user: CurrentUser, applicationId: string) {
+  const db = await siteDb();
   if (user.role === "ADMIN" || user.role === "HR") return true;
   const app = await db.application.findFirst({
     where: {
@@ -63,6 +65,7 @@ export async function canAccessApplication(user: CurrentUser, applicationId: str
 
 // Can change stage, schedule interviews, record HR decisions
 export async function canManageApplication(user: CurrentUser, applicationId: string) {
+  const db = await siteDb();
   if (user.role === "ADMIN" || user.role === "HR") return true;
   if (user.role !== "HIRING_MANAGER") return false;
   const app = await db.application.findFirst({

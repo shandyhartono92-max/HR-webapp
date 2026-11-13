@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { employmentTypeLabel, formatDate, jobStatusLabel } from "@/lib/labels";
 
@@ -14,6 +14,7 @@ const statusStyle = {
 } as const;
 
 export default async function JobsPage() {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR", "HIRING_MANAGER");
 
   const jobs = await db.job.findMany({

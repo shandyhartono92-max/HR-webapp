@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { LetterPdfLink } from "@/app/ui/letter-pdf-link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { formatDate, letterTypeLabel } from "@/lib/labels";
 import { companyInfo } from "@/lib/letters/service";
@@ -11,6 +11,7 @@ export const metadata: Metadata = { title: "Surat" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 export default async function LettersPage() {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
 
   const letters = await db.letter.findMany({

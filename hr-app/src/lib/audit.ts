@@ -1,6 +1,6 @@
 import "server-only";
 import { headers } from "next/headers";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import type { Prisma } from "@/generated/prisma/client";
 
 type AuditInput = {
@@ -13,6 +13,7 @@ type AuditInput = {
 };
 
 export async function writeAudit({ actorId, action, entityType, entityId, changes }: AuditInput) {
+  const db = await siteDb();
   const h = await headers();
   await db.auditLog.create({
     data: {

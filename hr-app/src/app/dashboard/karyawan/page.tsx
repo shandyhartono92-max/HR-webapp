@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { employeeStatusLabel, employmentTypeLabel, formatDate } from "@/lib/labels";
 import { contractAlert } from "@/lib/contracts";
@@ -19,6 +19,7 @@ export const metadata: Metadata = { title: "Karyawan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 export default async function EmployeesPage({ searchParams }: PageProps<"/dashboard/karyawan">) {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
   const sp = await searchParams;
   const onlyEnding = sp.kontrak === "berakhir";

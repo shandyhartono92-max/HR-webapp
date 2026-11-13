@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { formatDate, sourceLabel, stageLabel } from "@/lib/labels";
 import type { ScreeningProfile } from "@/lib/screening";
@@ -20,6 +20,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export default async function CandidateProfilePage({ params, searchParams }: PageProps<"/dashboard/kandidat/bank/[candidateId]">) {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
   const { candidateId } = await params;
   const { baru } = await searchParams;

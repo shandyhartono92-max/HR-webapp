@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { AddCandidateForm } from "../bank-forms";
 
@@ -8,6 +8,7 @@ export const metadata: Metadata = { title: "Tambah kandidat" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 export default async function AddCandidatePage() {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
   const jobs = await db.job.findMany({ where: { status: "OPEN" }, orderBy: { title: "asc" }, select: { id: true, title: true } });
 

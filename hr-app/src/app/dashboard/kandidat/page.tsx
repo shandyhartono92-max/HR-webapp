@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { formatDate, pipelineStages, stageLabel } from "@/lib/labels";
 import { InterviewStatusPill } from "@/app/ui/interview-status";
@@ -10,6 +10,7 @@ export const metadata: Metadata = { title: "Kandidat" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
 export default async function CandidatesPage({ searchParams }: PageProps<"/dashboard/kandidat">) {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR", "HIRING_MANAGER");
   const { lowongan } = await searchParams;
   const jobId = typeof lowongan === "string" ? lowongan : undefined;

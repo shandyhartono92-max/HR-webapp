@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { educationLevels, formatDate, sourceLabel, stageLabel } from "@/lib/labels";
 import type { ScreeningProfile } from "@/lib/screening";
@@ -11,6 +11,7 @@ export const instant = false; // waits for the session check, see dashboard/layo
 const skillsOf = (parsed: unknown) => ((parsed as ScreeningProfile | null)?.skills ?? []).filter(Boolean);
 
 export default async function CandidateBankPage({ searchParams }: PageProps<"/dashboard/kandidat/bank">) {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
   const sp = await searchParams;
   const q = typeof sp.q === "string" ? sp.q.trim() : "";

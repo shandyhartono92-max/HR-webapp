@@ -4,7 +4,7 @@ import bcrypt from "bcryptjs";
 import { redirect } from "next/navigation";
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole, requireUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
@@ -15,6 +15,7 @@ export type LoginResult = { error?: string; tempPassword?: string; email?: strin
 // Creates the employee's login, or resets it if one exists. The temporary password
 // is returned once for HR to hand over; the employee must change it at first login.
 export async function issueEmployeeLogin(employeeId: string): Promise<LoginResult> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const emp = await db.employee.findUnique({
@@ -77,6 +78,7 @@ const ChangePasswordSchema = z
   .refine((d) => d.newPassword !== d.currentPassword, { path: ["newPassword"], error: "Harus berbeda dari kata sandi lama." });
 
 export async function changePassword(_state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireUser({ allowPasswordChange: true });
 
   // Passwords are never echoed back into the form

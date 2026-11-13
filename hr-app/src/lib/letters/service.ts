@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { formatDateLong } from "@/lib/labels";
 import { Prisma } from "@/generated/prisma/client";
 import type { LetterType } from "@/generated/prisma/enums";
@@ -18,6 +18,7 @@ export function companyInfo() {
 
 // The active template for a type; creates version 1 from the defaults on first use
 export async function activeTemplate(type: LetterType) {
+  const db = await siteDb();
   const existing = await db.letterTemplate.findFirst({
     where: { type, isActive: true },
     orderBy: { version: "desc" },
@@ -66,6 +67,7 @@ export function formatLetterNumber(type: LetterType, seq: number, date: Date) {
 }
 
 export async function nextSequence(type: LetterType, date: Date) {
+  const db = await siteDb();
   const year = new Date(date.getTime() + 7 * 60 * 60 * 1000).getUTCFullYear();
   // Year boundaries in WIB
   const start = new Date(Date.UTC(year, 0, 1) - 7 * 60 * 60 * 1000);

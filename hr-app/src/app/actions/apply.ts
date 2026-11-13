@@ -2,7 +2,9 @@
 
 import { after } from "next/server";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
+import { defaultSite } from "@/lib/sites";
+import { withSite } from "@/lib/site-context";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
 import { applicationSources, educationLevels } from "@/lib/labels";
@@ -27,7 +29,13 @@ const ApplySchema = z.object({
   talentPool: checkbox,
 });
 
-export async function applyForJob(_state: FormState, formData: FormData): Promise<FormState> {
+// The careers page has no session: the location is set explicitly (Task 9: from the job's URL)
+export async function applyForJob(state: FormState, formData: FormData): Promise<FormState> {
+  return withSite(defaultSite().code, () => applyAt(state, formData));
+}
+
+async function applyAt(_state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   // Honeypot: real people never fill this hidden field
   if (formData.get("website")) return { ok: true };
 

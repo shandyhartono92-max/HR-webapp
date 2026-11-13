@@ -3,7 +3,7 @@ import Anthropic from "@anthropic-ai/sdk";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
 import mammoth from "mammoth";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { readFile } from "@/lib/storage";
 import { AI_MODEL, anthropic, isAiConfigured } from "@/lib/ai";
 
@@ -57,6 +57,7 @@ const getClient = anthropic;
 export type ScreeningResult = { ok: true; score: number } | { ok: false; error: string };
 
 export async function screenApplication(applicationId: string): Promise<ScreeningResult> {
+  const db = await siteDb();
   if (!isScreeningConfigured()) {
     return { ok: false, error: "ANTHROPIC_API_KEY belum diatur." };
   }

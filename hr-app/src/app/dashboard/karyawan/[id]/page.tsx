@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LetterPdfLink } from "@/app/ui/letter-pdf-link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import {
   employeeStatusLabel,
@@ -68,6 +68,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export default async function EmployeeDetailPage({ params, searchParams }: PageProps<"/dashboard/karyawan/[id]">) {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
   const { id } = await params;
   // Set by createEmployee's redirect

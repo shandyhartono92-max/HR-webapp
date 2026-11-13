@@ -3,7 +3,7 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { decrypt, encrypt, lastFour } from "@/lib/crypto";
@@ -56,6 +56,7 @@ const EmploymentSchema = z
 const iso = (d: Date | null | undefined) => (d ? d.toISOString().slice(0, 10) : null);
 
 export async function updateEmployment(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const before = await db.employee.findUnique({
@@ -167,6 +168,7 @@ const IdentitySchema = z.object({
 // Fixes typos from hiring or import, and sets the training period.
 // The login email (if any) follows the employee's email.
 export async function updateIdentity(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const before = await db.employee.findUnique({
     where: { id: employeeId },
@@ -268,6 +270,7 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
 // Only for records with nothing attached yet. Anyone who actually worked here keeps
 // their record: change the status instead, and retention anonymises it later.
 export async function deletionBlockers(employeeId: string): Promise<string[]> {
+  const db = await siteDb();
   await requireRole("ADMIN", "HR");
   const e = await db.employee.findUnique({
     where: { id: employeeId },
@@ -287,6 +290,7 @@ export async function deletionBlockers(employeeId: string): Promise<string[]> {
 }
 
 export async function deleteEmployee(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const emp = await db.employee.findUnique({
     where: { id: employeeId },
@@ -351,6 +355,7 @@ const addYears = (d: Date, years: number) => {
 // PKWTT) and moves the employee's type, position and end date to it. The previous
 // contract stays in the history, linked through renewalOf.
 export async function renewContract(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const emp = await db.employee.findUnique({
@@ -478,6 +483,7 @@ const PersonalSchema = z.object({
 });
 
 export async function updatePersonal(employeeId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const before = await db.employee.findUnique({
@@ -574,6 +580,7 @@ export async function revealSensitive(
   employeeId: string,
   field: RevealField,
 ): Promise<{ value: string } | { error: string }> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   let cipher: string | null | undefined;

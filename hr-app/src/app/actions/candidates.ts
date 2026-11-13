@@ -2,7 +2,7 @@
 
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { canManageApplication, requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, optionalText, type FormState } from "@/lib/forms";
@@ -34,6 +34,7 @@ const ReviewSchema = z.object({
 });
 
 export async function reviewScreening(screeningId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR", "HIRING_MANAGER");
 
   const screening = await db.screening.findUnique({ where: { id: screeningId }, select: { applicationId: true } });
@@ -68,6 +69,7 @@ const StageSchema = z
   });
 
 export async function changeStage(applicationId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR", "HIRING_MANAGER");
   if (!(await canManageApplication(user, applicationId))) return denied;
 

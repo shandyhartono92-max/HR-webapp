@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { canAccessApplication, getCurrentUser } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { readFile } from "@/lib/storage";
@@ -6,6 +6,7 @@ import { readFile } from "@/lib/storage";
 // Streams the latest CV of an application. Files live outside /public, so this
 // handler is the only way to get them, and every download is audited.
 export async function GET(_req: Request, { params }: RouteContext<"/dashboard/kandidat/[id]/cv">) {
+  const db = await siteDb();
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
 

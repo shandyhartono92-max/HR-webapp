@@ -1,7 +1,7 @@
 "use server";
 
 import { refresh } from "next/cache";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
@@ -12,8 +12,8 @@ class ContractChanged extends Error {}
 
 const CHANGED = "File kontrak ini baru saja diubah orang lain. Muat ulang halaman, lalu coba lagi.";
 
-const contractWithFile = (contractId: string) =>
-  db.contract.findUnique({
+const contractWithFile = async (contractId: string) =>
+  (await siteDb()).contract.findUnique({
     where: { id: contractId },
     select: {
       contractNumber: true,
@@ -27,6 +27,7 @@ const contractWithFile = (contractId: string) =>
 // Attaches the signed contract PDF to a contract. Only the newest file is kept, to save
 // disk space: uploading again replaces the old file, and the audit log records what it was.
 export async function uploadContractDocument(contractId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const contract = await contractWithFile(contractId);
@@ -94,6 +95,7 @@ export async function uploadContractDocument(contractId: string, _state: FormSta
 
 // Removes a wrongly uploaded file, e.g. before deleting an employee entered by mistake
 export async function deleteContractDocument(contractId: string): Promise<{ message?: string }> {
+  const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
 
   const contract = await contractWithFile(contractId);

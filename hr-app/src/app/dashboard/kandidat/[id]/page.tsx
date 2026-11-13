@@ -2,7 +2,7 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LetterPdfLink } from "@/app/ui/letter-pdf-link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { canAccessApplication, canManageApplication, requireUser } from "@/lib/dal";
 import {
   sourceLabel,
@@ -45,6 +45,7 @@ function Row({ label, children }: { label: string; children: React.ReactNode }) 
 }
 
 export default async function CandidateDetailPage({ params }: PageProps<"/dashboard/kandidat/[id]">) {
+  const db = await siteDb();
   const user = await requireUser();
   const { id } = await params;
   if (!(await canAccessApplication(user, id))) notFound();

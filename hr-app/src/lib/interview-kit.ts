@@ -1,6 +1,6 @@
 import "server-only";
 import { betaZodOutputFormat } from "@anthropic-ai/sdk/helpers/beta/zod";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { AI_MODEL, aiErrorMessage, anthropic, isAiConfigured } from "@/lib/ai";
 import { employmentTypeLabel } from "@/lib/labels";
 import { CandidateQuestionsContent, JobKitContent, type CandidateQuestions, type JobKit } from "./interview-kit-schema";
@@ -35,6 +35,7 @@ ${FAIRNESS}`;
 export type KitResult<T> = { ok: true; content: T; model: string } | { ok: false; error: string };
 
 export async function draftJobKit(jobId: string): Promise<KitResult<JobKit>> {
+  const db = await siteDb();
   if (!isAiConfigured()) return { ok: false, error: "AI belum aktif. Isi ANTHROPIC_API_KEY di file .env." };
   const job = await db.job.findUnique({
     where: { id: jobId },
@@ -81,6 +82,7 @@ export async function draftJobKit(jobId: string): Promise<KitResult<JobKit>> {
 // Uses only the job requirements and the screening result (summary, gaps, extracted
 // profile). The raw CV is not sent again.
 export async function draftCandidateQuestions(applicationId: string): Promise<KitResult<CandidateQuestions>> {
+  const db = await siteDb();
   if (!isAiConfigured()) return { ok: false, error: "AI belum aktif. Isi ANTHROPIC_API_KEY di file .env." };
   const app = await db.application.findUnique({
     where: { id: applicationId },

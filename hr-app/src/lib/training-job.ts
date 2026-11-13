@@ -1,5 +1,5 @@
 import "server-only";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { todayDate } from "@/lib/labels";
 import { equalsIgnoringCase } from "@/lib/match";
 import { graduatedNumber, trainingOver } from "@/lib/training";
@@ -15,6 +15,7 @@ export type GraduationResult = { graduated: { from: string; to: string }[]; clas
 const CLASH_TYPE = "training.id_clash";
 
 export async function graduateTrainees(today = todayDate()): Promise<GraduationResult> {
+  const db = await siteDb();
   const result: GraduationResult = { graduated: [], clashes: [] };
   const due = await db.employee.findMany({
     where: { traineeNumber: null, anonymizedAt: null, trainingEnd: { lt: today }, employeeNumber: { startsWith: "T" } },
@@ -70,6 +71,7 @@ export async function graduateTrainees(today = todayDate()): Promise<GraduationR
 
 // Once per employee: the notification stays until someone fixes the number
 async function notifyClash(employeeId: string, fullName: string, current: string, wanted: string) {
+  const db = await siteDb();
   const link = `/dashboard/karyawan/${employeeId}`;
   const already = await db.notification.findFirst({ where: { type: CLASH_TYPE, link }, select: { id: true } });
   if (already) return;

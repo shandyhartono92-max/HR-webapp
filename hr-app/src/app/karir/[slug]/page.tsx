@@ -1,7 +1,8 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { db } from "@/lib/db";
+import { dbFor } from "@/lib/db";
+import { defaultSite } from "@/lib/sites";
 import { employmentTypeLabel, formatRupiah } from "@/lib/labels";
 import { ApplyForm } from "./apply-form";
 
@@ -9,6 +10,7 @@ export const metadata: Metadata = { title: "Lowongan" };
 export const instant = false; // job data is read per request so edits and closures show immediately
 
 export default async function JobDetailPage({ params }: PageProps<"/karir/[slug]">) {
+  const db = dbFor(defaultSite().code); // Task 9 picks the location from the URL
   const { slug } = await params;
   const job = await db.job.findFirst({
     where: { slug, status: "OPEN" },

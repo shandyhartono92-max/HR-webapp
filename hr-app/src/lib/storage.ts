@@ -2,6 +2,7 @@ import "server-only";
 import { mkdir, readFile as fsReadFile, rm, writeFile } from "node:fs/promises";
 import path from "node:path";
 import { randomUUID } from "node:crypto";
+import { currentSite } from "@/lib/db";
 
 // Private file storage. Development writes to ./storage (outside /public, so files
 // are never served directly). For production, replace these two functions with an
@@ -9,8 +10,10 @@ import { randomUUID } from "node:crypto";
 
 const ROOT = path.join(process.cwd(), "storage");
 
+// New files go under the location's folder (storage/jakarta/cv/…). Keys are stored in
+// that location's database, so older keys without a location folder keep working.
 export async function saveFile(folder: string, data: Buffer, ext: string): Promise<string> {
-  const key = `${folder}/${randomUUID()}.${ext}`;
+  const key = `${(await currentSite()).code}/${folder}/${randomUUID()}.${ext}`;
   const fullPath = path.join(ROOT, key);
   await mkdir(path.dirname(fullPath), { recursive: true });
   await writeFile(fullPath, data);

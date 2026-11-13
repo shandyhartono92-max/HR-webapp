@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 import { markNotificationsRead } from "@/app/actions/bank";
 import { formatDate, formatDateTime, interviewModeLabel, todayDate } from "@/lib/labels";
@@ -23,6 +23,7 @@ export const instant = false; // waits for the session check, see dashboard/layo
 const DAY = 24 * 60 * 60 * 1000;
 
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
+  const db = await siteDb();
   const user = await requireUser();
   const { akses, sandi } = await searchParams;
 

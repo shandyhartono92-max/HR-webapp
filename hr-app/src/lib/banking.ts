@@ -1,6 +1,6 @@
 import "server-only";
 import { createHash, randomInt, timingSafeEqual } from "node:crypto";
-import { db } from "@/lib/db";
+import { siteDb } from "@/lib/db";
 import type { BankCode } from "@/lib/banks";
 
 // ── Account-name inquiry ────────────────────────────────────
@@ -64,11 +64,13 @@ export function peekDevOtp(requestId: string): string | undefined {
 // ── In-app notifications ────────────────────────────────────
 
 export async function notifyUsers(userIds: string[], n: { type: string; title: string; body: string; link?: string }) {
+  const db = await siteDb();
   if (userIds.length === 0) return;
   await db.notification.createMany({ data: userIds.map((userId) => ({ userId, ...n })) });
 }
 
 export async function hrUserIds(excludeUserId?: string | null) {
+  const db = await siteDb();
   const users = await db.user.findMany({
     where: { isActive: true, role: { in: ["ADMIN", "HR"] }, ...(excludeUserId ? { id: { not: excludeUserId } } : {}) },
     select: { id: true },
