@@ -10,6 +10,8 @@
     "postinstall": "prisma generate && prisma generate --config prisma.accounts.config.ts",
     "db:migrate": "prisma migrate dev",
     "db:migrate:accounts": "prisma migrate deploy --config prisma.accounts.config.ts",
+    "db:migrate:sites": "tsx --conditions=react-server --env-file=.env scripts/migrate-sites.mts",
+    "backup": "tsx --conditions=react-server --env-file=.env scripts/backup.mts",
     "db:seed": "prisma db seed",
     "retention": "tsx --conditions=react-server scripts/retention.ts"
   },
