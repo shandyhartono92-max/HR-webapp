@@ -1,0 +1,76 @@
+// Accounts database (portal_hr_akun): logins and which locations each account may enter.
+// The location databases (prisma/schema.prisma) keep a password-less mirror of each
+// account in their `user` table, with the same id, so their relations stay as they are.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../../src/generated/accounts"
+}
+
+// Connection URL lives in prisma.accounts.config.ts (ACCOUNTS_DATABASE_URL)
+datasource db {
+  provider = "mysql" // MariaDB (XAMPP) / MySQL
+}
+
+// Same values as Role in the location schema
+enum Role {
+  ADMIN
+  HR
+  HIRING_MANAGER
+  EMPLOYEE
+}
+
+enum LoginEventKind {
+  LOGIN
+  LOGOUT
+  SWITCH
+  FAILED
+}
+
+model Account {
+  id                 String    @id @default(cuid()) // the same id as the mirror user in every location
+  email              String    @unique
+  name               String
+  passwordHash       String
+  mustChangePassword Boolean   @default(false) // set when an admin creates the account with a temporary password
+  isActive           Boolean   @default(true)
+  lastLoginAt        DateTime?
+  createdAt          DateTime  @default(now())
+  updatedAt          DateTime  @updatedAt
+
+  access SiteAccess[]
+  logins LoginEvent[]
+
+  @@map("account")
+}
+
+// No row = no access to that location
+model SiteAccess {
+  id        String   @id @default(cuid())
+  accountId String
+  site      String   @db.VarChar(20) // code from SITES in .env, e.g. "batam"
+  role      Role
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@unique([accountId, site])
+  @@index([site])
+  @@map("site_access")
+}
+
+// Logins, logouts, location switches and failed attempts. A failed attempt for an
+// unknown email has no account and stores no email.
+model LoginEvent {
+  id        String         @id @default(cuid())
+  accountId String?
+  site      String?        @db.VarChar(20)
+  kind      LoginEventKind
+  createdAt DateTime       @default(now())
+
+  account Account? @relation(fields: [accountId], references: [id], onDelete: SetNull)
+
+  @@index([accountId, createdAt])
+  @@map("login_event")
+}
