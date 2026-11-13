@@ -6,7 +6,7 @@ import { applyForJob } from "@/app/actions/apply";
 import { Field, FormMessage, inputClass } from "@/app/ui/field";
 import { applicationSources, educationLevels } from "@/lib/labels";
 
-export function ApplyForm({ jobId }: { jobId: string }) {
+export function ApplyForm({ jobId, site }: { jobId: string; site: string }) {
   const [state, action, pending] = useActionState(applyForJob, undefined);
   const e = state?.errors ?? {};
   const v = (name: string) => state?.values?.[name] ?? "";
@@ -26,6 +26,7 @@ export function ApplyForm({ jobId }: { jobId: string }) {
     <form key={state?.attempt} action={action} className="space-y-4">
       <FormMessage message={state?.message} />
       <input type="hidden" name="jobId" value={jobId} />
+      <input type="hidden" name="site" value={site} />
       {/* Honeypot for bots, hidden from people and screen readers */}
       <div aria-hidden="true" className="absolute -left-[9999px]">
         <label>

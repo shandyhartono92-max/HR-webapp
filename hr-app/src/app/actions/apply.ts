@@ -3,7 +3,7 @@
 import { after } from "next/server";
 import * as z from "zod";
 import { siteDb } from "@/lib/db";
-import { defaultSite } from "@/lib/sites";
+import { siteByCode } from "@/lib/sites";
 import { withSite } from "@/lib/site-context";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
@@ -29,9 +29,12 @@ const ApplySchema = z.object({
   talentPool: checkbox,
 });
 
-// The careers page has no session: the location is set explicitly (Task 9: from the job's URL)
+// The careers page has no session: the location comes from the job's address
+// (/karir/<location>/<slug>), so the application lands in that location's database
 export async function applyForJob(state: FormState, formData: FormData): Promise<FormState> {
-  return withSite(defaultSite().code, () => applyAt(state, formData));
+  const site = siteByCode(formData.get("site"));
+  if (!site) return { message: "Lowongan ini tidak ditemukan. Buka lagi dari halaman Karir.", attempt: Date.now() };
+  return withSite(site.code, () => applyAt(state, formData));
 }
 
 async function applyAt(_state: FormState, formData: FormData): Promise<FormState> {

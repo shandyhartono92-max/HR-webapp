@@ -2,17 +2,19 @@ import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
 import { dbFor } from "@/lib/db";
-import { defaultSite } from "@/lib/sites";
+import { siteByCode } from "@/lib/sites";
 import { employmentTypeLabel, formatRupiah } from "@/lib/labels";
 import { ApplyForm } from "./apply-form";
 
 export const metadata: Metadata = { title: "Lowongan" };
 export const instant = false; // job data is read per request so edits and closures show immediately
 
-export default async function JobDetailPage({ params }: PageProps<"/karir/[slug]">) {
-  const db = dbFor(defaultSite().code); // Task 9 picks the location from the URL
-  const { slug } = await params;
-  const job = await db.job.findFirst({
+// /karir/<location>/<slug>: the job is read from that location's database
+export default async function JobDetailPage({ params }: PageProps<"/karir/[site]/[slug]">) {
+  const { site: code, slug } = await params;
+  const site = siteByCode(code);
+  if (!site) notFound();
+  const job = await dbFor(site.code).job.findFirst({
     where: { slug, status: "OPEN" },
     select: {
       id: true,
@@ -46,6 +48,9 @@ export default async function JobDetailPage({ params }: PageProps<"/karir/[slug]
         <p className="mt-2 text-slate-600">
           {job.department.name} · {job.location} · {employmentTypeLabel[job.employmentType]}
         </p>
+        <p className="mt-2">
+          <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-xs font-medium text-brand-800">{site.label}</span>
+        </p>
         {salary && <p className="mt-1 text-sm font-medium text-slate-700">{salary} per bulan</p>}
       </div>
 
@@ -68,7 +73,7 @@ export default async function JobDetailPage({ params }: PageProps<"/karir/[slug]
 
       <section className="card p-5 sm:p-6">
         <h2 className="mb-4 text-lg font-medium text-slate-900">Lamar posisi ini</h2>
-        <ApplyForm jobId={job.id} />
+        <ApplyForm jobId={job.id} site={site.code} />
       </section>
     </main>
   );

@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { siteDb } from "@/lib/db";
+import { currentSite, siteDb } from "@/lib/db";
+import { jobUrl } from "@/lib/careers";
 import { requireRole } from "@/lib/dal";
 import { employmentTypeLabel, formatDate, jobStatusLabel } from "@/lib/labels";
 
@@ -15,6 +16,7 @@ const statusStyle = {
 
 export default async function JobsPage() {
   const db = await siteDb();
+  const site = (await currentSite()).code;
   const user = await requireRole("ADMIN", "HR", "HIRING_MANAGER");
 
   const jobs = await db.job.findMany({
@@ -84,7 +86,7 @@ export default async function JobsPage() {
                       {job.status === "OPEN" && (
                         <>
                           {" · "}
-                          <Link href={`/karir/${job.slug}`} target="_blank" className="text-brand-700 hover:underline">
+                          <Link href={jobUrl(site, job.slug)} target="_blank" className="text-brand-700 hover:underline">
                             Lihat di karir
                           </Link>
                         </>
