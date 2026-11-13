@@ -5,6 +5,7 @@ import { refresh } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { siteDb } from "@/lib/db";
+import { formSiteRefusal } from "@/lib/form-site";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalText, type FormState } from "@/lib/forms";
@@ -47,6 +48,8 @@ function scheduleScreening(applicationId: string) {
 export async function addCandidate(_state: FormState, formData: FormData): Promise<FormState> {
   const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
+  const moved = await formSiteRefusal(formData);
+  if (moved) return { message: moved, attempt: Date.now() };
 
   const parsed = AddSchema.safeParse(Object.fromEntries(formData));
   const errors: Record<string, string[] | undefined> = parsed.success ? {} : z.flattenError(parsed.error).fieldErrors;
@@ -133,6 +136,8 @@ export async function importCandidates(_state: ImportState, formData: FormData):
   const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const attempt = Date.now();
+  const moved = await formSiteRefusal(formData);
+  if (moved) return { message: moved, attempt };
 
   if (formData.get("consentConfirmed") !== "on") {
     return { message: "Centang pernyataan bahwa semua kandidat di file sudah menyetujui datanya disimpan.", attempt };

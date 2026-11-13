@@ -5,6 +5,7 @@ import { addCandidate, attachToJob, importCandidates, uploadCandidateCv } from "
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import { educationLevels, manualSources } from "@/lib/labels";
 import { ImportIssues, XLSX_ACCEPT, xlsxInputClass } from "@/app/ui/import-issues";
+import { SiteField } from "@/app/ui/site-field";
 
 const buttonClass =
   "rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
@@ -19,6 +20,7 @@ export function AddCandidateForm({ jobs }: { jobs: Option[] }) {
 
   return (
     <form key={state?.attempt} action={action} className="space-y-4">
+      <SiteField />
       <FormMessage message={state?.message} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nama lengkap" htmlFor="fullName" errors={e.fullName}>
@@ -117,6 +119,7 @@ export function ImportCandidatesForm() {
 
   return (
     <form key={state?.attempt} action={action} className="space-y-4">
+      <SiteField />
       <FormMessage message={state?.message} />
       <ImportIssues issues={state?.issues} />
 

@@ -134,14 +134,15 @@ export async function anonymizeExpiredCandidates({ dryRun = false, now = new Dat
 // The anonymised employee's login: access to this location goes; an account left with
 // no access anywhere is anonymised and switched off as well
 async function closeLoginAfterRetention(accountId: string, site: SiteCode) {
-  await setAccess(accountId, site, null);
-  const left = await accountsDb.siteAccess.count({ where: { accountId } });
-  if (left === 0) {
+  // Anonymise the account first, so nothing can copy its real name back afterwards
+  const elsewhere = await accountsDb.siteAccess.count({ where: { accountId, site: { not: site } } });
+  if (elsewhere === 0) {
     await accountsDb.account.update({
       where: { id: accountId },
       data: { name: "Karyawan dihapus", email: `dihapus-${accountId}@anonim.invalid`, passwordHash: "", isActive: false },
     });
   }
+  await setAccess(accountId, site, null);
 }
 
 export async function anonymizeFormerEmployees({ dryRun = false, now = new Date() } = {}): Promise<EmployeeRetentionResult> {

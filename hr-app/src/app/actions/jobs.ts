@@ -3,6 +3,7 @@
 import { redirect } from "next/navigation";
 import * as z from "zod";
 import { siteDb } from "@/lib/db";
+import { formSiteRefusal } from "@/lib/form-site";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { findOrCreateDepartment } from "@/lib/departments";
@@ -96,6 +97,8 @@ async function uniqueSlug(title: string) {
 export async function createJob(_state: FormState, formData: FormData): Promise<FormState> {
   const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
+  const moved = await formSiteRefusal(formData);
+  if (moved) return { message: moved, attempt: Date.now() };
 
   const parsed = parse(formData);
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);

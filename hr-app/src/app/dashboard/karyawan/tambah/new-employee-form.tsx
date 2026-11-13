@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { createEmployee } from "@/app/actions/employees";
 import { Field, FormMessage, inputClass, useHydrated } from "@/app/ui/field";
 import { WorkLocationFields } from "@/app/ui/work-location-fields";
+import { SiteField } from "@/app/ui/site-field";
 import { employmentTypeLabel, genderLabel, ptkpLabel } from "@/lib/labels";
 
 type Option = { id: string; name: string };
@@ -26,6 +27,7 @@ export function NewEmployeeForm({ departments }: { departments: Option[] }) {
 
   return (
     <form key={state?.attempt} action={action} className="space-y-4" autoComplete="off">
+      <SiteField />
       <FormMessage message={state?.message} />
 
       <section className={sectionClass}>

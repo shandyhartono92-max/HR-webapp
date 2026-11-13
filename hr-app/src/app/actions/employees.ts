@@ -16,6 +16,7 @@ import { checkWorkLocation, warehouseFor, workLocationFields } from "@/lib/work-
 import { EmploymentType } from "@/generated/prisma/enums";
 import { findOrCreateDepartment } from "@/lib/departments";
 import { endedContractIssues, MAX_EMPLOYEE_IMPORT_BYTES, parseEmployeeFile } from "@/lib/employee-import";
+import { formSiteRefusal } from "@/lib/form-site";
 import type { ImportState, RowIssue } from "@/lib/excel";
 import { anyEqualsIgnoringCase, equalsIgnoringCase } from "@/lib/match";
 
@@ -61,6 +62,8 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
   const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   const attempt = Date.now();
+  const moved = await formSiteRefusal(formData);
+  if (moved) return { message: moved, attempt };
 
   const file = formData.get("file");
   if (!(file instanceof File) || file.size === 0) return { message: "Pilih file Excel (.xlsx).", attempt };
@@ -184,6 +187,8 @@ export async function importEmployees(_state: ImportState, formData: FormData): 
 export async function hireCandidate(applicationId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
+  const moved = await formSiteRefusal(formData);
+  if (moved) return { message: moved, attempt: Date.now() };
 
   const parsed = HireSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
@@ -275,6 +280,8 @@ const isUniqueClash = (error: unknown) => typeof error === "object" && error !==
 export async function createEmployee(_state: FormState, formData: FormData): Promise<FormState> {
   const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
+  const moved = await formSiteRefusal(formData);
+  if (moved) return { message: moved, attempt: Date.now() };
 
   // Identity numbers are never sent back to refill the form, even after an error
   const safeValues = new FormData();

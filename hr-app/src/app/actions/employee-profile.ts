@@ -6,6 +6,7 @@ import * as z from "zod";
 import { currentSite, siteDb } from "@/lib/db";
 import { accountsDb } from "@/lib/accounts-db";
 import { setAccess, syncMirrorEverywhere } from "@/lib/site-access";
+import { employeeLoginError } from "@/lib/access-rules";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { decrypt, encrypt, lastFour } from "@/lib/crypto";
@@ -117,12 +118,13 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
     }
   }
 
+  // The account loses access to this location first (access elsewhere, if any, stays).
+  // Access is what lets someone in, so if this fails nothing has been saved yet.
+  if (closesLogin) await setAccess(before.userId!, (await currentSite()).code, null);
   await db.$transaction(async (tx) => {
     await tx.employee.update({ where: { id: employeeId }, data: { ...data, exitDate } });
     if (closesLogin) await tx.user.update({ where: { id: before.userId! }, data: { isActive: false } });
   });
-  // The account loses access to this location; access elsewhere (if any) stays
-  if (closesLogin) await setAccess(before.userId!, (await currentSite()).code, null);
   if (closesLogin) {
     await writeAudit({
       actorId: user.id,
@@ -240,7 +242,16 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
   else if (loginTaken) errors.email = ["Email ini sudah dipakai akun login lain."];
   if (Object.keys(errors).length) return failed(formData, errors);
 
-  // The login's name and email belong to the account and show in every location
+  // The login's name and email belong to the account and show in every location. A
+  // login that is also a staff account, or used in another location, is not HR's to
+  // rename: only an Admin may (otherwise HR could redirect a staff login's email)
+  const identityChanged = before.userId && (d.email !== before.email || d.fullName !== before.fullName);
+  if (identityChanged) {
+    const access = await accountsDb.siteAccess.findMany({ where: { accountId: before.userId! }, select: { site: true, role: true } });
+    if (employeeLoginError(access, (await currentSite()).code, user.role)) {
+      return failed(formData, { email: ["Login karyawan ini juga akun staf atau dipakai di lokasi lain. Nama dan emailnya hanya bisa diubah Admin."] });
+    }
+  }
   if (before.userId) {
     await accountsDb.account.update({ where: { id: before.userId }, data: { email: d.email, name: d.fullName } });
     await syncMirrorEverywhere(before.userId);

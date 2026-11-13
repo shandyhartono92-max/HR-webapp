@@ -19,6 +19,22 @@ export function lastAdminError(access: Access[], changes: { accountId: string; s
   return isAdmin(after) ? null : "Tidak bisa mencabut akses ADMIN terakhir milik Anda sendiri.";
 }
 
+// HR creates and resets employee logins from the employee profile. That may only
+// touch an account that is nothing more than an employee login of this location:
+// linking (and then resetting) a staff account, or one of another location, would
+// hand its temporary password to whoever typed the email. Admins may, as on Pengguna.
+export function employeeLoginError(access: { site: SiteCode; role: string }[], site: SiteCode, actorRole: string): string | null {
+  if (actorRole === "ADMIN") return null;
+  const employeeHereOnly = access.every((a) => a.site === site && a.role === "EMPLOYEE");
+  return employeeHereOnly ? null : "Email ini dipakai akun staf atau akun di lokasi lain. Hanya Admin yang bisa menghubungkannya, lewat menu Pengguna.";
+}
+
+// Forms carry the location they were opened in; a save after another tab switched
+// location must not land in the other location's database
+export function formSiteError(formSite: string | null, current: SiteCode): string | null {
+  return formSite === current ? null : "Lokasi aktif sudah berganti ke tab lain. Muat ulang halaman ini, lalu isi lagi.";
+}
+
 // Null when the account may enter `wanted`. Only shown after the password is proven,
 // so it tells nothing to someone who does not know the password.
 export function accessError(access: { site: SiteCode }[], wanted: SiteCode, labelOf: (code: SiteCode) => string): string | null {

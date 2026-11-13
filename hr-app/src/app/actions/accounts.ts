@@ -7,6 +7,7 @@ import * as z from "zod";
 import { currentSite, siteDb } from "@/lib/db";
 import { accountsDb } from "@/lib/accounts-db";
 import { setAccess } from "@/lib/site-access";
+import { employeeLoginError } from "@/lib/access-rules";
 import type { SiteCode } from "@/lib/sites";
 import type { Role } from "@/generated/prisma/enums";
 import { requireRole, requireUser } from "@/lib/dal";
@@ -37,7 +38,13 @@ export async function issueEmployeeLogin(employeeId: string): Promise<LoginResul
   const tempPassword = temporaryPassword();
   const passwordHash = await bcrypt.hash(tempPassword, 12);
 
+  // Only an employee-only login of this location may be reset or linked from here (Admins excepted)
+  const guard = async (accountId: string) =>
+    employeeLoginError(await accountsDb.siteAccess.findMany({ where: { accountId }, select: { site: true, role: true } }), site, user.role);
+
   if (emp.userId) {
+    const refused = await guard(emp.userId);
+    if (refused) return { error: refused };
     await accountsDb.account.update({ where: { id: emp.userId }, data: { passwordHash, mustChangePassword: true, isActive: true } });
     await ensureEmployeeAccess(emp.userId, site);
     await writeAudit({ actorId: user.id, action: "user.password_reset", entityType: "User", entityId: emp.userId });
@@ -51,6 +58,8 @@ export async function issueEmployeeLogin(employeeId: string): Promise<LoginResul
   if (existing) {
     const linked = await db.employee.findFirst({ where: { userId: existing.id }, select: { id: true } });
     if (linked) return { error: `Email ${emp.email} sudah dipakai akun karyawan lain.` };
+    const refused = await guard(existing.id);
+    if (refused) return { error: refused };
     await ensureEmployeeAccess(existing.id, site);
     await db.employee.update({ where: { id: employeeId }, data: { userId: existing.id } });
     await writeAudit({ actorId: user.id, action: "user.linked", entityType: "User", entityId: existing.id, changes: { employeeId } });

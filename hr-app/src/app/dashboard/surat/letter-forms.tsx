@@ -16,6 +16,7 @@ import {
   type LetterVars,
 } from "@/lib/letters/fill";
 import type { EmploymentType, LetterType } from "@/generated/prisma/enums";
+import { SiteField } from "@/app/ui/site-field";
 
 const buttonClass =
   "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
@@ -439,6 +440,7 @@ export function TemplateEditor({ type, template, sampleVars }: { type: LetterTyp
   return (
     <div className="grid gap-4 xl:grid-cols-2">
       <form action={action} onSubmit={submitWithoutReset(action)} className="space-y-3">
+        <SiteField />
         <FormMessage message={state?.message} />
         {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan sebagai versi baru.</p>}
         <Field label="Judul surat" htmlFor={`name-${type}`} errors={state?.errors?.name}>

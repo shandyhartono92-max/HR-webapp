@@ -6,6 +6,7 @@ import { Field, FormMessage, inputClass } from "@/app/ui/field";
 import { educationLevels, employmentTypeLabel, jobStatusLabel } from "@/lib/labels";
 import type { FormState } from "@/lib/forms";
 import type { EmploymentType, JobStatus } from "@/generated/prisma/enums";
+import { SiteField } from "@/app/ui/site-field";
 
 export type JobFormValues = {
   title: string;
@@ -45,6 +46,7 @@ export function JobForm({
 
   return (
     <form key={state?.attempt} action={formAction} className="space-y-6">
+      <SiteField />
       <FormMessage message={state?.message} />
 
       <section className="space-y-4 card p-5">

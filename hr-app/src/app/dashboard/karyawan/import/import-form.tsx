@@ -4,6 +4,7 @@ import { useActionState } from "react";
 import { importEmployees } from "@/app/actions/employees";
 import { Field, FormMessage, useHydrated } from "@/app/ui/field";
 import { ImportIssues, XLSX_ACCEPT, xlsxInputClass } from "@/app/ui/import-issues";
+import { SiteField } from "@/app/ui/site-field";
 
 export function ImportEmployeesForm() {
   const [state, action, pending] = useActionState(importEmployees, undefined);
@@ -11,6 +12,7 @@ export function ImportEmployeesForm() {
 
   return (
     <form key={state?.attempt} action={action} className="space-y-4">
+      <SiteField />
       <FormMessage message={state?.message} />
       <ImportIssues issues={state?.issues} />
       <Field label="File Excel" htmlFor="importFile" hint="Template yang sudah diisi (.xlsx), maksimal 2 MB.">

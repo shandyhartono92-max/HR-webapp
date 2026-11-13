@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import { refresh } from "next/cache";
 import * as z from "zod";
 import { currentSite, dbFor, siteDb } from "@/lib/db";
+import { formSiteRefusal } from "@/lib/form-site";
 import { sites, type SiteCode } from "@/lib/sites";
 import { lastAdminError } from "@/lib/access-rules";
 import { accountsDb } from "@/lib/accounts-db";
@@ -66,6 +67,8 @@ async function linkJobsByName(tx: Tx, userId: string, name: string, role: Role) 
 export async function createUser(_state: UserFormState, formData: FormData): Promise<UserFormState> {
   const db = await siteDb();
   const admin = await requireRole("ADMIN");
+  const moved = await formSiteRefusal(formData);
+  if (moved) return { message: moved, attempt: Date.now() };
 
   const parsed = CreateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
@@ -240,7 +243,11 @@ export async function setUserAccess(accountId: string, _state: FormState, formDa
   }
   refresh();
   if (failedSites.length) {
-    return { message: `Akses untuk ${failedSites.join(", ")} belum tersimpan: lokasinya sedang tidak bisa diakses. Coba lagi nanti.`, attempt: Date.now() };
+    // The access itself is saved (and enforced at once); only the location's copy of the account waits
+    return {
+      message: `Akses tersimpan, tetapi data akun di ${failedSites.join(", ")} belum diperbarui karena lokasinya sedang tidak bisa diakses. Pencabutan akses tetap langsung berlaku; nama di daftar pilihan lokasi itu menyusul saat orangnya masuk ke sana.`,
+      attempt: Date.now(),
+    };
   }
   return { ok: true, attempt: Date.now() };
 }

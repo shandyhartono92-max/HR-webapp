@@ -8,6 +8,7 @@ import { Field, FormMessage, inputClass } from "@/app/ui/field";
 import { WorkLocationFields } from "@/app/ui/work-location-fields";
 import { decisionLabel, employmentTypeLabel, interviewModeLabel } from "@/lib/labels";
 import type { EmploymentType } from "@/generated/prisma/enums";
+import { SiteField } from "@/app/ui/site-field";
 
 const buttonClass =
   "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
@@ -229,6 +230,7 @@ export function HireForm({
 
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
+      <SiteField />
       <FormMessage message={state?.message} />
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Employee ID" htmlFor="employeeNumber" errors={e.employeeNumber}>

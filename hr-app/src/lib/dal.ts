@@ -30,10 +30,16 @@ export const getCurrentUser = cache(async () => {
         employee: { select: { id: true } }, // set when the user is linked to an employee record
       },
     }),
-    accountsDb.account.findUnique({ where: { id: session.userId }, select: { isActive: true, mustChangePassword: true } }),
+    accountsDb.account.findUnique({
+      where: { id: session.userId },
+      select: { isActive: true, mustChangePassword: true, access: { where: { site: session.site }, select: { role: true } } },
+    }),
   ]);
-  if (!user || !user.isActive || !account?.isActive) return null;
-  return { ...user, mustChangePassword: account.mustChangePassword, site: session.site };
+  // Access to this location is decided by the accounts database, so a removal counts at
+  // once even when the location's copy could not be updated (its database was down)
+  const access = account?.access[0];
+  if (!user || !user.isActive || !account?.isActive || !access) return null;
+  return { ...user, role: access.role as Role, mustChangePassword: account.mustChangePassword, site: session.site };
 });
 
 export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;

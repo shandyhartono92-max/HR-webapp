@@ -3,6 +3,7 @@
 import { refresh } from "next/cache";
 import * as z from "zod";
 import { currentSite, siteDb } from "@/lib/db";
+import { formSiteRefusal } from "@/lib/form-site";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { checkbox, failed, optionalInt, optionalText, type FormState } from "@/lib/forms";
@@ -363,6 +364,8 @@ export async function saveTemplate(type: LetterType, _state: FormState, formData
   const db = await siteDb();
   const user = await requireRole("ADMIN", "HR");
   if (!Object.values(LetterType).includes(type)) return { message: "Jenis surat tidak dikenal." };
+  const moved = await formSiteRefusal(formData);
+  if (moved) return { message: moved, attempt: Date.now() };
 
   const parsed = TemplateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);

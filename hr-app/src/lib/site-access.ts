@@ -24,6 +24,12 @@ export async function syncMirror(accountId: string, site: SiteCode): Promise<voi
   const access = account.access[0];
   const existing = await db.user.findUnique({ where: { id: accountId }, select: { id: true } });
   if (!access && !existing) return; // never entered this location, nothing to keep
+  if (!access) {
+    // No access here any more: only switch the mirror off. Its name and email stay as
+    // they are, so a mirror anonymised by retention is never filled in again.
+    await db.user.update({ where: { id: accountId }, data: { isActive: false } });
+    return;
+  }
 
   // Emails are unique in the accounts database, so another mirror with this email is
   // left over from an account that has since changed its email: move it aside
@@ -32,11 +38,11 @@ export async function syncMirror(accountId: string, site: SiteCode): Promise<voi
     data: { email: `lama-${Date.now()}-${accountId}@ganti.invalid` },
   });
 
-  const shared = { email: account.email, name: account.name, isActive: account.isActive && Boolean(access) };
+  const data = { email: account.email, name: account.name, isActive: account.isActive, role: access.role as Role };
   if (existing) {
-    await db.user.update({ where: { id: accountId }, data: access ? { ...shared, role: access.role as Role } : shared });
+    await db.user.update({ where: { id: accountId }, data });
   } else {
-    await db.user.create({ data: { id: accountId, ...shared, role: access!.role as Role } });
+    await db.user.create({ data: { id: accountId, ...data } });
   }
 }
 
