@@ -6,6 +6,10 @@ import { countEndingContracts } from "@/lib/contracts";
 import { initials, navGroupsFor } from "@/lib/nav";
 import { MenuButton, NavDrawerProvider, NavLinks, Sidebar } from "@/app/ui/nav-drawer";
 import { roleLabel } from "@/lib/labels";
+import { currentSite } from "@/lib/db";
+import { accountsDb } from "@/lib/accounts-db";
+import { sites } from "@/lib/sites";
+import { SiteSwitch } from "@/app/ui/site-switch";
 
 // Every dashboard page depends on the logged-in user, so navigations are
 // allowed to wait for the session check instead of showing a cached shell.
@@ -44,7 +48,10 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
               <Logo small />
               Portal HR
             </Link>
-            <div className="ml-auto flex items-center gap-3 sm:gap-4">
+            <div className="ml-auto flex items-center gap-2 sm:gap-4">
+              <Suspense>
+                <SiteMenu />
+              </Suspense>
               <Suspense>
                 <UserMenu />
               </Suspense>
@@ -69,6 +76,17 @@ async function SideNav() {
   if (user.role === "ADMIN" || user.role === "HR") badges["/dashboard/karyawan"] = await countEndingContracts();
 
   return <NavLinks groups={groups} badges={badges} />;
+}
+
+// The active location, and the other locations this account may switch to
+async function SiteMenu() {
+  const user = await requireUser({ allowPasswordChange: true });
+  const current = await currentSite();
+  const access = await accountsDb.siteAccess.findMany({ where: { accountId: user.id }, select: { site: true } });
+  const others = sites()
+    .filter((s) => s.code !== current.code && access.some((a) => a.site === s.code))
+    .map((s) => ({ code: s.code, label: s.label }));
+  return <SiteSwitch current={{ code: current.code, label: current.label }} others={others} />;
 }
 
 async function UserMenu() {
