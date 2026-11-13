@@ -1,9 +1,10 @@
 import { graduateTrainees } from "@/lib/training-job";
+import { notifyKitasExpiry } from "@/lib/kitas-job";
 import { sites } from "@/lib/sites";
 import { withSite } from "@/lib/site-context";
 
-// Trainee numbers (T001 → 001) the day after training ends: at start-up, then hourly,
-// for every location in turn. One location failing (its database down) is logged and
+// Trainee numbers (T001 → 001) the day after training ends, and KITAS expiry
+// notifications for foreign workers: at start-up, then hourly, for every location in turn. One location failing (its database down) is logged and
 // does not stop the others. Not awaited, so a slow database never delays the server.
 const HOUR = 60 * 60 * 1000;
 const flag = globalThis as unknown as { trainingJobStarted?: boolean };
@@ -16,6 +17,13 @@ async function run() {
       for (const c of clashes) console.warn(`[training:${code}] ${c.employeeNumber}: ${c.wanted} sudah dipakai, ID tidak diganti`);
     } catch (e) {
       console.error(`[training:${code}] pengecekan training gagal:`, e instanceof Error ? e.message : e);
+    }
+    // Foreign workers whose KITAS is about to expire or has expired
+    try {
+      const { soon, expired } = await withSite(code, () => notifyKitasExpiry());
+      if (soon || expired) console.log(`[kitas:${code}] notifikasi: ${soon} segera habis, ${expired} sudah habis`);
+    } catch (e) {
+      console.error(`[kitas:${code}] pengecekan KITAS gagal:`, e instanceof Error ? e.message : e);
     }
   }
 }
