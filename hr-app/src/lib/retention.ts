@@ -1,5 +1,8 @@
 import "server-only";
-import { siteDb } from "@/lib/db";
+import { currentSite, siteDb } from "@/lib/db";
+import { accountsDb } from "@/lib/accounts-db";
+import { setAccess } from "@/lib/site-access";
+import type { SiteCode } from "@/lib/sites";
 import { deleteFile } from "@/lib/storage";
 import type { ApplicationStage } from "@/generated/prisma/enums";
 
@@ -128,8 +131,22 @@ export async function anonymizeExpiredCandidates({ dryRun = false, now = new Dat
   return result;
 }
 
+// The anonymised employee's login: access to this location goes; an account left with
+// no access anywhere is anonymised and switched off as well
+async function closeLoginAfterRetention(accountId: string, site: SiteCode) {
+  await setAccess(accountId, site, null);
+  const left = await accountsDb.siteAccess.count({ where: { accountId } });
+  if (left === 0) {
+    await accountsDb.account.update({
+      where: { id: accountId },
+      data: { name: "Karyawan dihapus", email: `dihapus-${accountId}@anonim.invalid`, passwordHash: "", isActive: false },
+    });
+  }
+}
+
 export async function anonymizeFormerEmployees({ dryRun = false, now = new Date() } = {}): Promise<EmployeeRetentionResult> {
   const db = await siteDb();
+  const site = (await currentSite()).code;
   const cutoff = new Date(now);
   cutoff.setUTCFullYear(cutoff.getUTCFullYear() - employeeRetentionYears());
 
@@ -208,6 +225,10 @@ export async function anonymizeFormerEmployees({ dryRun = false, now = new Date(
         },
       }),
     ]);
+
+    // Their login: no access here any more; with no access anywhere else the account
+    // itself is anonymised too (it holds the same name and email)
+    if (e.userId) await closeLoginAfterRetention(e.userId, site);
 
     // Their recruitment record holds the same personal data (CV, contact details)
     const candidate = e.application?.candidate;

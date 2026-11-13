@@ -4,6 +4,7 @@ import { useActionState, useState, useTransition } from "react";
 import {
   createUser,
   resetUserPassword,
+  setUserAccess,
   setUserActive,
   updateUser,
   type PasswordResult,
@@ -97,53 +98,73 @@ export function CreateUserForm() {
   );
 }
 
-export function EditUserForm({
-  user,
-  isSelf,
-  linked,
-}: {
-  user: { id: string; name: string; email: string; role: Role };
-  isSelf: boolean;
-  linked: boolean;
-}) {
+// Name and email belong to the account, the same in every location
+export function EditUserForm({ user, linked }: { user: { id: string; name: string; email: string }; linked: boolean }) {
   const [state, action, pending] = useActionState(updateUser.bind(null, user.id), undefined);
   const hydrated = useHydrated();
   const e = state?.errors ?? {};
-  const v = (k: "name" | "email" | "role") => state?.values?.[k] ?? user[k];
-  const roles = (linked ? ["EMPLOYEE", "HR", "HIRING_MANAGER", "ADMIN"] : ["HR", "HIRING_MANAGER", "ADMIN"]) as Role[];
+  const v = (k: "name" | "email") => state?.values?.[k] ?? user[k];
 
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
       <FormMessage message={state?.message} />
       {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p>}
-      <div className="grid gap-3 sm:grid-cols-3">
+      <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nama" htmlFor={`name-${user.id}`} hint={linked ? "Mengikuti data karyawan." : undefined} errors={e.name}>
           <input id={`name-${user.id}`} name="name" required readOnly={linked} defaultValue={v("name")} className={inputClass} />
         </Field>
         <Field label="Email" htmlFor={`email-${user.id}`} hint={linked ? "Mengikuti data karyawan." : undefined} errors={e.email}>
           <input id={`email-${user.id}`} name="email" type="email" required readOnly={linked} defaultValue={v("email")} className={inputClass} />
         </Field>
-        <Field label="Peran" htmlFor={`role-${user.id}`} hint={isSelf ? "Peran Anda sendiri tidak bisa diubah." : undefined} errors={e.role}>
-          {isSelf ? (
-            <>
-              <input type="hidden" name="role" value={user.role} />
-              <select id={`role-${user.id}`} disabled value={user.role} className={inputClass}>
-                <option value={user.role}>{roleLabel[user.role]}</option>
-              </select>
-            </>
-          ) : (
-            <select id={`role-${user.id}`} name="role" defaultValue={v("role")} className={inputClass}>
-              {roles.map((r) => (
-                <option key={r} value={r}>
-                  {roleLabel[r]}
-                </option>
-              ))}
-            </select>
-          )}
-        </Field>
       </div>
       <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
         {pending ? "Menyimpan…" : "Simpan perubahan"}
+      </button>
+    </form>
+  );
+}
+
+// One role per location, or no access. Karyawan is offered only where the account is
+// linked to an employee record of that location.
+export function AccessForm({
+  accountId,
+  sites,
+}: {
+  accountId: string;
+  sites: { code: string; label: string; role: Role | null; linkedEmployee: boolean }[];
+}) {
+  const [state, action, pending] = useActionState(setUserAccess.bind(null, accountId), undefined);
+  const hydrated = useHydrated();
+  const e = state?.errors ?? {};
+
+  return (
+    <form key={state?.attempt} action={action} className="space-y-3">
+      <FormMessage message={state?.message} />
+      {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Akses tersimpan.</p>}
+      <div className="grid gap-3 sm:grid-cols-2">
+        {sites.map((s) => {
+          const roles = (s.linkedEmployee || s.role === "EMPLOYEE" ? ["EMPLOYEE", "HR", "HIRING_MANAGER", "ADMIN"] : ["HR", "HIRING_MANAGER", "ADMIN"]) as Role[];
+          return (
+            <Field key={s.code} label={s.label} htmlFor={`access-${accountId}-${s.code}`} errors={e[s.code]}>
+              <select
+                id={`access-${accountId}-${s.code}`}
+                name={s.code}
+                defaultValue={state?.values?.[s.code] ?? s.role ?? ""}
+                className={inputClass}
+              >
+                <option value="">Tidak ada akses</option>
+                {roles.map((r) => (
+                  <option key={r} value={r}>
+                    {roleLabel[r]}
+                  </option>
+                ))}
+              </select>
+            </Field>
+          );
+        })}
+      </div>
+      <button type="submit" disabled={pending || !hydrated} className={buttonClass}>
+        {pending ? "Menyimpan…" : "Simpan akses"}
       </button>
     </form>
   );

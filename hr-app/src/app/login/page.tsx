@@ -4,6 +4,8 @@ import { LAST_SITE_COOKIE, siteByCode, sites } from "@/lib/sites";
 import { LoginForm } from "./login-form";
 
 export const metadata: Metadata = { title: "Masuk" };
+// Reads the last-location cookie, so the page renders per request
+export const instant = false;
 
 export default async function LoginPage() {
   const options = sites().map((s) => ({ code: s.code, label: s.label }));

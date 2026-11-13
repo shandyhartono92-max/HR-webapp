@@ -3,7 +3,9 @@
 import bcrypt from "bcryptjs";
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { currentSite, siteDb } from "@/lib/db";
+import { currentSite, dbFor, siteDb } from "@/lib/db";
+import { sites, type SiteCode } from "@/lib/sites";
+import { lastAdminError } from "@/lib/access-rules";
 import { accountsDb } from "@/lib/accounts-db";
 import { setAccess, syncMirrorEverywhere } from "@/lib/site-access";
 import { Prisma as AccountsPrisma } from "@/generated/accounts/client";
@@ -113,20 +115,19 @@ export async function createUser(_state: UserFormState, formData: FormData): Pro
   };
 }
 
-const manageable = async (id: string) =>
-  (await siteDb()).user.findUnique({
+// The account, with its role and linked employee in the current location (null role:
+// no access here). Accounts are managed from any location.
+async function manageable(id: string) {
+  const account = await accountsDb.account.findUnique({ where: { id }, select: { id: true, name: true, email: true, isActive: true } });
+  if (!account) return null;
+  const mirror = await (await siteDb()).user.findUnique({
     where: { id },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      employee: { select: { status: true, anonymizedAt: true } },
-    },
+    select: { role: true, isActive: true, employee: { select: { status: true, anonymizedAt: true } } },
   });
+  return { ...account, role: mirror?.isActive ? mirror.role : null, employee: mirror?.employee ?? null };
+}
 
-const UpdateSchema = z.object({ ...NameEmail, role: z.enum(Role, { error: "Pilih peran." }) });
+const UpdateSchema = z.object(NameEmail);
 
 export async function updateUser(userId: string, _state: FormState, formData: FormData): Promise<FormState> {
   const db = await siteDb();
@@ -139,11 +140,6 @@ export async function updateUser(userId: string, _state: FormState, formData: Fo
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
   const d = parsed.data;
 
-  // An Admin cannot demote or deactivate themselves, so one working Admin always remains
-  if (userId === admin.id && d.role !== before.role) return failed(formData, { role: ["Anda tidak bisa mengubah peran Anda sendiri."] });
-  if (d.role === "EMPLOYEE" && !before.employee) {
-    return failed(formData, { role: ["Peran Karyawan hanya untuk akun yang terhubung ke data karyawan."] });
-  }
   // A linked account's name and email follow the employee record (Ubah identitas)
   if (before.employee && (d.name !== before.name || d.email !== before.email)) {
     return failed(formData, undefined, "Nama dan email akun ini mengikuti data karyawan. Ubah lewat profil karyawan → Ubah identitas.");
@@ -151,22 +147,24 @@ export async function updateUser(userId: string, _state: FormState, formData: Fo
   const taken = await accountsDb.account.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: userId } }, select: { id: true } });
   if (taken) return failed(formData, { email: ["Email ini sudah dipakai akun lain."] });
 
-  // Name and email belong to the account (every location); the role to this location
+  // Name and email belong to the account and show in every location it can enter
   await accountsDb.account.update({ where: { id: userId }, data: { name: d.name, email: d.email } });
-  await setAccess(userId, (await currentSite()).code, d.role);
   await syncMirrorEverywhere(userId);
-  const links = await db.$transaction(async (tx) => {
-    // Jobs show the manager's name as text; keep it in step with the account
-    if (d.name !== before.name) await tx.job.updateMany({ where: { hiringManagerId: userId }, data: { hiringManagerName: d.name } });
-    return {
-      linkedEmployee: !before.employee && d.email !== before.email ? await linkEmployeeByEmail(tx, userId, d.email) : null,
-      linkedJobs: d.name !== before.name || d.role !== before.role ? await linkJobsByName(tx, userId, d.name, d.role) : 0,
-    };
-  });
+  // Links to employee records and jobs need the account in this location
+  const role = before.role;
+  const links = role
+    ? await db.$transaction(async (tx) => {
+        // Jobs show the manager's name as text; keep it in step with the account
+        if (d.name !== before.name) await tx.job.updateMany({ where: { hiringManagerId: userId }, data: { hiringManagerName: d.name } });
+        return {
+          linkedEmployee: !before.employee && d.email !== before.email ? await linkEmployeeByEmail(tx, userId, d.email) : null,
+          linkedJobs: d.name !== before.name ? await linkJobsByName(tx, userId, d.name, role) : 0,
+        };
+      })
+    : { linkedEmployee: null, linkedJobs: 0 };
 
   // Name and email are recorded without their values: the audit log can never be wiped
   const changes: Record<string, unknown> = {};
-  if (d.role !== before.role) changes.role = { from: before.role, to: d.role };
   if (d.name !== before.name) changes.name = "changed";
   if (d.email !== before.email) changes.email = "changed";
   if (Object.keys(changes).length) {
@@ -179,6 +177,71 @@ export async function updateUser(userId: string, _state: FormState, formData: Fo
     });
   }
   refresh();
+  return { ok: true, attempt: Date.now() };
+}
+
+// Access per location: one select per location, value = role or "" for no access.
+// Refuses the actor's own last ADMIN access, and Karyawan where the account is not
+// linked to an employee record of that location.
+export async function setUserAccess(accountId: string, _state: FormState, formData: FormData): Promise<FormState> {
+  const admin = await requireRole("ADMIN");
+  const account = await accountsDb.account.findUnique({ where: { id: accountId }, select: { id: true, access: { select: { site: true, role: true } } } });
+  if (!account) return { message: "Akun tidak ditemukan." };
+
+  const all = await accountsDb.siteAccess.findMany({ where: { accountId: { in: [accountId, admin.id] } }, select: { accountId: true, site: true, role: true } });
+  const errors: Record<string, string[]> = {};
+  const changes: { site: SiteCode; label: string; from: Role | null; to: Role | null }[] = [];
+  for (const site of sites()) {
+    const raw = String(formData.get(site.code) ?? "");
+    if (raw && !(raw in Role)) {
+      errors[site.code] = ["Pilih peran."];
+      continue;
+    }
+    const to = (raw || null) as Role | null;
+    const from = (account.access.find((a) => a.site === site.code)?.role ?? null) as Role | null;
+    if (to === from) continue;
+    if (to === "EMPLOYEE") {
+      const linked = await dbFor(site.code)
+        .employee.findFirst({ where: { userId: accountId }, select: { id: true } })
+        .catch(() => undefined);
+      if (linked === undefined) {
+        errors[site.code] = [`Lokasi ${site.label} sedang tidak bisa diakses.`];
+        continue;
+      }
+      if (!linked) {
+        errors[site.code] = [`Peran Karyawan hanya untuk akun yang terhubung ke data karyawan di ${site.label}.`];
+        continue;
+      }
+    }
+    changes.push({ site: site.code, label: site.label, from, to });
+  }
+  // Judged on all of this save's changes together
+  const lastAdmin = lastAdminError(all, changes.map((c) => ({ accountId, site: c.site, role: c.to })), admin.id);
+  if (lastAdmin) for (const c of changes) if (c.from === "ADMIN") errors[c.site] = [lastAdmin];
+  if (Object.keys(errors).length) return failed(formData, errors);
+
+  const failedSites: string[] = [];
+  for (const c of changes) {
+    try {
+      await setAccess(accountId, c.site, c.to);
+    } catch (e) {
+      console.error(`[akses] ${c.site} gagal:`, e instanceof Error ? e.message : e);
+      failedSites.push(c.label);
+    }
+  }
+  if (changes.length) {
+    await writeAudit({
+      actorId: admin.id,
+      action: "user.access_changed",
+      entityType: "User",
+      entityId: accountId,
+      changes: Object.fromEntries(changes.map((c) => [c.site, { from: c.from, to: c.to }])),
+    });
+  }
+  refresh();
+  if (failedSites.length) {
+    return { message: `Akses untuk ${failedSites.join(", ")} belum tersimpan: lokasinya sedang tidak bisa diakses. Coba lagi nanti.`, attempt: Date.now() };
+  }
   return { ok: true, attempt: Date.now() };
 }
 

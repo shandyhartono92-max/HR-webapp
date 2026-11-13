@@ -3,7 +3,9 @@
 import { refresh, revalidatePath } from "next/cache";
 import { redirect } from "next/navigation";
 import * as z from "zod";
-import { siteDb } from "@/lib/db";
+import { currentSite, siteDb } from "@/lib/db";
+import { accountsDb } from "@/lib/accounts-db";
+import { setAccess, syncMirrorEverywhere } from "@/lib/site-access";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { decrypt, encrypt, lastFour } from "@/lib/crypto";
@@ -119,6 +121,8 @@ export async function updateEmployment(employeeId: string, _state: FormState, fo
     await tx.employee.update({ where: { id: employeeId }, data: { ...data, exitDate } });
     if (closesLogin) await tx.user.update({ where: { id: before.userId! }, data: { isActive: false } });
   });
+  // The account loses access to this location; access elsewhere (if any) stays
+  if (closesLogin) await setAccess(before.userId!, (await currentSite()).code, null);
   if (closesLogin) {
     await writeAudit({
       actorId: user.id,
@@ -225,8 +229,9 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
       select: { id: true },
     }),
     db.employee.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: employeeId } }, select: { id: true } }),
+    // Login emails are unique across every location, so the accounts database decides
     before.userId
-      ? db.user.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: before.userId } }, select: { id: true } })
+      ? accountsDb.account.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: before.userId } }, select: { id: true } })
       : null,
   ]);
   const errors: Record<string, string[]> = {};
@@ -235,6 +240,11 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
   else if (loginTaken) errors.email = ["Email ini sudah dipakai akun login lain."];
   if (Object.keys(errors).length) return failed(formData, errors);
 
+  // The login's name and email belong to the account and show in every location
+  if (before.userId) {
+    await accountsDb.account.update({ where: { id: before.userId }, data: { email: d.email, name: d.fullName } });
+    await syncMirrorEverywhere(before.userId);
+  }
   await db.$transaction(async (tx) => {
     await tx.employee.update({ where: { id: employeeId }, data: d });
     if (before.userId) {

@@ -1,42 +1,49 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { siteDb } from "@/lib/db";
+import { currentSite, dbFor } from "@/lib/db";
 import { accountsDb } from "@/lib/accounts-db";
 import { requireRole } from "@/lib/dal";
 import { employeeStatusLabel, formatDate, roleLabel } from "@/lib/labels";
-import { CreateUserForm, EditUserForm, UserActions } from "./user-forms";
+import { sites } from "@/lib/sites";
+import type { Role } from "@/generated/prisma/enums";
+import { AccessForm, CreateUserForm, EditUserForm, UserActions } from "./user-forms";
 
 export const metadata: Metadata = { title: "Kelola pengguna" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
 
+// Accounts live in the accounts database and are managed from any location; each
+// row shows and edits the account's access per location.
 export default async function UsersPage() {
-  const db = await siteDb();
   const me = await requireRole("ADMIN");
+  const here = await currentSite();
+  const allSites = sites();
 
-  const mirrors = await db.user.findMany({
+  const accounts = await accountsDb.account.findMany({
     orderBy: [{ isActive: "desc" }, { name: "asc" }],
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      employee: { select: { id: true, employeeNumber: true, status: true, anonymizedAt: true } },
-    },
+    select: { id: true, name: true, email: true, isActive: true, mustChangePassword: true, lastLoginAt: true, access: { select: { site: true, role: true } } },
   });
-  // Temporary password and last login live with the account
-  const accounts = new Map(
-    (
-      await accountsDb.account.findMany({
-        where: { id: { in: mirrors.map((u) => u.id) } },
-        select: { id: true, mustChangePassword: true, lastLoginAt: true },
-      })
-    ).map((a) => [a.id, a]),
+  const ids = accounts.map((a) => a.id);
+  // Linked employee records per location (a location that is down shows none)
+  const employeesBySite = new Map(
+    await Promise.all(
+      allSites.map(async (s) => {
+        const rows = await dbFor(s.code)
+          .employee.findMany({ where: { userId: { in: ids } }, select: { id: true, userId: true, employeeNumber: true, status: true, anonymizedAt: true } })
+          .catch(() => []);
+        return [s.code, new Map(rows.map((r) => [r.userId!, r]))] as const;
+      }),
+    ),
   );
-  const users = mirrors.map((u) => ({
-    ...u,
-    mustChangePassword: accounts.get(u.id)?.mustChangePassword ?? false,
-    lastLoginAt: accounts.get(u.id)?.lastLoginAt ?? null,
+  const users = accounts.map((a) => ({
+    ...a,
+    role: (a.access.find((x) => x.site === here.code)?.role ?? null) as Role | null,
+    employee: employeesBySite.get(here.code)?.get(a.id) ?? null,
+    sites: allSites.map((s) => ({
+      code: s.code,
+      label: s.label,
+      role: (a.access.find((x) => x.site === s.code)?.role ?? null) as Role | null,
+      linkedEmployee: Boolean(employeesBySite.get(s.code)?.get(a.id)),
+    })),
   }));
   const staffCount = users.filter((u) => u.isActive && (u.role === "ADMIN" || u.role === "HR")).length;
 
@@ -87,7 +94,14 @@ export default async function UsersPage() {
                     </p>
                   </div>
                   <div className="flex flex-wrap items-center gap-1.5 text-xs font-medium">
-                    <span className="rounded-full bg-brand-50 px-2.5 py-0.5 text-brand-800">{roleLabel[u.role]}</span>
+                    {u.sites.map((s) => (
+                      <span
+                        key={s.code}
+                        className={`rounded-full px-2.5 py-0.5 ${s.role ? "bg-brand-50 text-brand-800" : "bg-slate-100 text-slate-500"}`}
+                      >
+                        {s.label}: {s.role ? roleLabel[s.role] : "—"}
+                      </span>
+                    ))}
                     {!u.isActive && <span className="rounded-full bg-slate-200 px-2.5 py-0.5 text-slate-700">Nonaktif</span>}
                     {u.isActive && u.mustChangePassword && (
                       <span className="rounded-full bg-amber-100 px-2.5 py-0.5 text-amber-800">Belum ganti kata sandi</span>
@@ -105,9 +119,15 @@ export default async function UsersPage() {
                   <div className="mt-3 space-y-3">
                     {!isSelf && <UserActions userId={u.id} name={u.name} isActive={u.isActive} />}
                     <details>
-                      <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah nama, email, atau peran</summary>
+                      <summary className="cursor-pointer text-sm font-medium text-brand-800">Akses lokasi dan peran</summary>
                       <div className="mt-3">
-                        <EditUserForm user={u} isSelf={isSelf} linked={Boolean(u.employee)} />
+                        <AccessForm accountId={u.id} sites={u.sites} />
+                      </div>
+                    </details>
+                    <details>
+                      <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah nama atau email</summary>
+                      <div className="mt-3">
+                        <EditUserForm user={u} linked={Boolean(u.employee)} />
                       </div>
                     </details>
                   </div>
