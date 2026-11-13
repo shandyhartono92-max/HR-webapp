@@ -51,6 +51,24 @@ try {
   assert.deepEqual(await run(), { soon: 1, expired: 0 });
   assert.deepEqual(await notices(soon.id), { kitas_soon: staff * 2 });
 
+  // Two job runs at once (two server processes) still send one notice per staff user
+  const twice = await make(5, "2026-12-01");
+  await Promise.all([run(), run()]);
+  assert.deepEqual(await notices(twice.id), { kitas_soon: staff });
+
+  // A renewal saved while the job is working: the job must not stamp the renewed record
+  const raced = await make(6, "2026-12-02");
+  const job = withSite("jakarta", async () => {
+    const p = notifyKitasExpiry(today);
+    // Renew right away, in parallel with the job
+    await db.foreignWorker.update({ where: { id: raced.id }, data: { kitasExpiry: d("2027-12-02"), ...kitasRenewalData(d("2026-12-02"), d("2027-12-02")) } });
+    return p;
+  });
+  await job;
+  const after = await db.foreignWorker.findUniqueOrThrow({ where: { id: raced.id }, select: { kitasExpiry: true, kitasSoonNoticeAt: true } });
+  assert.equal(after.kitasExpiry.toISOString().slice(0, 10), "2027-12-02");
+  assert.equal(after.kitasSoonNoticeAt, null, "the renewed KITAS keeps its next soon notice");
+
   // The notification names the worker first (retention looks for "<name> · ")
   const n = await db.notification.findFirstOrThrow({ where: { link: `/dashboard/tka/${expired.id}` }, select: { title: true, body: true } });
   assert.equal(n.title, "KITAS sudah habis");

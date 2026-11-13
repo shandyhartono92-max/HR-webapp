@@ -29,8 +29,17 @@ export async function notifyKitasExpiry(today = todayDate()): Promise<{ soon: nu
     const due = kitasNoticeDue(w, today);
     if (!due) continue;
     const n = notice[due];
-    await db.$transaction([
-      db.notification.createMany({
+    const sent = await db.$transaction(async (tx) => {
+      // Claim the notice first, on the record as it was read: still active, same KITAS
+      // date, marker still empty. Another job run (a second server process) or a renewal
+      // saved meanwhile makes this match nothing, and then nothing is sent or stamped.
+      const claimed = await tx.foreignWorker.updateMany({
+        where: { id: w.id, status: "ACTIVE", kitasExpiry: w.kitasExpiry, [n.marker]: null },
+        // An expired notice also stands for the "soon" one, so it is never sent afterwards
+        data: due === "expired" ? { kitasExpiredNoticeAt: new Date(), kitasSoonNoticeAt: w.kitasSoonNoticeAt ?? new Date() } : { [n.marker]: new Date() },
+      });
+      if (claimed.count !== 1) return false;
+      await tx.notification.createMany({
         data: staff.map((u) => ({
           userId: u.id,
           type: n.type,
@@ -39,14 +48,10 @@ export async function notifyKitasExpiry(today = todayDate()): Promise<{ soon: nu
           body: `${w.fullName} · KITAS ${w.kitasNumber} berlaku sampai ${formatDate(w.kitasExpiry)}.`,
           link: `/dashboard/tka/${w.id}`,
         })),
-      }),
-      // An expired notice also stands for the "soon" one, so it is never sent afterwards
-      db.foreignWorker.update({
-        where: { id: w.id },
-        data: due === "expired" ? { kitasExpiredNoticeAt: new Date(), kitasSoonNoticeAt: w.kitasSoonNoticeAt ?? new Date() } : { [n.marker]: new Date() },
-      }),
-    ]);
-    result[due]++;
+      });
+      return true;
+    });
+    if (sent) result[due]++;
   }
   return result;
 }
