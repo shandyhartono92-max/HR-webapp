@@ -8,26 +8,25 @@ import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
 import { todayDate } from "@/lib/labels";
 import { formSiteRefusal } from "@/lib/form-site";
-import { kitasRenewalData, parseForeignWorker, type ForeignWorkerInput, type ForeignWorkerStatus } from "@/lib/foreign-workers";
+import { clashMessage, kitasRenewalData, parseForeignWorker, type ForeignWorkerInput, type ForeignWorkerStatus } from "@/lib/foreign-workers";
 import { Prisma } from "@/generated/prisma/client";
 
 // Tenaga Kerja Asing: add, edit, Aktif / Non Aktif. No delete: a worker who left is
 // set Non Aktif. Admin and HR only.
 
-const PASSPORT_TAKEN = "Nomor paspor ini sudah dipakai TKA lain.";
-const KITAS_TAKEN = "Nomor KITAS ini sudah dipakai TKA lain.";
-
-// Passport and KITAS numbers are unique within a location (stored upper-cased)
+// Passport and KITAS numbers are unique within a location (stored normalised); the
+// message names the owner, and points a Non Aktif owner at "Aktifkan lagi"
 async function clashErrors(data: ForeignWorkerInput, exceptId?: string) {
   const db = await siteDb();
   const not = exceptId ? { id: { not: exceptId } } : {};
+  const owner = { fullName: true, status: true } as const;
   const [passport, kitas] = await Promise.all([
-    db.foreignWorker.findFirst({ where: { passportNumber: data.passportNumber, ...not }, select: { id: true } }),
-    db.foreignWorker.findFirst({ where: { kitasNumber: data.kitasNumber, ...not }, select: { id: true } }),
+    db.foreignWorker.findFirst({ where: { passportNumber: data.passportNumber, ...not }, select: owner }),
+    db.foreignWorker.findFirst({ where: { kitasNumber: data.kitasNumber, ...not }, select: owner }),
   ]);
   const errors: Record<string, string[]> = {};
-  if (passport) errors.passportNumber = [PASSPORT_TAKEN];
-  if (kitas) errors.kitasNumber = [KITAS_TAKEN];
+  if (passport) errors.passportNumber = [clashMessage("paspor", passport)];
+  if (kitas) errors.kitasNumber = [clashMessage("KITAS", kitas)];
   return errors;
 }
 

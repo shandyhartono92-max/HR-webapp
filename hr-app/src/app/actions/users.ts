@@ -5,11 +5,12 @@ import { refresh } from "next/cache";
 import * as z from "zod";
 import { currentSite, dbFor, siteDb } from "@/lib/db";
 import { formSiteRefusal } from "@/lib/form-site";
-import { sites, type SiteCode } from "@/lib/sites";
-import { lastAdminError } from "@/lib/access-rules";
+import { siteByCode, sites, type SiteCode } from "@/lib/sites";
+import { lastAdminError, siteWithoutAdminError } from "@/lib/access-rules";
 import { accountsDb } from "@/lib/accounts-db";
 import { setAccess, syncMirrorEverywhere } from "@/lib/site-access";
 import { createAccountWithAccess } from "@/lib/account-create";
+import { employeeLinks, linkSummary } from "@/lib/account-links";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
@@ -111,6 +112,10 @@ export async function createUser(_state: UserFormState, formData: FormData): Pro
   };
 }
 
+// Access rows of active accounts (for the "every location keeps an Admin" rule)
+const activeAccess = () =>
+  accountsDb.siteAccess.findMany({ where: { account: { isActive: true } }, select: { accountId: true, site: true, role: true } });
+
 // The account, with its role and linked employee in the current location (null role:
 // no access here). Accounts are managed from any location.
 async function manageable(id: string) {
@@ -120,7 +125,9 @@ async function manageable(id: string) {
     where: { id },
     select: { role: true, isActive: true, employee: { select: { status: true, anonymizedAt: true } } },
   });
-  return { ...account, role: mirror?.isActive ? mirror.role : null, employee: mirror?.employee ?? null };
+  // Employee records in every location decide the rules below, not only this one's
+  const links = linkSummary(await employeeLinks(id));
+  return { ...account, role: mirror?.isActive ? mirror.role : null, employee: mirror?.employee ?? null, links };
 }
 
 const UpdateSchema = z.object(NameEmail);
@@ -130,14 +137,14 @@ export async function updateUser(userId: string, _state: FormState, formData: Fo
   const admin = await requireRole("ADMIN");
   const before = await manageable(userId);
   if (!before) return { message: "Akun tidak ditemukan." };
-  if (before.employee?.anonymizedAt) return { message: "Data akun ini sudah dianonimkan." };
+  if (before.links.anonymized) return { message: "Data akun ini sudah dianonimkan." };
 
   const parsed = UpdateSchema.safeParse(Object.fromEntries(formData));
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
   const d = parsed.data;
 
   // A linked account's name and email follow the employee record (Ubah identitas)
-  if (before.employee && (d.name !== before.name || d.email !== before.email)) {
+  if (before.links.linked && (d.name !== before.name || d.email !== before.email)) {
     return failed(formData, undefined, "Nama dan email akun ini mengikuti data karyawan. Ubah lewat profil karyawan → Ubah identitas.");
   }
   const taken = await accountsDb.account.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: userId } }, select: { id: true } });
@@ -212,8 +219,12 @@ export async function setUserAccess(accountId: string, _state: FormState, formDa
     changes.push({ site: site.code, label: site.label, from, to });
   }
   // Judged on all of this save's changes together
-  const lastAdmin = lastAdminError(all, changes.map((c) => ({ accountId, site: c.site, role: c.to })), admin.id);
+  const asChanges = changes.map((c) => ({ accountId, site: c.site, role: c.to }));
+  const lastAdmin = lastAdminError(all, asChanges, admin.id);
   if (lastAdmin) for (const c of changes) if (c.from === "ADMIN") errors[c.site] = [lastAdmin];
+  // …and no location may be left without an Admin, whoever's access changes
+  const siteAdmin = siteWithoutAdminError(await activeAccess(), asChanges, (code) => siteByCode(code)?.label ?? code);
+  if (siteAdmin) for (const c of changes) if (c.from === "ADMIN") errors[c.site] ??= [siteAdmin];
   if (Object.keys(errors).length) return failed(formData, errors);
 
   const failedSites: string[] = [];
@@ -252,7 +263,7 @@ export async function resetUserPassword(userId: string): Promise<PasswordResult>
   const admin = await requireRole("ADMIN");
   if (userId === admin.id) return { error: "Ganti kata sandi Anda sendiri lewat menu Akun Saya." };
   const user = await manageable(userId);
-  if (!user || user.employee?.anonymizedAt) return { error: "Akun tidak ditemukan." };
+  if (!user || user.links.anonymized) return { error: "Akun tidak ditemukan." };
 
   const tempPassword = temporaryPassword();
   await accountsDb.account.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(tempPassword, 12), mustChangePassword: true } });
@@ -268,11 +279,16 @@ export async function setUserActive(userId: string, active: boolean): Promise<{ 
   if (!user) return { error: "Akun tidak ditemukan." };
 
   if (active) {
-    if (user.employee?.anonymizedAt) return { error: "Data akun ini sudah dianonimkan dan tidak bisa diaktifkan lagi." };
-    const status = user.employee?.status;
-    if (status === "RESIGNED" || status === "TERMINATED" || status === "CONTRACT_ENDED") {
+    if (user.links.anonymized) return { error: "Data akun ini sudah dianonimkan dan tidak bisa diaktifkan lagi." };
+    if (user.links.allLeft) {
       return { error: "Karyawan ini sudah keluar. Ubah dulu statusnya di profil karyawan jika ia bekerja lagi." };
     }
+  } else {
+    // Switching the account off removes it from every location at once
+    const access = await activeAccess();
+    const gone = access.filter((a) => a.accountId === userId).map((a) => ({ accountId: userId, site: a.site, role: null }));
+    const siteAdmin = siteWithoutAdminError(access, gone, (code) => siteByCode(code)?.label ?? code);
+    if (siteAdmin) return { error: siteAdmin };
   }
 
   // The whole account, in every location

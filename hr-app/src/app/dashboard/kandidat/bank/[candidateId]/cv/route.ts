@@ -5,9 +5,10 @@ import { readFile } from "@/lib/storage";
 
 // Latest CV of a bank-data candidate (stored on the candidate or on any application). Admin/HR, audited.
 export async function GET(_req: Request, { params }: RouteContext<"/dashboard/kandidat/bank/[candidateId]/cv">) {
-  const db = await siteDb();
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+  // The location comes from the session, so it is read only once the user is known
+  const db = await siteDb();
   if (user.role !== "ADMIN" && user.role !== "HR") return new Response("Forbidden", { status: 403 });
 
   const { candidateId } = await params;

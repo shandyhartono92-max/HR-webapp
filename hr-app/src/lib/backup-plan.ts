@@ -1,3 +1,4 @@
+import { closeSync, openSync, readSync, statSync } from "node:fs";
 import path from "node:path";
 import { parseSites } from "@/lib/sites";
 
@@ -36,4 +37,27 @@ export function backupPlan(env: Env, now: Date, repoRoot: string): BackupPlan {
   const urls = [accounts, ...sites.sites.map((s) => s.databaseUrl)];
   const targets = urls.map((url) => ({ name: new URL(url).pathname.replace(/^\//, ""), url }));
   return { ok: true, dir: path.join(base, stamp(now)), databases: targets.map((t) => t.name), targets };
+}
+
+// The [client] option file mysqldump reads the credentials from (never the command
+// line). Values are double-quoted with \ and " escaped, so a password with #, quotes or
+// backslashes reaches MariaDB unchanged.
+const quote = (v: string) => `"${v.replaceAll("\\", "\\\\").replaceAll('"', '\\"')}"`;
+export function optionFile(url: string): string {
+  const u = new URL(url);
+  return `[client]\nuser=${quote(decodeURIComponent(u.username))}\npassword=${quote(decodeURIComponent(u.password))}\nhost=${quote(u.hostname)}\nport=${u.port || 3306}\n`;
+}
+
+// The last `bytes` of a file, without reading the whole dump into memory
+export function fileTail(file: string, bytes: number): string {
+  const size = statSync(file).size;
+  const length = Math.min(bytes, size);
+  const buffer = Buffer.alloc(length);
+  const fd = openSync(file, "r");
+  try {
+    readSync(fd, buffer, 0, length, size - length);
+  } finally {
+    closeSync(fd);
+  }
+  return buffer.toString("utf8");
 }

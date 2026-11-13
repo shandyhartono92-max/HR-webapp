@@ -19,6 +19,25 @@ export function lastAdminError(access: Access[], changes: { accountId: string; s
   return isAdmin(after) ? null : "Tidak bisa mencabut akses ADMIN terakhir milik Anda sendiri.";
 }
 
+// Every location that has an Admin keeps at least one after one save's changes, whoever
+// makes them (otherwise nobody could manage that location's accounts). `access` holds the
+// rows of active accounts only.
+export function siteWithoutAdminError(
+  access: Access[],
+  changes: { accountId: string; site: SiteCode; role: string | null }[],
+  labelOf: (code: SiteCode) => string,
+): string | null {
+  const key = (a: { accountId: string; site: SiteCode }) => `${a.accountId}|${a.site}`;
+  const changed = new Set(changes.map(key));
+  const after = [...access.filter((a) => !changed.has(key(a))), ...changes.filter((c) => c.role !== null)];
+  for (const site of new Set(changes.map((c) => c.site))) {
+    const hadAdmin = access.some((a) => a.site === site && a.role === "ADMIN");
+    const hasAdmin = after.some((a) => a.site === site && a.role === "ADMIN");
+    if (hadAdmin && !hasAdmin) return `${labelOf(site)} harus punya minimal satu Admin aktif. Berikan peran Admin ke akun lain di ${labelOf(site)} dulu.`;
+  }
+  return null;
+}
+
 // HR creates and resets employee logins from the employee profile. That may only
 // touch an account that is nothing more than an employee login of this location:
 // linking (and then resetting) a staff account, or one of another location, would

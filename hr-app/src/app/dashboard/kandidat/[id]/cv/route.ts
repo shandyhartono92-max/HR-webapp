@@ -6,9 +6,10 @@ import { readFile } from "@/lib/storage";
 // Streams the latest CV of an application. Files live outside /public, so this
 // handler is the only way to get them, and every download is audited.
 export async function GET(_req: Request, { params }: RouteContext<"/dashboard/kandidat/[id]/cv">) {
-  const db = await siteDb();
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+  // The location comes from the session, so it is read only once the user is known
+  const db = await siteDb();
 
   const { id } = await params;
   if (!(await canAccessApplication(user, id))) return new Response("Not found", { status: 404 });

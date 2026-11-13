@@ -252,10 +252,8 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
       return failed(formData, { email: ["Login karyawan ini juga akun staf atau dipakai di lokasi lain. Nama dan emailnya hanya bisa diubah Admin."] });
     }
   }
-  if (before.userId) {
-    await accountsDb.account.update({ where: { id: before.userId }, data: { email: d.email, name: d.fullName } });
-    await syncMirrorEverywhere(before.userId);
-  }
+  // The employee record first: if it fails (e.g. a number taken a moment ago), the
+  // login is left untouched. Then the account, and its copies in other locations.
   await db.$transaction(async (tx) => {
     await tx.employee.update({ where: { id: employeeId }, data: d });
     if (before.userId) {
@@ -264,6 +262,10 @@ export async function updateIdentity(employeeId: string, _state: FormState, form
       await tx.job.updateMany({ where: { hiringManagerId: before.userId }, data: { hiringManagerName: d.fullName } });
     }
   });
+  if (before.userId) {
+    await accountsDb.account.update({ where: { id: before.userId }, data: { email: d.email, name: d.fullName } });
+    await syncMirrorEverywhere(before.userId);
+  }
 
   const dates = (x: { joinDate: Date; trainingStart: Date | null; trainingEnd: Date | null }) => ({
     joinDate: iso(x.joinDate),

@@ -1,5 +1,8 @@
 import assert from "node:assert/strict";
-import { backupPlan } from "@/lib/backup-plan";
+import fs from "node:fs";
+import os from "node:os";
+import path from "node:path";
+import { backupPlan, fileTail, optionFile } from "@/lib/backup-plan";
 
 const env = {
   SITES: "batam,jakarta",
@@ -27,5 +30,20 @@ assert.deepEqual(backupPlan({ ...env, BACKUP_DIR: "D:/Claude HR/hr-app/backups" 
   error: "BACKUP_DIR tidak boleh di dalam folder repo: isinya data pribadi.",
 });
 assert.equal(backupPlan({ ...env, ACCOUNTS_DATABASE_URL: "" }, now, repo).ok, false);
+
+// The temporary option file quotes the password, so #, quotes and backslashes survive
+assert.equal(
+  optionFile("mysql://app:p%23a%22s%5Cs@127.0.0.1:3307/portal_hr"),
+  '[client]\nuser="app"\npassword="p#a\\"s\\\\s"\nhost="127.0.0.1"\nport=3307\n',
+);
+assert.match(optionFile("mysql://app:pw@127.0.0.1/portal_hr"), /\nport=3306\n/);
+
+// Only the end of a dump is read to see whether it completed
+const tmp = path.join(os.tmpdir(), `check-backup-${process.pid}.sql`);
+fs.writeFileSync(tmp, "x".repeat(5_000_000) + "\n-- Dump completed on 2026-11-13\n");
+assert.equal(fileTail(tmp, 300).includes("Dump completed"), true);
+fs.writeFileSync(tmp, "-- truncated");
+assert.equal(fileTail(tmp, 300).includes("Dump completed"), false);
+fs.rmSync(tmp);
 
 console.log("check-backup: ok");

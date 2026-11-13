@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { lastAdminError } from "@/lib/access-rules";
+import { lastAdminError, siteWithoutAdminError } from "@/lib/access-rules";
 
 const MSG = "Tidak bisa mencabut akses ADMIN terakhir milik Anda sendiri.";
 const access = [
@@ -26,5 +26,23 @@ assert.equal(lastAdminError(access, [...one("me", "batam", "HR"), ...one("me", "
 
 // Changes to another account are not this rule's business
 assert.equal(lastAdminError(access, one("other", "jakarta", null), "me"), null);
+
+// ── Every location keeps at least one Admin (whoever makes the change) ──
+const label = (c: string) => ({ batam: "Batam", jakarta: "Jakarta" })[c] ?? c;
+const team = [
+  { accountId: "me", site: "batam", role: "ADMIN" as const },
+  { accountId: "x", site: "jakarta", role: "ADMIN" as const },
+  { accountId: "y", site: "jakarta", role: "HR" as const },
+];
+const KEEP = "Jakarta harus punya minimal satu Admin aktif. Berikan peran Admin ke akun lain di Jakarta dulu.";
+assert.equal(siteWithoutAdminError(team, [{ accountId: "x", site: "jakarta", role: "HR" }], label), KEEP);
+assert.equal(siteWithoutAdminError(team, [{ accountId: "x", site: "jakarta", role: null }], label), KEEP);
+// Swapping in the same save is fine
+assert.equal(
+  siteWithoutAdminError(team, [{ accountId: "x", site: "jakarta", role: "HR" }, { accountId: "y", site: "jakarta", role: "ADMIN" }], label),
+  null,
+);
+// A location that never had an Admin is not blocked by this rule
+assert.equal(siteWithoutAdminError([{ accountId: "y", site: "medan", role: "HR" }], [{ accountId: "y", site: "medan", role: null }], label), null);
 
 console.log("check-account-admin: ok");

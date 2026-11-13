@@ -4,6 +4,8 @@ import { redirect } from "next/navigation";
 import * as z from "zod";
 import { siteDb } from "@/lib/db";
 import { formSiteRefusal } from "@/lib/form-site";
+import { slugify } from "@/lib/job-slug";
+import { sites } from "@/lib/sites";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { findOrCreateDepartment } from "@/lib/departments";
@@ -73,20 +75,9 @@ async function resolveReferences(departmentName: string, hiringManagerName: stri
   };
 }
 
-function slugify(title: string) {
-  return (
-    title
-      .toLowerCase()
-      .normalize("NFKD")
-      .replace(/[^a-z0-9]+/g, "-")
-      .replace(/^-+|-+$/g, "")
-      .slice(0, 60) || "lowongan"
-  );
-}
-
 async function uniqueSlug(title: string) {
   const db = await siteDb();
-  const base = slugify(title);
+  const base = slugify(title, sites().map((s) => s.code));
   for (let i = 1; ; i++) {
     const slug = i === 1 ? base : `${base}-${i}`;
     const taken = await db.job.findUnique({ where: { slug }, select: { id: true } });

@@ -20,9 +20,9 @@ export type PublicJob = {
 
 // A database that is down can take the driver ~10 s to give up on; applicants should
 // not wait for it, so each location gets this long before it counts as unavailable
-const SITE_TIMEOUT_MS = 4000;
+export const SITE_TIMEOUT_MS = 4000;
 
-function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
+export function withTimeout<T>(promise: Promise<T>, ms: number): Promise<T> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   const timeout = new Promise<never>((_, reject) => {
     timer = setTimeout(() => reject(new Error(`lebih dari ${ms} ms`)), ms);

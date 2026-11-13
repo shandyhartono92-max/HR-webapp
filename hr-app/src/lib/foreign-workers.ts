@@ -38,6 +38,14 @@ export function kitasNoticeDue(
   return null;
 }
 
+// The message for a passport or KITAS number already in this location: whose it is, and
+// for a Non Aktif owner (a returning worker) how to bring that record back instead
+export function clashMessage(kind: "paspor" | "KITAS", owner: { fullName: string; status: ForeignWorkerStatus }): string {
+  return owner.status === "INACTIVE"
+    ? `Nomor ${kind} ini milik ${owner.fullName} yang berstatus Non Aktif. Buka datanya lewat filter Non Aktif, lalu klik Aktifkan lagi.`
+    : `Nomor ${kind} ini sudah dipakai TKA lain: ${owner.fullName}.`;
+}
+
 // A changed KITAS date (a renewal) starts the notices again
 export const kitasRenewalData = (before: Date, after: Date) =>
   before.getTime() === after.getTime() ? {} : { kitasSoonNoticeAt: null, kitasExpiredNoticeAt: null };

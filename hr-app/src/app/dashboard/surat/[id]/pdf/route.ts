@@ -5,9 +5,10 @@ import { readFile } from "@/lib/storage";
 
 // Letters can contain salary (offers) and disciplinary details (SP): Admin/HR only, every download audited
 export async function GET(_req: Request, { params }: RouteContext<"/dashboard/surat/[id]/pdf">) {
-  const db = await siteDb();
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+  // The location comes from the session, so it is read only once the user is known
+  const db = await siteDb();
   if (user.role !== "ADMIN" && user.role !== "HR") return new Response("Forbidden", { status: 403 });
 
   const { id } = await params;

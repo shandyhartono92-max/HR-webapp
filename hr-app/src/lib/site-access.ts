@@ -3,6 +3,7 @@ import { accountsDb } from "@/lib/accounts-db";
 import { dbFor } from "@/lib/db";
 import { sites, type SiteCode } from "@/lib/sites";
 import type { Role } from "@/generated/prisma/enums";
+import { Prisma } from "@/generated/prisma/client";
 import type { LoginEventKind } from "@/generated/accounts/enums";
 
 // The link between the accounts database and the location databases. Each location
@@ -41,8 +42,14 @@ export async function syncMirror(accountId: string, site: SiteCode): Promise<voi
   const data = { email: account.email, name: account.name, isActive: account.isActive, role: access.role as Role };
   if (existing) {
     await db.user.update({ where: { id: accountId }, data });
-  } else {
+    return;
+  }
+  try {
     await db.user.create({ data: { id: accountId, ...data } });
+  } catch (e) {
+    // Another sync (a second tab entering at the same moment) created it first
+    if (!(e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002")) throw e;
+    await db.user.update({ where: { id: accountId }, data });
   }
 }
 

@@ -4,8 +4,9 @@ import { sites } from "@/lib/sites";
 import { withSite } from "@/lib/site-context";
 
 // Trainee numbers (T001 → 001) the day after training ends, and KITAS expiry
-// notifications for foreign workers: at start-up, then hourly, for every location in turn. One location failing (its database down) is logged and
-// does not stop the others. Not awaited, so a slow database never delays the server.
+// notifications for foreign workers: at start-up, then hourly, for every location in
+// turn. One location failing (its database down) is logged and does not stop the
+// others. Not awaited, so a slow database never delays the server.
 const HOUR = 60 * 60 * 1000;
 const flag = globalThis as unknown as { trainingJobStarted?: boolean };
 

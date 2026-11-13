@@ -6,9 +6,10 @@ import { readFile } from "@/lib/storage";
 // Opens one stored employee document (e.g. a signed contract) in the browser.
 // Files live outside /public, so this handler is the only way in: Admin/HR only, every view audited.
 export async function GET(_req: Request, { params }: RouteContext<"/dashboard/karyawan/[id]/dokumen/[documentId]">) {
-  const db = await siteDb();
   const user = await getCurrentUser();
   if (!user) return new Response("Unauthorized", { status: 401 });
+  // The location comes from the session, so it is read only once the user is known
+  const db = await siteDb();
   if (user.role !== "ADMIN" && user.role !== "HR") return new Response("Forbidden", { status: 403 });
 
   const { id, documentId } = await params;

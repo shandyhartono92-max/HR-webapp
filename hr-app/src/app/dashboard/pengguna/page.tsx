@@ -127,7 +127,7 @@ export default async function UsersPage() {
                     <details>
                       <summary className="cursor-pointer text-sm font-medium text-brand-800">Ubah nama atau email</summary>
                       <div className="mt-3">
-                        <EditUserForm user={u} linked={Boolean(u.employee)} />
+                        <EditUserForm user={u} linked={u.sites.some((s) => s.linkedEmployee)} />
                       </div>
                     </details>
                   </div>

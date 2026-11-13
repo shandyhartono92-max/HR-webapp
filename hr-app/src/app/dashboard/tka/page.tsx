@@ -119,6 +119,12 @@ export default async function ForeignWorkersPage({ searchParams }: PageProps<"/d
                       {w.fullName}
                     </Link>
                     <p className="text-xs text-slate-500">{w.location}</p>
+                    {/* The Status column is hidden on phones; show Non Aktif here instead */}
+                    {w.status === "INACTIVE" && (
+                      <span className="mt-1 inline-block rounded-full bg-slate-100 px-2 py-0.5 text-xs font-semibold text-slate-600 md:hidden">
+                        Non Aktif
+                      </span>
+                    )}
                   </td>
                   <td className="hidden px-4 py-3 md:table-cell">
                     <p className="font-mono text-xs text-slate-700">{w.passportNumber}</p>

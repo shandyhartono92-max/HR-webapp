@@ -4,7 +4,7 @@
 import assert from "node:assert/strict";
 import { accountsDb } from "@/lib/accounts-db";
 import { dbFor } from "@/lib/db";
-import { setAccess } from "@/lib/site-access";
+import { setAccess, syncMirror } from "@/lib/site-access";
 
 const EMAIL = "uji.mirror@contoh.local";
 const site = "jakarta";
@@ -30,6 +30,11 @@ try {
     role: "HR",
     isActive: true,
   });
+
+  // First entry from two tabs at once: both syncs succeed, one mirror
+  await db.user.deleteMany({ where: { id: account.id } });
+  await Promise.all([syncMirror(account.id, site), syncMirror(account.id, site), syncMirror(account.id, site)]);
+  assert.equal(await db.user.count({ where: { id: account.id } }), 1);
 
   // Retention anonymises the mirror, then removes the access: the mirror stays anonymous
   await db.user.update({ where: { id: account.id }, data: { name: "Karyawan dihapus", email: `dihapus-${account.id}@anonim.invalid` } });

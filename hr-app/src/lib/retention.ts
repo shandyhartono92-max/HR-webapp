@@ -61,7 +61,12 @@ type CandidateToWipe = {
 
 // In-app notifications that name a person always start with "<full name> · ".
 // Matching that prefix (not "contains") keeps "Ani" from also hitting "Daniel".
-const notificationsNaming = (fullName: string) => ({ body: { startsWith: `${fullName} · ` } });
+// Notifications naming the person ("<name> · …"), except a foreign worker's KITAS
+// notifications, which may carry the same name but are about someone else
+export const notificationsNaming = (fullName: string) => ({
+  body: { startsWith: `${fullName} · ` },
+  NOT: { link: { startsWith: "/dashboard/tka/" } },
+});
 
 // Wipes one candidate in a transaction; returns the CV and letter files to delete afterwards
 async function anonymizeCandidate(candidate: CandidateToWipe, now: Date, reason: string) {

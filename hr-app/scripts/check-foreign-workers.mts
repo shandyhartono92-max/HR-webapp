@@ -1,5 +1,5 @@
 import assert from "node:assert/strict";
-import { KITAS_ALERT_DAYS, kitasAlert, kitasNoticeDue, kitasRenewalData, parseForeignWorker } from "@/lib/foreign-workers";
+import { KITAS_ALERT_DAYS, clashMessage, kitasAlert, kitasNoticeDue, kitasRenewalData, parseForeignWorker } from "@/lib/foreign-workers";
 
 const today = new Date("2026-11-13T00:00:00Z");
 const d = (s: string) => new Date(`${s}T00:00:00Z`);
@@ -85,5 +85,12 @@ assert.equal(kitasNoticeDue(w("2026-11-10", null, null, "INACTIVE"), today), nul
 // ── A new KITAS date starts the notices again ──
 assert.deepEqual(kitasRenewalData(d("2026-12-03"), d("2027-12-03")), { kitasSoonNoticeAt: null, kitasExpiredNoticeAt: null });
 assert.deepEqual(kitasRenewalData(d("2026-12-03"), d("2026-12-03")), {});
+
+// ── Duplicate number: say whose it is; a Non Aktif owner is pointed at "Aktifkan lagi" ──
+assert.equal(clashMessage("paspor", { fullName: "John Smith", status: "ACTIVE" }), "Nomor paspor ini sudah dipakai TKA lain: John Smith.");
+assert.equal(
+  clashMessage("KITAS", { fullName: "John Smith", status: "INACTIVE" }),
+  "Nomor KITAS ini milik John Smith yang berstatus Non Aktif. Buka datanya lewat filter Non Aktif, lalu klik Aktifkan lagi.",
+);
 
 console.log("check-foreign-workers: ok");

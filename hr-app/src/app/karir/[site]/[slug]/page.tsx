@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { dbFor } from "@/lib/db";
 import { siteByCode } from "@/lib/sites";
 import { employmentTypeLabel, formatRupiah } from "@/lib/labels";
+import { SITE_TIMEOUT_MS, withTimeout } from "@/lib/careers";
 import { ApplyForm } from "./apply-form";
 
 export const metadata: Metadata = { title: "Lowongan" };
@@ -14,23 +15,42 @@ export default async function JobDetailPage({ params }: PageProps<"/karir/[site]
   const { site: code, slug } = await params;
   const site = siteByCode(code);
   if (!site) notFound();
-  const job = await dbFor(site.code).job.findFirst({
-    where: { slug, status: "OPEN" },
-    select: {
-      id: true,
-      title: true,
-      location: true,
-      employmentType: true,
-      description: true,
-      requirements: true,
-      minEducation: true,
-      minExperienceYears: true,
-      salaryMin: true,
-      salaryMax: true,
-      showSalary: true,
-      department: { select: { name: true } },
-    },
+  // A location whose database is down gets a short note, not an error page (same 4 s
+  // limit as the job list)
+  const job = await withTimeout(
+    dbFor(site.code).job.findFirst({
+      where: { slug, status: "OPEN" },
+      select: {
+        id: true,
+        title: true,
+        location: true,
+        employmentType: true,
+        description: true,
+        requirements: true,
+        minEducation: true,
+        minExperienceYears: true,
+        salaryMin: true,
+        salaryMax: true,
+        showSalary: true,
+        department: { select: { name: true } },
+      },
+    }),
+    SITE_TIMEOUT_MS,
+  ).catch((e: unknown) => {
+    console.error(`[karir] lowongan ${site.code}/${slug} tidak bisa dibaca:`, e instanceof Error ? e.message : e);
+    return "unavailable" as const;
   });
+  if (job === "unavailable") {
+    return (
+      <main className="mx-auto w-full max-w-3xl flex-1 space-y-4 px-4 py-12">
+        <Link href="/karir" className="text-sm text-brand-700 hover:underline">
+          ← Semua lowongan
+        </Link>
+        <h1 className="text-2xl font-semibold text-slate-900">Lowongan sedang tidak bisa ditampilkan</h1>
+        <p className="text-slate-600">Lowongan di {site.label} sedang tidak bisa dibuka. Silakan coba lagi beberapa saat lagi.</p>
+      </main>
+    );
+  }
   if (!job) notFound();
 
   const salary =
