@@ -3,7 +3,10 @@
 import bcrypt from "bcryptjs";
 import { refresh } from "next/cache";
 import * as z from "zod";
-import { siteDb } from "@/lib/db";
+import { currentSite, siteDb } from "@/lib/db";
+import { accountsDb } from "@/lib/accounts-db";
+import { setAccess, syncMirrorEverywhere } from "@/lib/site-access";
+import { Prisma as AccountsPrisma } from "@/generated/accounts/client";
 import { requireRole } from "@/lib/dal";
 import { writeAudit } from "@/lib/audit";
 import { failed, type FormState } from "@/lib/forms";
@@ -66,30 +69,31 @@ export async function createUser(_state: UserFormState, formData: FormData): Pro
   if (!parsed.success) return failed(formData, z.flattenError(parsed.error).fieldErrors);
   const d = parsed.data;
 
-  const taken = await db.user.findFirst({ where: { email: equalsIgnoringCase(d.email) }, select: { id: true } });
+  // Emails are unique across every location: the account lives in the accounts database
+  const taken = await accountsDb.account.findFirst({ where: { email: equalsIgnoringCase(d.email) }, select: { id: true } });
   if (taken) return failed(formData, { email: ["Email ini sudah dipakai akun lain."] });
 
   const tempPassword = temporaryPassword();
   const passwordHash = await bcrypt.hash(tempPassword, 12);
-  let result: { id: string; linkedEmployee: string | null; linkedJobs: number };
+  let account: { id: string };
   try {
-    result = await db.$transaction(async (tx) => {
-      const user = await tx.user.create({
-        data: { name: d.name, email: d.email, role: d.role, passwordHash, mustChangePassword: true },
-        select: { id: true },
-      });
-      return {
-        id: user.id,
-        linkedEmployee: await linkEmployeeByEmail(tx, user.id, d.email),
-        linkedJobs: await linkJobsByName(tx, user.id, d.name, d.role),
-      };
+    account = await accountsDb.account.create({
+      data: { name: d.name, email: d.email, passwordHash, mustChangePassword: true },
+      select: { id: true },
     });
   } catch (e) {
-    if (e instanceof Prisma.PrismaClientKnownRequestError && e.code === "P2002") {
+    if (e instanceof AccountsPrisma.PrismaClientKnownRequestError && e.code === "P2002") {
       return failed(formData, { email: ["Email ini sudah dipakai akun lain."] });
     }
     throw e;
   }
+  // Access to this location; the mirror user is created here before linking to it
+  await setAccess(account.id, (await currentSite()).code, d.role);
+  const result = await db.$transaction(async (tx) => ({
+    id: account.id,
+    linkedEmployee: await linkEmployeeByEmail(tx, account.id, d.email),
+    linkedJobs: await linkJobsByName(tx, account.id, d.name, d.role),
+  }));
 
   await writeAudit({
     actorId: admin.id,
@@ -144,11 +148,14 @@ export async function updateUser(userId: string, _state: FormState, formData: Fo
   if (before.employee && (d.name !== before.name || d.email !== before.email)) {
     return failed(formData, undefined, "Nama dan email akun ini mengikuti data karyawan. Ubah lewat profil karyawan → Ubah identitas.");
   }
-  const taken = await db.user.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: userId } }, select: { id: true } });
+  const taken = await accountsDb.account.findFirst({ where: { email: equalsIgnoringCase(d.email), id: { not: userId } }, select: { id: true } });
   if (taken) return failed(formData, { email: ["Email ini sudah dipakai akun lain."] });
 
+  // Name and email belong to the account (every location); the role to this location
+  await accountsDb.account.update({ where: { id: userId }, data: { name: d.name, email: d.email } });
+  await setAccess(userId, (await currentSite()).code, d.role);
+  await syncMirrorEverywhere(userId);
   const links = await db.$transaction(async (tx) => {
-    await tx.user.update({ where: { id: userId }, data: { name: d.name, email: d.email, role: d.role } });
     // Jobs show the manager's name as text; keep it in step with the account
     if (d.name !== before.name) await tx.job.updateMany({ where: { hiringManagerId: userId }, data: { hiringManagerName: d.name } });
     return {
@@ -179,21 +186,19 @@ export type PasswordResult = { error?: string; tempPassword?: string; email?: st
 
 // Your own password is changed under Akun Saya, which asks for the current one
 export async function resetUserPassword(userId: string): Promise<PasswordResult> {
-  const db = await siteDb();
   const admin = await requireRole("ADMIN");
   if (userId === admin.id) return { error: "Ganti kata sandi Anda sendiri lewat menu Akun Saya." };
   const user = await manageable(userId);
   if (!user || user.employee?.anonymizedAt) return { error: "Akun tidak ditemukan." };
 
   const tempPassword = temporaryPassword();
-  await db.user.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(tempPassword, 12), mustChangePassword: true } });
+  await accountsDb.account.update({ where: { id: userId }, data: { passwordHash: await bcrypt.hash(tempPassword, 12), mustChangePassword: true } });
   await writeAudit({ actorId: admin.id, action: "user.password_reset", entityType: "User", entityId: userId });
   refresh();
   return { tempPassword, email: user.email };
 }
 
 export async function setUserActive(userId: string, active: boolean): Promise<{ error?: string }> {
-  const db = await siteDb();
   const admin = await requireRole("ADMIN");
   if (userId === admin.id) return { error: "Anda tidak bisa menonaktifkan akun Anda sendiri." };
   const user = await manageable(userId);
@@ -207,7 +212,9 @@ export async function setUserActive(userId: string, active: boolean): Promise<{ 
     }
   }
 
-  await db.user.update({ where: { id: userId }, data: { isActive: active } });
+  // The whole account, in every location
+  await accountsDb.account.update({ where: { id: userId }, data: { isActive: active } });
+  await syncMirrorEverywhere(userId);
   await writeAudit({ actorId: admin.id, action: active ? "user.reactivated" : "user.deactivated", entityType: "User", entityId: userId });
   refresh();
   return {};

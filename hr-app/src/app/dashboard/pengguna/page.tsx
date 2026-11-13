@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { siteDb } from "@/lib/db";
+import { accountsDb } from "@/lib/accounts-db";
 import { requireRole } from "@/lib/dal";
 import { employeeStatusLabel, formatDate, roleLabel } from "@/lib/labels";
 import { CreateUserForm, EditUserForm, UserActions } from "./user-forms";
@@ -12,7 +13,7 @@ export default async function UsersPage() {
   const db = await siteDb();
   const me = await requireRole("ADMIN");
 
-  const users = await db.user.findMany({
+  const mirrors = await db.user.findMany({
     orderBy: [{ isActive: "desc" }, { name: "asc" }],
     select: {
       id: true,
@@ -20,11 +21,23 @@ export default async function UsersPage() {
       email: true,
       role: true,
       isActive: true,
-      mustChangePassword: true,
-      lastLoginAt: true,
       employee: { select: { id: true, employeeNumber: true, status: true, anonymizedAt: true } },
     },
   });
+  // Temporary password and last login live with the account
+  const accounts = new Map(
+    (
+      await accountsDb.account.findMany({
+        where: { id: { in: mirrors.map((u) => u.id) } },
+        select: { id: true, mustChangePassword: true, lastLoginAt: true },
+      })
+    ).map((a) => [a.id, a]),
+  );
+  const users = mirrors.map((u) => ({
+    ...u,
+    mustChangePassword: accounts.get(u.id)?.mustChangePassword ?? false,
+    lastLoginAt: accounts.get(u.id)?.lastLoginAt ?? null,
+  }));
   const staffCount = users.filter((u) => u.isActive && (u.role === "ADMIN" || u.role === "HR")).length;
 
   return (

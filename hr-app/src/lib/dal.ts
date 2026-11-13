@@ -3,33 +3,37 @@ import { cache } from "react";
 import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { dbFor, siteDb } from "@/lib/db";
+import { accountsDb } from "@/lib/accounts-db";
 import { readSession, SESSION_COOKIE, SESSION_REJECTED_PARAM } from "@/lib/session-token";
 import type { Role } from "@/generated/prisma/enums";
 
 // Data Access Layer: every page and server action checks access here,
-// not only in proxy.ts. The database is the source of truth for role and
-// active status, so a deactivated user is locked out immediately.
+// not only in proxy.ts. The databases are the source of truth: the role and
+// active status of the location's mirror user (inactive once access is removed),
+// and the account itself (deactivated, temporary password). Either change locks
+// the user out on the next request.
 
 export const getCurrentUser = cache(async () => {
   const token = (await cookies()).get(SESSION_COOKIE)?.value;
   const session = await readSession(token);
   if (!session) return null;
-  const db = dbFor(session.site);
 
-  const user = await db.user.findUnique({
-    where: { id: session.userId },
-    select: {
-      id: true,
-      name: true,
-      email: true,
-      role: true,
-      isActive: true,
-      mustChangePassword: true,
-      employee: { select: { id: true } }, // set when the user is linked to an employee record
-    },
-  });
-  if (!user || !user.isActive) return null;
-  return user;
+  const [user, account] = await Promise.all([
+    dbFor(session.site).user.findUnique({
+      where: { id: session.userId },
+      select: {
+        id: true,
+        name: true,
+        email: true,
+        role: true,
+        isActive: true,
+        employee: { select: { id: true } }, // set when the user is linked to an employee record
+      },
+    }),
+    accountsDb.account.findUnique({ where: { id: session.userId }, select: { isActive: true, mustChangePassword: true } }),
+  ]);
+  if (!user || !user.isActive || !account?.isActive) return null;
+  return { ...user, mustChangePassword: account.mustChangePassword, site: session.site };
 });
 
 export type CurrentUser = NonNullable<Awaited<ReturnType<typeof getCurrentUser>>>;

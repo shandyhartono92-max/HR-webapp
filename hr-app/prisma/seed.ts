@@ -4,9 +4,15 @@ import "dotenv/config";
 import bcrypt from "bcryptjs";
 import { PrismaMariaDb } from "@prisma/adapter-mariadb";
 import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient as AccountsClient } from "../src/generated/accounts/client";
 import { mariadbConfig } from "../src/lib/db-config";
+import { sites } from "../src/lib/sites";
 
-const db = new PrismaClient({ adapter: new PrismaMariaDb(mariadbConfig(process.env.DATABASE_URL)) });
+// Demo data goes to the first location; the admin account can enter every location
+const allSites = sites();
+const siteClient = (url: string) => new PrismaClient({ adapter: new PrismaMariaDb(mariadbConfig(url)) });
+const db = siteClient(allSites[0].databaseUrl);
+const accounts = new AccountsClient({ adapter: new PrismaMariaDb(mariadbConfig(process.env.ACCOUNTS_DATABASE_URL)) });
 
 const ADMIN_EMAIL = process.env.SEED_ADMIN_EMAIL ?? "admin@perusahaan.local";
 
@@ -14,16 +20,27 @@ async function main() {
   const password = process.env.SEED_ADMIN_PASSWORD;
   if (!password) throw new Error("Set SEED_ADMIN_PASSWORD in .env before seeding");
 
-  const admin = await db.user.upsert({
+  const account = await accounts.account.upsert({
     where: { email: ADMIN_EMAIL },
     update: {},
-    create: {
-      email: ADMIN_EMAIL,
-      name: "Administrator",
-      role: "ADMIN",
-      passwordHash: await bcrypt.hash(password, 12),
-    },
+    create: { email: ADMIN_EMAIL, name: "Administrator", passwordHash: await bcrypt.hash(password, 12) },
   });
+  for (const site of allSites) {
+    await accounts.siteAccess.upsert({
+      where: { accountId_site: { accountId: account.id, site: site.code } },
+      update: {},
+      create: { accountId: account.id, site: site.code, role: "ADMIN" },
+    });
+    // The location's copy of the account (same id), as src/lib/site-access.ts keeps it
+    const client = site === allSites[0] ? db : siteClient(site.databaseUrl);
+    await client.user.upsert({
+      where: { id: account.id },
+      update: {},
+      create: { id: account.id, email: account.email, name: account.name, role: "ADMIN" },
+    });
+    if (client !== db) await client.$disconnect();
+  }
+  const admin = await db.user.findUniqueOrThrow({ where: { id: account.id } });
 
   const hr = await db.department.upsert({ where: { name: "Human Resources" }, update: {}, create: { name: "Human Resources" } });
   const it = await db.department.upsert({ where: { name: "Teknologi Informasi" }, update: {}, create: { name: "Teknologi Informasi" } });
@@ -119,4 +136,4 @@ main()
     console.error(e);
     process.exit(1);
   })
-  .finally(() => db.$disconnect());
+  .finally(() => Promise.all([db.$disconnect(), accounts.$disconnect()]));

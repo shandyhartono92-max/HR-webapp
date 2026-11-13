@@ -412,6 +412,11 @@ export function EmployeeLoginPanel({
           <p className="mt-1 text-xs text-amber-800">Login: {result.email}. Karyawan wajib menggantinya saat pertama masuk.</p>
         </div>
       )}
+      {result?.existingAccount && (
+        <p role="status" className="rounded-md bg-brand-50 px-3 py-2 text-xs text-brand-800">
+          Email {result.email} sudah punya akun (misalnya dari lokasi lain). Akun itu sekarang bisa masuk ke lokasi ini dengan kata sandinya sendiri.
+        </p>
+      )}
       {result?.error && <p className="text-xs text-red-700">{result.error}</p>}
       <button
         type="button"

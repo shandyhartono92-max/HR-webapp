@@ -5,7 +5,9 @@
 // - Fields ending in `Enc` hold AES-256-GCM ciphertext (encrypted in the app layer,
 //   key kept outside the database). Never select them into lists or logs.
 // - Fields ending in `Last4` are the masked value shown in the UI.
-// - Login: email + password (bcrypt) with a signed session cookie; see src/lib/session.ts.
+// - Login: email + password (bcrypt) in the accounts database (prisma/accounts/schema.prisma),
+//   then a signed session cookie for one location; see src/app/actions/auth.ts.
+// - One database per location (Batam, Jakarta, …), all with this schema; see src/lib/sites.ts.
 
 generator client {
   provider = "prisma-client"
@@ -147,18 +149,17 @@ enum BankChangeStatus {
 // Users & organisation
 // ─────────────────────────────────────────────
 
+// The location's copy of an account from the accounts database (portal_hr_akun),
+// same id. Passwords live only there; role is the account's role in this location,
+// and isActive turns false when the account loses access here (src/lib/site-access.ts).
 model User {
-  id                 String    @id @default(cuid())
-  email              String    @unique
-  name               String
-  role               Role      @default(EMPLOYEE)
-  passwordHash       String
-  mustChangePassword Boolean   @default(false) // set when HR creates the account with a temporary password
-  twoFactorEnabled   Boolean   @default(false)
-  isActive           Boolean   @default(true)
-  lastLoginAt        DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime  @updatedAt
+  id        String   @id
+  email     String   @unique
+  name      String
+  role      Role     @default(EMPLOYEE)
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   employee             Employee?
   managedDepartments   Department[]        @relation("DepartmentHead")

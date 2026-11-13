@@ -67,6 +67,9 @@ export function siteByCode(code: unknown): Site | null {
   return sites().find((s) => s.code === code) ?? null;
 }
 
+// Remembers the last location picked on the login page of this browser (a code only)
+export const LAST_SITE_COOKIE = "last_site";
+
 // The first location in SITES (used where nothing else names one)
 export const defaultSite = (): Site => sites()[0];
 

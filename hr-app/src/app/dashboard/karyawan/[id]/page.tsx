@@ -3,6 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { LetterPdfLink } from "@/app/ui/letter-pdf-link";
 import { siteDb } from "@/lib/db";
+import { accountsDb } from "@/lib/accounts-db";
 import { requireRole } from "@/lib/dal";
 import {
   employeeStatusLabel,
@@ -101,7 +102,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: PageP
         applicationId: true,
         department: { select: { name: true } },
         manager: { select: { fullName: true } },
-        user: { select: { email: true, mustChangePassword: true, lastLoginAt: true } },
+        user: { select: { id: true, email: true, isActive: true } },
         bankAccounts: {
           where: { isActive: true },
           select: { bankName: true, accountNumberLast4: true, accountHolderName: true, effectiveFrom: true },
@@ -149,6 +150,10 @@ export default async function EmployeeDetailPage({ params, searchParams }: PageP
     }),
   ]);
   if (!emp) notFound();
+  // Temporary password and last login live with the account, not in this location
+  const loginAccount = emp.user
+    ? await accountsDb.account.findUnique({ where: { id: emp.user.id }, select: { mustChangePassword: true, lastLoginAt: true } })
+    : null;
 
   // Sequential on purpose: the local dev database handles one connection at a time
   const templates: Partial<Record<LetterType, TemplateView>> = {};
@@ -431,8 +436,8 @@ export default async function EmployeeDetailPage({ params, searchParams }: PageP
                   emp.user
                     ? {
                         email: emp.user.email,
-                        mustChangePassword: emp.user.mustChangePassword,
-                        lastLoginAt: emp.user.lastLoginAt ? formatDate(emp.user.lastLoginAt) : null,
+                        mustChangePassword: loginAccount?.mustChangePassword ?? false,
+                        lastLoginAt: loginAccount?.lastLoginAt ? formatDate(loginAccount.lastLoginAt) : null,
                       }
                     : null
                 }
