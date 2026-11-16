@@ -13,6 +13,7 @@
     "db:migrate:sites": "tsx --conditions=react-server --env-file=.env scripts/migrate-sites.mts",
     "backup": "tsx --conditions=react-server --env-file=.env scripts/backup.mts",
     "db:seed": "prisma db seed",
+    "admin:create": "tsx --conditions=react-server --env-file=.env scripts/create-admin.mts",
     "retention": "tsx --conditions=react-server scripts/retention.ts"
   },
   "dependencies": {

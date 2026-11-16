@@ -16,7 +16,18 @@ export type SessionPayload = {
   site: SiteCode;
 };
 
-const encodedKey = new TextEncoder().encode(process.env.SESSION_SECRET);
+// Whether the session cookie is marked secure (sent over https only). Secure in
+// production by default; browsers drop secure cookies on plain http (except localhost),
+// so a server reached by http on an internal IP sets SESSION_COOKIE_SECURE="false".
+// Checked by scripts/check-cookie-secure.mts.
+export function sessionCookieSecure(env: Record<string, string | undefined> = process.env): boolean {
+  const value = env.SESSION_COOKIE_SECURE?.trim().toLowerCase();
+  if (value === "false") return false;
+  if (value === "true") return true;
+  return env.NODE_ENV === "production";
+}
+
+const encodedKey =new TextEncoder().encode(process.env.SESSION_SECRET);
 
 export async function signSession(payload: SessionPayload) {
   return new SignJWT(payload)

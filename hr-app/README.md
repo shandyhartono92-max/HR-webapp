@@ -37,6 +37,9 @@ The seed creates an admin with `SEED_ADMIN_EMAIL` / `SEED_ADMIN_PASSWORD` from `
 | `DATABASE_POOL_MAX` | Optional, database connections kept open by the app (default 5) |
 | `SESSION_SECRET` | Signs the login cookie. 32 random bytes, base64 |
 | `ENCRYPTION_KEY` | Encrypts NIK, NPWP, BPJS, bank account numbers and salary. 32 random bytes, base64. **If it's lost, that data can't be recovered.** Keep a backup outside the server |
+| `SESSION_COOKIE_SECURE` | Empty = the login cookie is https-only in production. `"false"` only for a server reached by plain http (internal IP): browsers drop https-only cookies there and logins would not stick |
+
+**Production server (Windows):** step-by-step guide in [docs/deploy-windows-server.md](../docs/deploy-windows-server.md). Create the first Admin there with `npm run admin:create -- email "Nama"` (no demo data), not with the seed.
 
 Generate a secret:
 
