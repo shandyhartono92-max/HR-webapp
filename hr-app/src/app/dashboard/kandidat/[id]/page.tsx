@@ -165,7 +165,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
           {app.job.title} · melamar {formatDate(app.appliedAt)}
         </p>
         {candidate.anonymizedAt && (
-          <p className="mt-3 rounded-md bg-slate-100 px-4 py-3 text-sm text-slate-700">
+          <p className="mt-3 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-700">
             Data pribadi kandidat ini sudah dihapus pada {formatDate(candidate.anonymizedAt)} sesuai masa simpan data.
           </p>
         )}
@@ -192,7 +192,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
                 <div className="flex items-start gap-4">
                   <div className={`rounded-lg px-3 py-2 text-center ring-1 ${scoreStyle(latest.score)}`}>
                     <p className="text-2xl font-semibold tabular-nums">{latest.score}</p>
-                    <p className="text-[11px]">dari 100</p>
+                    <p className="text-xs">dari 100</p>
                   </div>
                   <p className="text-sm leading-relaxed text-slate-700">{latest.summary}</p>
                 </div>
@@ -390,7 +390,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
                       )}
 
                       {iv.rating !== null ? (
-                        <div className="mt-3 rounded-md bg-slate-50 p-3 text-sm text-slate-700">
+                        <div className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-700">
                           <p>
                             Nilai <strong>{iv.rating}/5</strong>
                             {iv.recommendation && (
@@ -514,7 +514,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
             <h2 className="font-medium text-slate-900">Tahap rekrutmen</h2>
             <p className="mt-1 text-xs text-slate-500">Diubah terakhir {formatDate(app.stageChangedAt)}</p>
             {app.stage === "REJECTED" && app.rejectionReason && (
-              <p className="mt-2 rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">Alasan: {app.rejectionReason}</p>
+              <p className="mt-2 rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">Alasan: {app.rejectionReason}</p>
             )}
             {canManage && !app.employee && (
               <div className="mt-3">
@@ -543,7 +543,7 @@ export default async function CandidateDetailPage({ params }: PageProps<"/dashbo
             {resume && (
               <a
                 href={`/dashboard/kandidat/${app.id}/cv`}
-                className="mt-4 flex items-center justify-between rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                className="mt-4 flex items-center justify-between rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
                 <span className="truncate">Unduh CV · {resume.fileName}</span>
                 <span className="shrink-0 text-xs text-slate-500">{Math.max(1, Math.round(resume.sizeBytes / 1024))} KB</span>

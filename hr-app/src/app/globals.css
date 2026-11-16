@@ -29,19 +29,19 @@ body {
   font-family: var(--font-geist-sans), Arial, Helvetica, sans-serif;
 }
 
-/* Korporat Biru: white card with a light border and shadow */
+/* Korporat Biru: white card with a light border and shadow.
+   Radii: controls and notices 8px (rounded-lg), cards and sections 12px. */
 @utility card {
-  border-radius: 10px;
+  border-radius: 12px;
   border: 1px solid var(--color-slate-200);
   background-color: #fff;
-  box-shadow: 0 1px 2px rgb(15 23 42 / 0.06);
+  box-shadow: 0 1px 2px rgb(15 23 42 / 0.05);
 }
 
-/* Table header row: small grey capitals on a light background */
+/* Table header row: small grey sentence-case labels on a light background */
 @utility table-head {
   background-color: var(--color-slate-50);
   color: var(--color-slate-500);
-  font-size: 11.5px;
-  text-transform: uppercase;
-  letter-spacing: 0.04em;
+  font-size: 12px;
+  font-weight: 500;
 }

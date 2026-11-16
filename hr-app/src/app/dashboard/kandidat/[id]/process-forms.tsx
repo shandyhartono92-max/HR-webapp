@@ -11,7 +11,7 @@ import type { EmploymentType } from "@/generated/prisma/enums";
 import { SiteField } from "@/app/ui/site-field";
 
 const buttonClass =
-  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
+  "rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 type Option = { id: string; name: string };
 
@@ -46,7 +46,7 @@ export function ScheduleInterviewForm({
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
       <FormMessage message={state?.message} />
-      {state?.ok && !reschedule && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Wawancara dijadwalkan.</p>}
+      {state?.ok && !reschedule && <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">Wawancara dijadwalkan.</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label={reschedule ? "Tanggal & jam baru (WIB)" : "Tanggal & jam (WIB)"} htmlFor={`${idPrefix}scheduledAt`} errors={e.scheduledAt}>
           <input id={`${idPrefix}scheduledAt`} name="scheduledAt" type="datetime-local" required defaultValue={v("scheduledAt")} className={inputClass} />
@@ -118,7 +118,7 @@ export function FeedbackForm({ interviewId }: { interviewId: string }) {
           {[1, 2, 3, 4, 5].map((n) => (
             <label
               key={n}
-              className="flex size-9 cursor-pointer items-center justify-center rounded-md border border-slate-300 text-sm has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50"
+              className="flex size-9 cursor-pointer items-center justify-center rounded-lg border border-slate-300 text-sm has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50"
             >
               <input type="radio" name="rating" value={n} defaultChecked={v("rating") === String(n)} className="sr-only" />
               {n}
@@ -206,7 +206,7 @@ export function GenerateQuestionsButton({ applicationId, hasQuestions }: { appli
             setError(r.error ?? null);
           })
         }
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
       >
         {pending ? "AI sedang menyusun…" : hasQuestions ? "Buat ulang dengan AI" : "Buat pertanyaan khusus dengan AI"}
       </button>

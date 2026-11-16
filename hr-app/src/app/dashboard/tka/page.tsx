@@ -46,13 +46,13 @@ export default async function ForeignWorkersPage({ searchParams }: PageProps<"/d
           <h1 className="text-2xl font-semibold text-slate-900">Tenaga Kerja Asing</h1>
           <p className="mt-1 text-sm text-slate-600">Paspor dan KITAS TKA. Peringatan muncul 30 hari sebelum KITAS habis.</p>
         </div>
-        <Link href="/dashboard/tka/tambah" className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
+        <Link href="/dashboard/tka/tambah" className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
           Tambah TKA
         </Link>
       </div>
 
       {added && (
-        <p role="status" className="rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
+        <p role="status" className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
           TKA ditambahkan.
         </p>
       )}

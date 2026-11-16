@@ -70,18 +70,18 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
         <div className="flex flex-wrap gap-2">
           <Link
             href="/dashboard/karyawan/import"
-            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Import dari Excel
           </Link>
-          <Link href="/dashboard/karyawan/tambah" className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
+          <Link href="/dashboard/karyawan/tambah" className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
             Tambah karyawan
           </Link>
         </div>
       </div>
 
       {imported !== null && (
-        <p role="status" className="rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
+        <p role="status" className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
           {imported} karyawan berhasil di-import
           {skipped > 0 && `, ${skipped} dilewati karena Employee ID-nya sudah ada`}. Lengkapi NIK, NPWP, BPJS dan rekening dari profil
           masing-masing.
@@ -89,7 +89,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       )}
 
       {deleted && (
-        <p role="status" className="rounded-md bg-slate-100 px-4 py-3 text-sm text-slate-800">
+        <p role="status" className="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-800">
           Karyawan {deleted} sudah dihapus permanen. Penghapusan tercatat di log audit.
         </p>
       )}
@@ -123,7 +123,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
       {employees.length === 0 ? (
         <p className="card p-5 text-sm text-slate-600">
           {all.length === 0 ? (
-            "Belum ada data karyawan. Data dibuat dari halaman kandidat setelah kandidat diterima, atau di-import dari Excel."
+            "Belum ada data karyawan. Klik Tambah karyawan, import dari Excel, atau terima kandidat dari halaman Kandidat."
           ) : (
             <>
               Tidak ada karyawan yang cocok dengan filter ini{location ? ` (lokasi ${location}${onlyEnding ? ", kontrak berakhir" : ""})` : ""}.{" "}
@@ -156,7 +156,7 @@ export default async function EmployeesPage({ searchParams }: PageProps<"/dashbo
                     <div className="flex items-center gap-2.5">
                       <span
                         aria-hidden="true"
-                        className="grid size-8 shrink-0 place-items-center rounded-full bg-brand-700 text-[11.5px] font-bold text-white"
+                        className="grid size-8 shrink-0 place-items-center rounded-full bg-slate-100 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
                       >
                         {initials(e.fullName)}
                       </span>

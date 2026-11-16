@@ -7,7 +7,7 @@ import { decisionLabel, stageLabel } from "@/lib/labels";
 import type { ApplicationStage, ScreeningDecision } from "@/generated/prisma/enums";
 
 const buttonClass =
-  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
+  "rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 export function StageForm({ applicationId, stage }: { applicationId: string; stage: ApplicationStage }) {
   const [state, action, pending] = useActionState(changeStage.bind(null, applicationId), undefined);
@@ -55,7 +55,7 @@ export function RescreenButton({ applicationId, hasScore }: { applicationId: str
       <button
         type="submit"
         disabled={pending}
-        className="rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
       >
         {pending ? "AI sedang menilai… (±30 detik)" : hasScore ? "Nilai ulang dengan AI" : "Nilai dengan AI"}
       </button>
@@ -84,7 +84,7 @@ export function ReviewForm({
           {Object.entries(decisionLabel).map(([value, label]) => (
             <label
               key={value}
-              className="flex cursor-pointer items-center gap-2 rounded-md border border-slate-300 px-3 py-1.5 text-sm has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50"
+              className="flex cursor-pointer items-center gap-2 rounded-lg border border-slate-300 px-3 py-1.5 text-sm has-[:checked]:border-brand-700 has-[:checked]:bg-brand-50"
             >
               <input type="radio" name="decision" value={value} defaultChecked={current === value} className="accent-brand-700" />
               {label}

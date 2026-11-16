@@ -16,9 +16,9 @@ import type { Role } from "@/generated/prisma/enums";
 import { SiteField } from "@/app/ui/site-field";
 
 const buttonClass =
-  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
+  "rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 const secondaryClass =
-  "rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60";
+  "rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60";
 
 const roleHints: Record<Role, string> = {
   ADMIN: "Semua fitur, termasuk Kelola Pengguna.",
@@ -30,7 +30,7 @@ const roleHints: Record<Role, string> = {
 // Shown once: the password is stored only as a hash and cannot be displayed again
 function TemporaryPassword({ email, password }: { email: string; password: string }) {
   return (
-    <div className="rounded-md border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+    <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
       <p className="font-medium">Catat sekarang. Kata sandi ini hanya tampil sekali.</p>
       <dl className="mt-2 grid grid-cols-[6rem_1fr] gap-1">
         <dt>Email</dt>
@@ -55,10 +55,10 @@ export function CreateUserForm() {
         <div className="space-y-2">
           <TemporaryPassword email={state.email!} password={state.tempPassword} />
           {state.linkedEmployee && (
-            <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900">Terhubung otomatis ke data karyawan {state.linkedEmployee} (email sama).</p>
+            <p className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">Terhubung otomatis ke data karyawan {state.linkedEmployee} (email sama).</p>
           )}
           {Boolean(state.linkedJobs) && (
-            <p className="rounded-md bg-sky-50 px-3 py-2 text-sm text-sky-900">
+            <p className="rounded-lg bg-sky-50 px-3 py-2 text-sm text-sky-900">
               Tersambung otomatis ke {state.linkedJobs} lowongan yang hiring manager-nya bernama sama.
             </p>
           )}
@@ -110,7 +110,7 @@ export function EditUserForm({ user, linked }: { user: { id: string; name: strin
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
       <FormMessage message={state?.message} />
-      {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p>}
+      {state?.ok && <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         <Field label="Nama" htmlFor={`name-${user.id}`} hint={linked ? "Mengikuti data karyawan." : undefined} errors={e.name}>
           <input id={`name-${user.id}`} name="name" required readOnly={linked} defaultValue={v("name")} className={inputClass} />
@@ -142,7 +142,7 @@ export function AccessForm({
   return (
     <form key={state?.attempt} action={action} className="space-y-3">
       <FormMessage message={state?.message} />
-      {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Akses tersimpan.</p>}
+      {state?.ok && <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">Akses tersimpan.</p>}
       <div className="grid gap-3 sm:grid-cols-2">
         {sites.map((s) => {
           const roles = (s.linkedEmployee || s.role === "EMPLOYEE" ? ["EMPLOYEE", "HR", "HIRING_MANAGER", "ADMIN"] : ["HR", "HIRING_MANAGER", "ADMIN"]) as Role[];
@@ -199,7 +199,7 @@ export function UserActions({ userId, name, isActive }: { userId: string; name: 
         <button
           type="button"
           disabled={busy || !hydrated}
-          className={isActive ? "rounded-md border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-60" : secondaryClass}
+          className={isActive ? "rounded-lg border border-red-300 px-3 py-1.5 text-sm text-red-700 hover:bg-red-50 disabled:opacity-60" : secondaryClass}
           onClick={() => {
             if (isActive && !confirm(`Nonaktifkan akun ${name}? Pengguna ini langsung tidak bisa masuk.`)) return;
             setError(null);

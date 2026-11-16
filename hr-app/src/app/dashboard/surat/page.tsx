@@ -41,7 +41,7 @@ export default async function LettersPage() {
         <LettersNav />
       </div>
       {companyUnset && (
-        <p className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Nama perusahaan, alamat, dan penandatangan untuk {site.label} belum diatur. Isi COMPANY_NAME_{key}, COMPANY_ADDRESS_{key},
           COMPANY_CITY_{key}, LETTER_SIGNATORY_NAME_{key} dan LETTER_SIGNATORY_TITLE_{key} di file .env.
         </p>

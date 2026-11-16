@@ -6,9 +6,9 @@ import { inputClass } from "@/app/ui/field";
 import { emptyQuestion, questionTypes, type JobKit, type KitQuestionT } from "@/lib/interview-kit-schema";
 
 const buttonClass =
-  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
+  "rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 const secondaryClass =
-  "rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60";
+  "rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60";
 
 const typeLabel: Record<(typeof questionTypes)[number], string> = {
   perilaku: "Perilaku (pengalaman nyata)",
@@ -78,7 +78,7 @@ export function KitEditor({
       </div>
 
       {result?.error && (
-        <div role="alert" className="rounded-md bg-red-50 px-3 py-2 text-sm text-red-700">
+        <div role="alert" className="rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700">
           {result.error}
           {result.issues && (
             <ul className="mt-1 list-disc pl-5">
@@ -89,7 +89,7 @@ export function KitEditor({
           )}
         </div>
       )}
-      {result?.ok && !dirty && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p>}
+      {result?.ok && !dirty && <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p>}
 
       <label className="block text-sm">
         <span className="font-medium text-slate-700">Kompetensi yang dinilai (satu per baris)</span>

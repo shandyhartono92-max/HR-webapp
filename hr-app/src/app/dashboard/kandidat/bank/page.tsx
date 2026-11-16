@@ -84,18 +84,18 @@ export default async function CandidateBankPage({ searchParams }: PageProps<"/da
         <div className="flex flex-wrap gap-2">
           <Link
             href="/dashboard/kandidat/bank/import"
-            className="rounded-md border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
+            className="rounded-lg border border-slate-300 bg-white px-4 py-2 text-sm font-medium text-slate-700 hover:bg-slate-50"
           >
             Import dari Excel
           </Link>
-          <Link href="/dashboard/kandidat/bank/tambah" className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
+          <Link href="/dashboard/kandidat/bank/tambah" className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800">
             Tambah kandidat
           </Link>
         </div>
       </div>
 
       {imported !== null && (
-        <p role="status" className="rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
+        <p role="status" className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
           {imported} kandidat berhasil di-import
           {skipped > 0 && `, ${skipped} dilewati karena emailnya sudah ada di bank data`}. Unggah CV dari profil masing-masing sebelum
           memasukkan ke lowongan.
@@ -109,12 +109,12 @@ export default async function CandidateBankPage({ searchParams }: PageProps<"/da
             name="q"
             defaultValue={q}
             placeholder="misal: payroll excel bandung"
-            className="mt-1 w-full rounded-md border border-slate-300 px-3 py-2 text-sm"
+            className="mt-1 w-full rounded-lg border border-slate-300 px-3 py-2 text-sm"
           />
         </label>
         <label className="text-sm">
           <span className="text-slate-600">Pendidikan</span>
-          <select name="pendidikan" defaultValue={edu} className="mt-1 block rounded-md border border-slate-300 px-3 py-2 text-sm">
+          <select name="pendidikan" defaultValue={edu} className="mt-1 block rounded-lg border border-slate-300 px-3 py-2 text-sm">
             <option value="">Semua</option>
             {educationLevels.map((e) => (
               <option key={e} value={e}>
@@ -127,7 +127,7 @@ export default async function CandidateBankPage({ searchParams }: PageProps<"/da
           <input type="checkbox" name="pool" value="1" defaultChecked={pool} className="size-4 accent-brand-700" />
           Hanya talent pool
         </label>
-        <button type="submit" className="rounded-md border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
+        <button type="submit" className="rounded-lg border border-slate-300 px-4 py-2 text-sm text-slate-700 hover:bg-slate-50">
           Cari
         </button>
       </form>
@@ -158,7 +158,7 @@ export default async function CandidateBankPage({ searchParams }: PageProps<"/da
                     </Link>
                     <p className="text-xs text-slate-500">
                       {[c.lastEducation, c.city].filter(Boolean).join(" · ") || "-"}
-                      {c.talentPoolConsent && <span className="ml-1 rounded bg-brand-50 px-1.5 py-0.5 text-[11px] text-brand-800">talent pool</span>}
+                      {c.talentPoolConsent && <span className="ml-1 rounded bg-brand-50 px-1.5 py-0.5 text-xs text-brand-800">talent pool</span>}
                     </p>
                   </td>
                   <td className="max-w-64 px-4 py-3 text-xs text-slate-600">

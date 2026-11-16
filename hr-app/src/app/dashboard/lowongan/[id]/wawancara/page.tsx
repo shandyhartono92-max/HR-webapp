@@ -49,7 +49,7 @@ export default async function InterviewKitPage({ params }: PageProps<"/dashboard
 
       {kit && (
         <p
-          className={`rounded-md px-4 py-2 text-sm ${kit.status === "APPROVED" ? "bg-brand-50 text-brand-900" : "bg-amber-50 text-amber-900"}`}
+          className={`rounded-lg px-4 py-2 text-sm ${kit.status === "APPROVED" ? "bg-brand-50 text-brand-900" : "bg-amber-50 text-amber-900"}`}
         >
           {kit.status === "APPROVED"
             ? `Disetujui oleh ${kit.approvedBy?.name} (${formatDateTime(kit.approvedAt!)}) dan tampil untuk pewawancara.`

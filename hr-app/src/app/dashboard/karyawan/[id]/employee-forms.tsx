@@ -20,12 +20,12 @@ import { employeeStatusLabel, employmentTypeLabel, genderLabel, ptkpLabel } from
 import type { EmployeeStatus, EmploymentType, Gender, PtkpStatus } from "@/generated/prisma/enums";
 
 const buttonClass =
-  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
+  "rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 type Option = { id: string; name: string };
 
 function Saved({ show }: { show?: boolean }) {
-  return show ? <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p> : null;
+  return show ? <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan.</p> : null;
 }
 
 // A saved form can still have something to point out; only an unsaved one shows an error
@@ -33,8 +33,8 @@ function SaveResult({ state, savedText }: { state: FormState; savedText?: string
   if (!state?.ok) return <FormMessage message={state?.message} />;
   return (
     <>
-      <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">{savedText ?? "Tersimpan."}</p>
-      {state.message && <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-900">{state.message}</p>}
+      <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">{savedText ?? "Tersimpan."}</p>
+      {state.message && <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-900">{state.message}</p>}
     </>
   );
 }
@@ -204,7 +204,7 @@ export function DeleteEmployeeForm({ employeeId, employeeNumber }: { employeeId:
       <button
         type="submit"
         disabled={pending || !hydrated}
-        className="rounded-md bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
+        className="rounded-lg bg-red-700 px-3 py-2 text-sm font-medium text-white hover:bg-red-800 disabled:opacity-60"
       >
         {pending ? "Menghapus…" : "Hapus karyawan permanen"}
       </button>
@@ -406,14 +406,14 @@ export function EmployeeLoginPanel({
         <p className="text-slate-600">Belum punya akun login. Karyawan butuh akun untuk mengajukan perubahan rekening gaji.</p>
       )}
       {result?.tempPassword && (
-        <div className="rounded-md border border-amber-300 bg-amber-50 p-3">
+        <div className="rounded-lg border border-amber-300 bg-amber-50 p-3">
           <p className="text-xs text-amber-800">Kata sandi sementara (hanya ditampilkan sekali, serahkan langsung ke karyawan):</p>
           <p className="mt-1 select-all font-mono text-base font-semibold tracking-wider text-slate-900">{result.tempPassword}</p>
           <p className="mt-1 text-xs text-amber-800">Login: {result.email}. Karyawan wajib menggantinya saat pertama masuk.</p>
         </div>
       )}
       {result?.existingAccount && (
-        <p role="status" className="rounded-md bg-brand-50 px-3 py-2 text-xs text-brand-800">
+        <p role="status" className="rounded-lg bg-brand-50 px-3 py-2 text-xs text-brand-800">
           Email {result.email} sudah punya akun (misalnya dari lokasi lain). Akun itu sekarang bisa masuk ke lokasi ini dengan kata sandinya sendiri.
         </p>
       )}
@@ -422,7 +422,7 @@ export function EmployeeLoginPanel({
         type="button"
         onClick={run}
         disabled={pending}
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
       >
         {pending ? "Memproses…" : login ? "Reset kata sandi" : "Buat akun login"}
       </button>
@@ -488,7 +488,7 @@ export function ContractDocumentForm({ contractId, hasFile }: { contractId: stri
     <div className="mt-1">
       {/* Outside the fold, which closes after a successful upload; gone once the file is deleted */}
       {state?.ok && hasFile && (
-        <p role="status" className="mb-1 rounded-md bg-brand-50 px-3 py-1.5 text-xs text-brand-800">
+        <p role="status" className="mb-1 rounded-lg bg-brand-50 px-3 py-1.5 text-xs text-brand-800">
           {state.message}
         </p>
       )}
@@ -507,13 +507,13 @@ export function ContractDocumentForm({ contractId, hasFile }: { contractId: stri
                 required
                 accept="application/pdf,.pdf"
                 onChange={(ev) => setTooBig((ev.currentTarget.files?.[0]?.size ?? 0) > MAX_CONTRACT_PDF_BYTES)}
-                className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-800 hover:file:bg-brand-100"
+                className="block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-brand-50 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-brand-800 hover:file:bg-brand-100"
               />
             </Field>
             <button
               type="submit"
               disabled={pending || tooBig}
-              className="rounded-md bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
+              className="rounded-lg bg-brand-700 px-3 py-1.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
             >
               {pending ? "Mengunggah…" : "Simpan file"}
             </button>

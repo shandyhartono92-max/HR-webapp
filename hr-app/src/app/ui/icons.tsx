@@ -75,7 +75,7 @@ export function NavIcon({ name, className = "size-[18px]" }: { name: NavIconName
       viewBox="0 0 24 24"
       fill="none"
       stroke="currentColor"
-      strokeWidth={1.8}
+      strokeWidth={1.5}
       strokeLinecap="round"
       strokeLinejoin="round"
       aria-hidden="true"
@@ -88,7 +88,7 @@ export function NavIcon({ name, className = "size-[18px]" }: { name: NavIconName
 
 export function MenuIcon({ className = "size-5" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.8} strokeLinecap="round" aria-hidden="true" className={className}>
+    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={1.5} strokeLinecap="round" aria-hidden="true" className={className}>
       <path d="M4 7h16M4 12h16M4 17h16" />
     </svg>
   );

@@ -77,7 +77,7 @@ export default async function TemplatesPage({ searchParams }: PageProps<"/dashbo
         <h1 className="text-2xl font-semibold text-slate-900">Template surat</h1>
         <LettersNav />
       </div>
-      <p className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+      <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
         Teks bawaan adalah draf. Mohon ditinjau HR/legal dan disesuaikan dengan Peraturan Perusahaan atau PKB sebelum
         digunakan. Setiap penyimpanan membuat versi baru; surat yang sudah terbit tidak berubah.
       </p>

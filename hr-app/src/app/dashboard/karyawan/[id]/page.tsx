@@ -203,7 +203,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: PageP
           ← Semua karyawan
         </Link>
         <h1 className="text-2xl font-semibold text-slate-900">{emp.fullName}</h1>
-        <p className="rounded-md bg-slate-100 px-4 py-3 text-sm text-slate-700">
+        <p className="rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-700">
           Data pribadi karyawan ini sudah dianonimkan pada {formatDate(emp.anonymizedAt!)}, {employeeRetentionYears()} tahun setelah
           tanggal keluar ({emp.exitDate ? formatDate(emp.exitDate) : "-"}), sesuai masa simpan data.
         </p>
@@ -238,14 +238,14 @@ export default async function EmployeeDetailPage({ params, searchParams }: PageP
           {emp.employeeNumber} · {emp.position} · {emp.department.name}
         </p>
         {justAdded && (
-          <p role="status" className="mt-3 rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
+          <p role="status" className="mt-3 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
             Karyawan ditambahkan. Bila perlu, buat akun login dan input rekening gaji dari bagian di bawah.
           </p>
         )}
         {alert.level && (
           <p
             role="alert"
-            className={`mt-3 flex items-center gap-2 rounded-md px-4 py-3 text-sm ${
+            className={`mt-3 flex items-center gap-2 rounded-lg px-4 py-3 text-sm ${
               alert.level === "overdue" ? "bg-red-50 text-red-800" : "bg-amber-50 text-amber-900"
             }`}
           >
@@ -256,7 +256,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: PageP
           </p>
         )}
         {missing.length > 0 && (
-          <p className="mt-3 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+          <p className="mt-3 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
             Data belum lengkap: {missing.join(", ")}. Dibutuhkan untuk pendaftaran BPJS dan perhitungan PPh 21.
           </p>
         )}
@@ -458,7 +458,7 @@ export default async function EmployeeDetailPage({ params, searchParams }: PageP
                 <p className="text-sm text-slate-600">Belum ada rekening aktif.</p>
               )}
               {openBankRequest ? (
-                <p className="mt-2 rounded-md bg-sky-50 px-3 py-2 text-xs text-sky-900">
+                <p className="mt-2 rounded-lg bg-sky-50 px-3 py-2 text-xs text-sky-900">
                   {openBankRequest.status === "DRAFT" ? "Menunggu OTP karyawan" : "Menunggu persetujuan"}: {openBankRequest.bankName} ••••
                   {openBankRequest.accountNumberLast4}
                   {openBankRequest.requestedBy && ` (diinput oleh ${openBankRequest.requestedBy.name})`}.{" "}

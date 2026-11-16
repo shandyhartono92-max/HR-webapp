@@ -1,21 +1,21 @@
 import type { Metadata } from "next";
 import Link from "next/link";
-import { siteDb } from "@/lib/db";
+import { currentSite, siteDb } from "@/lib/db";
 import { requireUser } from "@/lib/dal";
 import { markNotificationsRead } from "@/app/actions/bank";
 import { formatDate, formatDateTime, interviewModeLabel, todayDate } from "@/lib/labels";
 import { contractAlert, endingContractsWhere } from "@/lib/contracts";
 import { AlertIcon, ContractAlertBadge } from "@/app/ui/contract-alert";
-import { NavIcon } from "@/app/ui/icons";
 import { TrainingBadge } from "@/app/ui/training-badge";
 import { graduatedNumber } from "@/lib/training";
 
 const TRAINING_ALERT_DAYS = 7;
-import type { NavIconName } from "@/lib/nav";
 
-// Interview date tile: "12" over "NOV", in WIB like every date in the app
+// Interview date tile: "12" over "Nov", in WIB like every date in the app
 const tileDay = new Intl.DateTimeFormat("id-ID", { day: "numeric", timeZone: "Asia/Jakarta" });
 const tileMonth = new Intl.DateTimeFormat("id-ID", { month: "short", timeZone: "Asia/Jakarta" });
+// Page subtitle: "Senin, 16 November 2026"
+const longDate = new Intl.DateTimeFormat("id-ID", { weekday: "long", day: "numeric", month: "long", year: "numeric", timeZone: "Asia/Jakarta" });
 
 export const metadata: Metadata = { title: "Ringkasan" };
 export const instant = false; // waits for the session check, see dashboard/layout.tsx
@@ -25,6 +25,7 @@ const DAY = 24 * 60 * 60 * 1000;
 export default async function DashboardPage({ searchParams }: PageProps<"/dashboard">) {
   const db = await siteDb();
   const user = await requireUser();
+  const site = await currentSite();
   const { akses, sandi } = await searchParams;
 
   const isHr = user.role === "ADMIN" || user.role === "HR";
@@ -101,54 +102,59 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
     select: { id: true, title: true, body: true, link: true, createdAt: true },
   });
 
-  const stats: { label: string; value: number; icon: NavIconName }[] = [
-    { label: "Lowongan dibuka", value: openJobs, icon: "brief" },
-    { label: "Lamaran baru", value: newApplications, icon: "users" },
-    { label: "Tahap wawancara", value: inInterview, icon: "cal" },
-    ...(isHr ? [{ label: "Perubahan rekening menunggu", value: pendingBankRequests, icon: "bank" as const }] : []),
+  const stats: { label: string; value: number }[] = [
+    { label: "Lowongan dibuka", value: openJobs },
+    { label: "Lamaran baru", value: newApplications },
+    { label: "Tahap wawancara", value: inInterview },
+    ...(isHr ? [{ label: "Perubahan rekening menunggu", value: pendingBankRequests }] : []),
   ];
 
   return (
     <div className="space-y-6">
       {akses === "ditolak" && (
-        <p role="alert" className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p role="alert" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Anda tidak memiliki akses ke halaman tersebut.
         </p>
       )}
       {sandi === "diubah" && (
-        <p role="status" className="rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
+        <p role="status" className="rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
           Kata sandi berhasil diganti.
         </p>
       )}
       <div>
-        <h1 className="text-2xl font-semibold text-slate-900">Halo, {user.name}</h1>
-        <p className="text-sm text-slate-500">
-          {canSeeRecruitment ? "Ringkasan aktivitas HR hari ini." : "Selamat datang di Portal HR."}
+        <h1 className="text-2xl font-semibold text-slate-900">Ringkasan</h1>
+        <p className="mt-1 text-sm text-slate-500">
+          {longDate.format(now)} · {site.label}
         </p>
       </div>
 
       {notifications.length > 0 && (
-        <section className="rounded-xl border border-sky-200 bg-sky-50 p-5">
+        <section className="card p-5">
           <div className="flex items-center justify-between gap-2">
-            <h2 className="font-medium text-sky-900">Notifikasi ({notifications.length})</h2>
+            <h2 className="font-medium text-slate-900">
+              Notifikasi <span className="ml-1 text-sm font-normal tabular-nums text-slate-500">{notifications.length}</span>
+            </h2>
             <form action={markNotificationsRead}>
-              <button type="submit" className="text-xs text-sky-800 hover:underline">
+              <button type="submit" className="text-sm text-brand-800 hover:underline">
                 Tandai sudah dibaca
               </button>
             </form>
           </div>
-          <ul className="mt-2 space-y-2 text-sm">
+          <ul className="mt-3 divide-y divide-slate-100 text-sm">
             {notifications.map((n) => (
-              <li key={n.id}>
-                {n.link ? (
-                  <Link href={n.link} className="font-medium text-sky-900 underline">
-                    {n.title}
-                  </Link>
-                ) : (
-                  <span className="font-medium text-sky-900">{n.title}</span>
-                )}
-                <p className="text-sky-800">{n.body}</p>
-                <p className="text-xs text-sky-700">{formatDateTime(n.createdAt)}</p>
+              <li key={n.id} className="flex gap-3 py-3">
+                <span aria-hidden="true" className="mt-2 size-1.5 shrink-0 rounded-full bg-brand-600" />
+                <div className="min-w-0">
+                  {n.link ? (
+                    <Link href={n.link} className="font-medium text-brand-800 hover:underline">
+                      {n.title}
+                    </Link>
+                  ) : (
+                    <span className="font-medium text-slate-900">{n.title}</span>
+                  )}
+                  <p className="text-slate-600">{n.body}</p>
+                  <p className="mt-1 text-xs tabular-nums text-slate-500">{formatDateTime(n.createdAt)}</p>
+                </div>
               </li>
             ))}
           </ul>
@@ -157,28 +163,23 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
 
       {user.role === "EMPLOYEE" && (
         <section className="grid gap-4 sm:grid-cols-2">
-          <Link href="/dashboard/rekening" className="card p-5 hover:border-brand-600">
+          <Link href="/dashboard/rekening" className="card p-5 transition-colors hover:border-brand-600">
             <p className="font-medium text-slate-900">Rekening gaji</p>
-            <p className="mt-1 text-sm text-slate-600">Lihat atau ajukan perubahan rekening untuk penggajian.</p>
+            <p className="mt-1 text-sm text-slate-600">Lihat atau ajukan perubahan rekening untuk penggajian</p>
           </Link>
-          <Link href="/dashboard/akun" className="card p-5 hover:border-brand-600">
+          <Link href="/dashboard/akun" className="card p-5 transition-colors hover:border-brand-600">
             <p className="font-medium text-slate-900">Akun saya</p>
-            <p className="mt-1 text-sm text-slate-600">Ganti kata sandi.</p>
+            <p className="mt-1 text-sm text-slate-600">Ganti kata sandi</p>
           </Link>
         </section>
       )}
 
       {canSeeRecruitment && (
-        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-2.5 sm:gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))]">
+        <div className="grid grid-cols-[repeat(2,minmax(0,1fr))] gap-3 sm:gap-4 lg:grid-cols-[repeat(4,minmax(0,1fr))]">
           {stats.map((s) => (
-            <div key={s.label} className="card flex items-center gap-2.5 border-l-4 border-l-brand-700 p-3 sm:gap-3.5 sm:p-4">
-              <span className="grid size-9 shrink-0 place-items-center rounded-lg bg-brand-100 text-brand-700 sm:size-11">
-                <NavIcon name={s.icon} className="size-[18px] sm:size-[22px]" />
-              </span>
-              <div className="min-w-0">
-                <p className="text-xs text-slate-500 sm:text-[13px]">{s.label}</p>
-                <p className="text-[22px] font-bold leading-tight tabular-nums text-slate-900 sm:text-[26px]">{s.value}</p>
-              </div>
+            <div key={s.label} className="card flex flex-col justify-between gap-3 p-4 sm:p-5">
+              <p className="text-sm text-slate-500">{s.label}</p>
+              <p className="text-2xl font-semibold leading-none tabular-nums text-slate-900 sm:text-3xl">{s.value}</p>
             </div>
           ))}
         </div>
@@ -208,10 +209,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
           ) : (
             <ul className="mt-3 divide-y divide-slate-100">
               {upcoming.map((iv) => (
-                <li key={iv.id} className="flex items-center gap-3 py-2.5 text-sm">
-                  <span className="w-12 shrink-0 rounded-lg bg-brand-100 py-1 text-center text-brand-700">
-                    <span className="block text-[17px] font-bold leading-tight">{tileDay.format(iv.scheduledAt)}</span>
-                    <span className="block text-[10.5px] uppercase">{tileMonth.format(iv.scheduledAt)}</span>
+                <li key={iv.id} className="flex items-center gap-3 py-3 text-sm">
+                  <span className="w-12 shrink-0 rounded-lg bg-brand-50 py-1 text-center text-brand-800 ring-1 ring-brand-100">
+                    <span className="block text-lg font-semibold leading-tight tabular-nums">{tileDay.format(iv.scheduledAt)}</span>
+                    <span className="block text-xs">{tileMonth.format(iv.scheduledAt)}</span>
                   </span>
                   <div className="min-w-0">
                     <Link href={`/dashboard/kandidat/${iv.applicationId}`} className="font-medium text-brand-800 hover:underline">
@@ -240,7 +241,7 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
             ) : (
               <ul className="mt-3 divide-y divide-slate-100">
                 {endingContracts.map((e) => (
-                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+                  <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
                     <div>
                       <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-brand-800 hover:underline">
                         {e.fullName}
@@ -260,10 +261,10 @@ export default async function DashboardPage({ searchParams }: PageProps<"/dashbo
       {trainingEnding.length > 0 && (
         <section className="card p-5">
           <h2 className="font-medium text-slate-900">Training selesai ≤ {TRAINING_ALERT_DAYS} hari</h2>
-          <p className="mt-1 text-xs text-slate-500">Sehari setelah tanggal selesai, huruf T di Employee ID dibuang otomatis. Penanda untuk payroll.</p>
+          <p className="mt-1 text-sm text-slate-500">Sehari setelah tanggal selesai, huruf T di Employee ID dibuang otomatis. Penanda untuk payroll.</p>
           <ul className="mt-3 divide-y divide-slate-100">
             {trainingEnding.map((e) => (
-              <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-2 text-sm">
+              <li key={e.id} className="flex flex-wrap items-center justify-between gap-2 py-3 text-sm">
                 <div>
                   <Link href={`/dashboard/karyawan/${e.id}`} className="font-medium text-brand-800 hover:underline">
                     {e.fullName}

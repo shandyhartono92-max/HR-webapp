@@ -19,7 +19,7 @@ import type { EmploymentType, LetterType } from "@/generated/prisma/enums";
 import { SiteField } from "@/app/ui/site-field";
 
 const buttonClass =
-  "rounded-md bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
+  "rounded-lg bg-brand-700 px-3 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 export type TemplateView = { name: string; body: string };
 
@@ -51,7 +51,7 @@ export function LetterPreview({ template, vars }: { template: TemplateView; vars
   return (
     <div className="min-w-0 space-y-2">
       {missing.length > 0 && (
-        <p className="rounded-md bg-amber-50 px-3 py-2 text-xs text-amber-800">
+        <p className="rounded-lg bg-amber-50 px-3 py-2 text-xs text-amber-800">
           Belum terisi: {missing.map((m) => `[${m}]`).join(", ")}
         </p>
       )}
@@ -84,7 +84,7 @@ export function LetterPreview({ template, vars }: { template: TemplateView; vars
 function IssuedNotice({ state }: { state: IssueState }) {
   if (!state?.ok || !state.letterId) return null;
   return (
-    <div className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-900">
+    <div className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-900">
       Surat <strong>{state.letterNumber}</strong> diterbitkan.{" "}
       <a href={`/dashboard/surat/${state.letterId}/pdf`} className="font-medium underline">
         Unduh PDF
@@ -201,7 +201,7 @@ export function EmployeeLetterForm({
         </Field>
 
         {isSp && activeWarning && (
-          <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+          <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
             Masih ada {letterTypeLabel[activeWarning.type]} yang berlaku sampai {activeWarning.validUntil}.
           </p>
         )}
@@ -290,12 +290,12 @@ export function EmployeeLetterForm({
         )}
         {type === "BERAKHIR_KONTRAK" &&
           (vars.tanggal_berakhir ? (
-            <p className="rounded-md bg-slate-50 px-3 py-2 text-sm text-slate-700">
+            <p className="rounded-lg bg-slate-50 px-3 py-2 text-sm text-slate-700">
               Kontrak {vars.nomor_kontrak || "terakhir"} berakhir {vars.tanggal_berakhir}. Data diambil dari Riwayat kontrak; tidak ada isian
               tambahan.
             </p>
           ) : (
-            <p className="rounded-md bg-amber-50 px-3 py-2 text-sm text-amber-800">
+            <p className="rounded-lg bg-amber-50 px-3 py-2 text-sm text-amber-800">
               Karyawan ini tidak punya tanggal berakhir kontrak. Surat ini hanya untuk kontrak PKWT.
             </p>
           ))}
@@ -442,7 +442,7 @@ export function TemplateEditor({ type, template, sampleVars }: { type: LetterTyp
       <form action={action} onSubmit={submitWithoutReset(action)} className="space-y-3">
         <SiteField />
         <FormMessage message={state?.message} />
-        {state?.ok && <p className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan sebagai versi baru.</p>}
+        {state?.ok && <p className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">Tersimpan sebagai versi baru.</p>}
         <Field label="Judul surat" htmlFor={`name-${type}`} errors={state?.errors?.name}>
           <input id={`name-${type}`} name="name" value={name} onChange={(ev) => setName(ev.target.value)} className={inputClass} />
         </Field>

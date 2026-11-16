@@ -82,7 +82,7 @@ export function ApplyForm({ jobId, site }: { jobId: string; site: string }) {
           type="file"
           required
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:text-slate-700 hover:file:bg-slate-200"
+          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm file:text-slate-700 hover:file:bg-slate-200"
         />
       </Field>
       <p className="text-xs text-slate-500">
@@ -114,7 +114,7 @@ export function ApplyForm({ jobId, site }: { jobId: string; site: string }) {
       <button
         type="submit"
         disabled={pending}
-        className="w-full rounded-md bg-brand-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60 sm:w-auto"
+        className="w-full rounded-lg bg-brand-700 px-4 py-2.5 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60 sm:w-auto"
       >
         {pending ? "Mengirim…" : "Kirim lamaran"}
       </button>

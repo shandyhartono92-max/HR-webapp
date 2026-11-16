@@ -28,7 +28,7 @@ export function ForeignWorkerForm({ id, initial = empty }: { id?: string; initia
       {!id && <SiteField />}
       <FormMessage message={state?.message} />
       {state?.ok && (
-        <p role="status" className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">
+        <p role="status" className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">
           Perubahan tersimpan.
         </p>
       )}
@@ -55,7 +55,7 @@ export function ForeignWorkerForm({ id, initial = empty }: { id?: string; initia
       <button
         type="submit"
         disabled={pending || !hydrated}
-        className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
+        className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
       >
         {pending ? "Menyimpan…" : id ? "Simpan perubahan" : "Simpan TKA"}
       </button>
@@ -78,7 +78,7 @@ export function ForeignWorkerStatusButton({ id, active }: { id: string; active: 
         type="button"
         onClick={run}
         disabled={pending || !hydrated}
-        className="rounded-md border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
+        className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50 disabled:opacity-60"
       >
         {pending ? "Menyimpan…" : active ? "Jadikan Non Aktif" : "Aktifkan lagi"}
       </button>

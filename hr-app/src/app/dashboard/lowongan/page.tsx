@@ -44,7 +44,7 @@ export default async function JobsPage() {
         {canEdit && (
           <Link
             href="/dashboard/lowongan/baru"
-            className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
+            className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800"
           >
             Tambah lowongan
           </Link>

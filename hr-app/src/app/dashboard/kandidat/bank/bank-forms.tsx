@@ -8,7 +8,7 @@ import { ImportIssues, XLSX_ACCEPT, xlsxInputClass } from "@/app/ui/import-issue
 import { SiteField } from "@/app/ui/site-field";
 
 const buttonClass =
-  "rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
+  "rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60";
 
 type Option = { id: string; name: string };
 
@@ -78,7 +78,7 @@ export function AddCandidateForm({ jobs }: { jobs: Option[] }) {
           type="file"
           required
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
+          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
         />
       </Field>
 
@@ -146,7 +146,7 @@ export function UploadCvForm({ candidateId, hasCv }: { candidateId: string; hasC
   return (
     <form key={state?.attempt} action={action} className="space-y-2">
       {state?.ok ? (
-        <p role="status" className="rounded-md bg-brand-50 px-3 py-2 text-sm text-brand-800">
+        <p role="status" className="rounded-lg bg-brand-50 px-3 py-2 text-sm text-brand-800">
           {state.message}
         </p>
       ) : (
@@ -159,7 +159,7 @@ export function UploadCvForm({ candidateId, hasCv }: { candidateId: string; hasC
           type="file"
           required
           accept=".pdf,.docx,application/pdf,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-md file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
+          className="mt-1 block w-full text-sm text-slate-700 file:mr-3 file:rounded-lg file:border-0 file:bg-slate-100 file:px-3 file:py-2 file:text-sm"
         />
       </Field>
       <button type="submit" disabled={pending || !hydrated} className={buttonClass}>

@@ -38,7 +38,7 @@ export default async function ImportEmployeesPage() {
         <a
           href="/dashboard/karyawan/import/template"
           download
-          className="inline-block rounded-md border border-slate-300 px-4 py-2 font-medium text-slate-700 hover:bg-slate-50"
+          className="inline-block rounded-lg border border-slate-300 px-4 py-2 font-medium text-slate-700 hover:bg-slate-50"
         >
           Unduh template (.xlsx)
         </a>

@@ -181,7 +181,7 @@ export default async function BankAccountPage() {
               </>
             ) : open?.status === "PENDING_APPROVAL" ? (
               <div className="space-y-3 text-sm">
-                <p className="rounded-md bg-sky-50 px-3 py-2 text-sky-900">
+                <p className="rounded-lg bg-sky-50 px-3 py-2 text-sky-900">
                   Permintaan {open.bankName} ••••{open.accountNumberLast4} sedang menunggu persetujuan HR.
                 </p>
                 <CancelRequestButton requestId={open.id} />

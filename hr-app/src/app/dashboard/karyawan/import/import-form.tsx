@@ -21,7 +21,7 @@ export function ImportEmployeesForm() {
       <button
         type="submit"
         disabled={pending || !hydrated}
-        className="rounded-md bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
+        className="rounded-lg bg-brand-700 px-4 py-2 text-sm font-medium text-white hover:bg-brand-800 disabled:opacity-60"
       >
         {pending ? "Mengimpor…" : "Import karyawan"}
       </button>

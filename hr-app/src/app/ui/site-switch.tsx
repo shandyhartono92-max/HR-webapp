@@ -7,13 +7,13 @@ type Option = { code: string; label: string };
 
 function PinIcon() {
   return (
-    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0 text-brand-700">
+    <svg aria-hidden="true" viewBox="0 0 20 20" fill="currentColor" className="size-4 shrink-0 text-slate-500">
       <path fillRule="evenodd" d="M10 18s6-5.2 6-10A6 6 0 0 0 4 8c0 4.8 6 10 6 10Zm0-7.5A2.5 2.5 0 1 0 10 5.5a2.5 2.5 0 0 0 0 5Z" clipRule="evenodd" />
     </svg>
   );
 }
 
-const pillClass = "flex items-center gap-1.5 rounded-full border border-slate-200 bg-slate-50 px-3 py-1 text-sm font-medium text-slate-800";
+const pillClass = "flex items-center gap-1.5 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-sm font-medium text-slate-800";
 
 // The active location in the header. With access to other locations it opens a small
 // menu to switch; without, it is a plain label.
@@ -48,14 +48,14 @@ export function SiteSwitch({ current, others }: { current: Option; others: Optio
               name="site"
               value={o.code}
               disabled={pending}
-              className="w-full rounded-md px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-slate-100 disabled:opacity-60"
+              className="w-full rounded-lg px-2 py-1.5 text-left text-sm text-slate-800 hover:bg-slate-100 disabled:opacity-60"
             >
               Pindah ke {o.label}
             </button>
           ))}
         </form>
         {state?.error && (
-          <p data-site-error role="alert" className="mt-1 rounded-md bg-red-50 px-2 py-1.5 text-xs text-red-700">
+          <p data-site-error role="alert" className="mt-1 rounded-lg bg-red-50 px-2 py-1.5 text-xs text-red-700">
             {state.error}
           </p>
         )}

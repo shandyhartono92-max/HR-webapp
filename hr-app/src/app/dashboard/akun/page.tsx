@@ -13,7 +13,7 @@ export default async function AccountPage() {
     <div className="max-w-md space-y-4">
       <h1 className="text-2xl font-semibold text-slate-900">Akun saya</h1>
       {user.mustChangePassword && (
-        <p role="alert" className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-800">
+        <p role="alert" className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-800">
           Anda masuk dengan kata sandi sementara dari HR. Buat kata sandi baru untuk melanjutkan.
         </p>
       )}

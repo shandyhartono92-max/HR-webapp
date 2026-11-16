@@ -91,12 +91,12 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
           Masuk bank data {formatDate(c.createdAt)} · sumber: {sourceLabel(c.source ?? c.applications.at(-1)?.source)}
         </p>
         {baru === "1" && (
-          <p role="status" className="mt-3 rounded-md bg-brand-50 px-4 py-3 text-sm text-brand-800">
+          <p role="status" className="mt-3 rounded-lg bg-brand-50 px-4 py-3 text-sm text-brand-800">
             Kandidat tersimpan di bank data.
           </p>
         )}
         {c.anonymizedAt && (
-          <p className="mt-3 rounded-md bg-slate-100 px-4 py-3 text-sm text-slate-700">
+          <p className="mt-3 rounded-lg bg-slate-100 px-4 py-3 text-sm text-slate-700">
             Data pribadi kandidat ini sudah dihapus pada {formatDate(c.anonymizedAt)} sesuai masa simpan data.
           </p>
         )}
@@ -156,7 +156,7 @@ export default async function CandidateProfilePage({ params, searchParams }: Pag
             {cv && !c.anonymizedAt && (
               <a
                 href={`/dashboard/kandidat/bank/${c.id}/cv`}
-                className="mt-4 block truncate rounded-md border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
+                className="mt-4 block truncate rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 hover:bg-slate-50"
               >
                 Unduh CV · {cv.fileName}
               </a>

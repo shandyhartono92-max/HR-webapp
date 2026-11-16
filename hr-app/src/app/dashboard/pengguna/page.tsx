@@ -55,7 +55,7 @@ export default async function UsersPage() {
       </div>
 
       {staffCount < 2 && (
-        <p className="rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p className="rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Baru ada {staffCount} akun HR/Admin aktif. Rekening yang diinput HR harus disetujui HR/Admin lain, jadi sebaiknya ada minimal 2 akun.
         </p>
       )}

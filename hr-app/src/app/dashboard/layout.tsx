@@ -20,7 +20,7 @@ export const instant = false;
 function Logo({ small = false }: { small?: boolean }) {
   return (
     <span
-      className={`grid shrink-0 place-items-center rounded-lg bg-brand-700 font-bold text-white ${small ? "size-7 text-xs" : "size-[34px] text-[15px]"}`}
+      className={`grid shrink-0 place-items-center rounded-lg bg-brand-700 font-semibold text-white ${small ? "size-7 text-xs" : "size-8 text-sm"}`}
     >
       HR
     </span>
@@ -33,9 +33,9 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
     <NavDrawerProvider>
       <div className="flex flex-1">
         <Sidebar>
-          <Link href="/dashboard" className="flex items-center gap-2.5 px-6 pb-3 pt-5">
+          <Link href="/dashboard" className="flex items-center gap-3 px-5 pb-2 pt-5">
             <Logo />
-            <span className="text-base font-bold tracking-wide text-white">Portal HR</span>
+            <span className="text-base font-semibold text-white">Portal HR</span>
           </Link>
           <Suspense fallback={<div className="h-10" />}>
             <SideNav />
@@ -43,11 +43,11 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
         </Sidebar>
 
         <div className="flex min-w-0 flex-1 flex-col">
-          <header className="flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 sm:px-7">
+          <header className="flex h-16 items-center gap-3 border-b border-slate-200 bg-white px-4 sm:px-8">
             <MenuButton />
-            <Link href="/dashboard" className="flex items-center gap-2 font-bold text-slate-900 md:hidden">
+            <Link href="/dashboard" className="flex items-center gap-2 font-semibold text-slate-900 md:hidden">
               <Logo small />
-              Portal HR
+              <span className="hidden whitespace-nowrap min-[400px]:inline">Portal HR</span>
             </Link>
             <div className="ml-auto flex items-center gap-2 sm:gap-4">
               <Suspense>
@@ -58,7 +58,7 @@ export default function DashboardLayout({ children }: LayoutProps<"/dashboard">)
               </Suspense>
             </div>
           </header>
-          <main className="min-w-0 flex-1 p-4 sm:p-7">{children}</main>
+          <main className="min-w-0 flex-1 p-4 sm:p-8">{children}</main>
         </div>
       </div>
     </NavDrawerProvider>
@@ -99,20 +99,20 @@ async function UserMenu() {
 
   return (
     <>
-      <div className="flex items-center gap-2.5">
+      <div className="flex items-center gap-3">
         <span
           aria-hidden="true"
-          className="grid size-9 place-items-center rounded-full bg-brand-700 text-[13px] font-bold text-white"
+          className="grid size-8 place-items-center rounded-full bg-slate-100 text-xs font-medium text-slate-700 ring-1 ring-slate-200"
         >
           {initials(user.name)}
         </span>
         <div className="hidden sm:block">
-          <p className="text-[13px] font-semibold leading-tight text-slate-900">{user.name}</p>
+          <p className="text-sm font-medium leading-tight text-slate-900">{user.name}</p>
           <p className="text-xs text-slate-500">{roleLabel[user.role]}</p>
         </div>
       </div>
       <form action={logout}>
-        <button type="submit" className="rounded-lg border border-slate-300 px-3 py-1.5 text-sm text-slate-700 hover:bg-slate-50">
+        <button type="submit" className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 transition-colors hover:bg-slate-50">
           Keluar
         </button>
       </form>

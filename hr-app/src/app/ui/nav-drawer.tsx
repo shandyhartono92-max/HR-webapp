@@ -4,7 +4,6 @@ import { createContext, use, useEffect, useState, type ReactNode } from "react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { activeHref, type NavIconName } from "@/lib/nav";
-import { AlertIcon } from "@/app/ui/contract-alert";
 import { MenuIcon, NavIcon } from "@/app/ui/icons";
 
 // Client half of the dashboard sidebar: which link is active, and the phone drawer.
@@ -87,7 +86,13 @@ export function Sidebar({ children }: { children: ReactNode }) {
   );
 }
 
-export type NavLinkGroup = { title: string; items: { href?: string; label: string; icon: NavIconName }[] };
+// Each alert count means something different per menu entry
+function badgeTitle(href: string, count: number): string {
+  if (href === "/dashboard/tka") return `${count} KITAS habis dalam 30 hari atau sudah lewat`;
+  return `${count} kontrak berakhir dalam 6 minggu`;
+}
+
+export type NavLinkGroup ={ title: string; items: { href?: string; label: string; icon: NavIconName }[] };
 
 export function NavLinks({ groups, badges }: { groups: NavLinkGroup[]; badges: Record<string, number> }) {
   const pathname = usePathname();
@@ -97,37 +102,37 @@ export function NavLinks({ groups, badges }: { groups: NavLinkGroup[]; badges: R
   );
 
   return (
-    <nav className="flex flex-col gap-0.5 px-3.5 pb-4">
+    <nav className="flex flex-col gap-1 px-3 pb-4">
       {groups.map((group) => (
-        <div key={group.title} className="flex flex-col gap-0.5">
-          <p className="px-2.5 pb-1.5 pt-3.5 text-[10.5px] uppercase tracking-wider text-[#7c93b0]">{group.title}</p>
+        <div key={group.title} className="flex flex-col gap-1">
+          <p className="px-3 pb-1 pt-4 text-xs text-[#7c93b0]">{group.title}</p>
           {group.items.map((item) =>
             item.href ? (
               <Link
                 key={item.label}
                 href={item.href}
                 aria-current={item.href === active ? "page" : undefined}
-                className={`flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm ${
-                  item.href === active ? "bg-brand-700 font-semibold text-white" : "hover:bg-white/5 hover:text-white"
+                className={`flex h-9 items-center gap-3 rounded-lg px-3 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-400 ${
+                  item.href === active ? "bg-brand-700 font-medium text-white" : "hover:bg-white/5 hover:text-white"
                 }`}
               >
                 <NavIcon name={item.icon} />
                 <span className="flex-1">{item.label}</span>
                 {badges[item.href] ? (
                   <span
-                    title={`${badges[item.href]} kontrak berakhir dalam 6 minggu`}
-                    className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2 py-0.5 text-xs font-semibold text-amber-800"
+                    title={badgeTitle(item.href, badges[item.href])}
+                    className="flex items-center gap-1.5 text-xs tabular-nums text-amber-300"
                   >
-                    <AlertIcon />
+                    <span aria-hidden="true" className="size-1.5 rounded-full bg-amber-400" />
                     {badges[item.href]}
                   </span>
                 ) : null}
               </Link>
             ) : (
-              <span key={item.label} className="flex items-center gap-2.5 rounded-lg px-2.5 py-2 text-sm text-[#7c93b0]">
+              <span key={item.label} className="flex h-9 items-center gap-3 rounded-lg px-3 text-sm text-[#7c93b0]">
                 <NavIcon name={item.icon} />
                 <span className="flex-1">{item.label}</span>
-                <span className="rounded bg-white/10 px-1.5 py-0.5 text-[10px] uppercase tracking-wide">Segera</span>
+                <span className="text-xs">Segera</span>
               </span>
             ),
           )}

@@ -40,7 +40,7 @@ export default async function CareersPage({ searchParams }: PageProps<"/karir">)
       </nav>
 
       {unavailable.map((label) => (
-        <p key={label} className="mt-4 rounded-md bg-amber-50 px-4 py-3 text-sm text-amber-900">
+        <p key={label} className="mt-4 rounded-lg bg-amber-50 px-4 py-3 text-sm text-amber-900">
           Lowongan {label} sedang tidak bisa ditampilkan. Silakan cek kembali nanti.
         </p>
       ))}
